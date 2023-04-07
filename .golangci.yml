@@ -1,0 +1,8 @@
+run:
+  timeout: 1m
+  modules-download-mode: readonly
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
