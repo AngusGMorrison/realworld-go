@@ -32,7 +32,7 @@ type User struct {
 	email          EmailAddress
 	passwordDigest PasswordDigest
 	bio            string
-	avatarURL      string
+	imageURL       string
 }
 
 func NewUser(
@@ -40,14 +40,14 @@ func NewUser(
 	email EmailAddress,
 	digest PasswordDigest,
 	bio string,
-	avatarURL string,
+	imageURL string,
 ) *User {
 	return &User{
 		username:       username,
 		email:          email,
 		passwordDigest: digest,
 		bio:            bio,
-		avatarURL:      avatarURL,
+		imageURL:       imageURL,
 	}
 }
 
@@ -71,9 +71,9 @@ func (u *User) Bio() string {
 	return u.bio
 }
 
-// AvatarURL returns the user's avatar URL.
-func (u *User) AvatarURL() string {
-	return u.avatarURL
+// ImageURL returns the user's image URL.
+func (u *User) ImageURL() string {
+	return u.imageURL
 }
 
 // RegisterRequest describes the data required to register a new user.
@@ -89,14 +89,20 @@ func NewRegisterRequest(
 	rawEmail string,
 	password string,
 ) (*RegisterRequest, error) {
+	validationErr := &ValidationError{}
+
 	emailAddr, err := NewEmailAddressFromString(rawEmail)
 	if err != nil {
-		return nil, err
+		validationErr.push(err)
 	}
 
 	pwDigest, err := digest(password)
 	if err != nil {
-		return nil, err
+		validationErr.push(err)
+	}
+
+	if validationErr.any() {
+		return nil, validationErr
 	}
 
 	return &RegisterRequest{
@@ -114,14 +120,20 @@ type AuthRequest struct {
 
 // NewAuthRequest instantiates a *AuthRequest, validating rawEmail.
 func NewAuthRequest(rawEmail string, password string) (*AuthRequest, error) {
+	validationErr := &ValidationError{}
+
 	emailAddr, err := NewEmailAddressFromString(rawEmail)
 	if err != nil {
-		return nil, err
+		validationErr.push(err)
 	}
 
 	pwDigest, err := digest(password)
 	if err != nil {
-		return nil, err
+		validationErr.push(err)
+	}
+
+	if validationErr.any() {
+		return nil, validationErr
 	}
 
 	return &AuthRequest{
@@ -146,27 +158,28 @@ type UpdateRequest struct {
 	email          *EmailAddress
 	passwordDigest *PasswordDigest
 	bio            *string
-	avatarURL      *string
+	imageURL       *string
 }
 
 // NewUpdateRequest instantiates a *UpdateRequest, validating rawEmail and
-// avatarURL.
+// imageURL.
 func NewUpdateRequest(
 	userID uuid.UUID,
 	rawEmail *string,
 	password *string,
 	bio *string,
-	avatarURL *string,
+	imageURL *string,
 ) (*UpdateRequest, error) {
 	req := &UpdateRequest{
 		userID: userID,
 		bio:    bio,
 	}
+	validationErr := &ValidationError{}
 
 	if rawEmail != nil {
 		emailAddr, err := NewEmailAddressFromString(*rawEmail)
 		if err != nil {
-			return nil, err
+			validationErr.push(err)
 		}
 		req.email = &emailAddr
 	}
@@ -174,16 +187,20 @@ func NewUpdateRequest(
 	if password != nil {
 		pwDigest, err := digest(*password)
 		if err != nil {
-			return nil, err
+			validationErr.push(err)
 		}
 		req.passwordDigest = &pwDigest
 	}
 
-	if avatarURL != nil {
-		if _, err := url.Parse(*avatarURL); err != nil {
-			return nil, ErrAvatarURLUnparseable
+	if imageURL != nil {
+		if _, err := url.Parse(*imageURL); err != nil {
+			validationErr.push(ErrImageURLUnparseable)
 		}
-		req.avatarURL = avatarURL
+		req.imageURL = imageURL
+	}
+
+	if validationErr.any() {
+		return nil, validationErr
 	}
 
 	return req, nil
