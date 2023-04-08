@@ -18,7 +18,7 @@ type EmailAddress string
 // public domain.
 func NewEmailAddressFromString(raw string) (EmailAddress, error) {
 	if _, err := mail.ParseAddress(raw); err != nil {
-		return "", NewEmailAddressValidationError(raw, err)
+		return "", ErrEmailAddressUnparseable
 	}
 
 	return EmailAddress(raw), nil
@@ -94,10 +94,15 @@ func NewRegisterRequest(
 		return nil, err
 	}
 
+	pwDigest, err := digest(password)
+	if err != nil {
+		return nil, err
+	}
+
 	return &RegisterRequest{
 		username:       username,
 		email:          emailAddr,
-		passwordDigest: digest(password),
+		passwordDigest: pwDigest,
 	}, nil
 }
 
@@ -114,9 +119,14 @@ func NewAuthRequest(rawEmail string, password string) (*AuthRequest, error) {
 		return nil, err
 	}
 
+	pwDigest, err := digest(password)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuthRequest{
 		email:          emailAddr,
-		passwordDigest: digest(password),
+		passwordDigest: pwDigest,
 	}, nil
 }
 
@@ -162,13 +172,16 @@ func NewUpdateRequest(
 	}
 
 	if password != nil {
-		digest := digest(*password)
-		req.passwordDigest = &digest
+		pwDigest, err := digest(*password)
+		if err != nil {
+			return nil, err
+		}
+		req.passwordDigest = &pwDigest
 	}
 
 	if avatarURL != nil {
 		if _, err := url.Parse(*avatarURL); err != nil {
-			return nil, NewAvatarURLValidationError(*avatarURL, err)
+			return nil, ErrAvatarURLUnparseable
 		}
 		req.avatarURL = avatarURL
 	}
