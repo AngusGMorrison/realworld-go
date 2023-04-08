@@ -17,7 +17,29 @@ func (lr *loginRequest) toDomain() (*user.AuthRequest, error) {
 	return user.NewAuthRequest(lr.Email, lr.Password)
 }
 
-func (s *Server) LoginHandler(c *fiber.Ctx) error {
+type loginResponse struct {
+	Token    string            `json:"token"`
+	Email    user.EmailAddress `json:"email"`
+	Username string            `json:"username"`
+	Bio      string            `json:"bio"`
+	Image    string            `json:"image"`
+}
+
+func newLoginResponseFromDomain(user *user.User, token string) *loginResponse {
+	return &loginResponse{
+		Token:    token,
+		Email:    user.Email(),
+		Username: user.Username(),
+		Bio:      user.Bio(),
+		Image:    user.ImageURL(),
+	}
+}
+
+type usersGroup struct {
+	service user.Service
+}
+
+func (users *usersGroup) loginHandler(c *fiber.Ctx) error {
 	var req loginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -27,19 +49,21 @@ func (s *Server) LoginHandler(c *fiber.Ctx) error {
 
 	authReq, err := req.toDomain()
 	if err != nil {
-		return newUsersError(c, err)
+		return newUsersEndpointError(c, err)
 	}
 
-	user, token, err := s.userService.Authenticate(c.Context(), authReq)
+	user, token, err := users.service.Authenticate(c.Context(), authReq)
 	if err != nil {
-		return newUsersError(c, err)
+		return newUsersEndpointError(c, err)
 	}
 
+	res := newLoginResponseFromDomain(user, token)
+	return c.Status(fiber.StatusOK).JSON(res)
 }
 
-// newUsersError maps user service errors to HTTP errors. Panics if it encounters
+// newUsersEndpointError maps user service errors to HTTP errors. Panics if it encounters
 // an unhandled error, which MUST be handled by recovery middleware.
-func newUsersError(c *fiber.Ctx, err error) error {
+func newUsersEndpointError(c *fiber.Ctx, err error) error {
 	var authErr *user.AuthError
 	if errors.As(err, &authErr) {
 		return fiber.NewError(fiber.StatusUnauthorized)
