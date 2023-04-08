@@ -1,35 +1,59 @@
 package rest
 
 import (
+	"io"
+	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld/config"
 	"github.com/angusgmorrison/realworld/service/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
+type config struct {
+	readTimeout      time.Duration
+	writeTimeout     time.Duration
+	logOutput        io.Writer
+	enableStackTrace bool
+}
+
+var defaultConfig = config{
+	readTimeout:      5 * time.Second,
+	writeTimeout:     10 * time.Second,
+	logOutput:        os.Stdout,
+	enableStackTrace: true,
+}
+
+// Server encapsulates a Fiber app and exposes methods for starting and stopping
+// the server.
 type Server struct {
 	innerServer *fiber.App
 }
 
-func NewServer(cfg config.Config, userService *user.Service) *Server {
+func NewServer(userService user.Service, opts ...Option) *Server {
+	cfg := defaultConfig
+	for _, opt := range opts {
+		opt.apply(&cfg)
+	}
+
 	app := fiber.New(fiber.Config{
 		AppName:      "realworld-hexagonal",
-		ReadTimeout:  cfg.ReadTimeout,
-		WriteTimeout: cfg.WriteTimeout,
+		ReadTimeout:  cfg.readTimeout,
+		WriteTimeout: cfg.writeTimeout,
 	})
 	app.Use(
-		logger.New(),
+		logger.New(logger.Config{
+			Output: cfg.logOutput,
+		}),
 		recover.New(recover.Config{
-			EnableStackTrace: true,
+			EnableStackTrace: cfg.enableStackTrace,
 		}),
 	)
 
 	api := app.Group("/api")
 
-	usersGroup := &usersGroup{service: *userService}
+	usersGroup := &usersGroup{service: userService}
 	usersRouter := api.Group("/users")
 	usersRouter.Post("login", usersGroup.loginHandler)
 

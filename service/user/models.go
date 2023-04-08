@@ -93,15 +93,15 @@ func NewRegisterRequest(
 
 	emailAddr, err := NewEmailAddressFromString(rawEmail)
 	if err != nil {
-		validationErr.push(err)
+		validationErr.Push(err)
 	}
 
 	pwDigest, err := digest(password)
 	if err != nil {
-		validationErr.push(err)
+		validationErr.Push(err)
 	}
 
-	if validationErr.any() {
+	if validationErr.Any() {
 		return nil, validationErr
 	}
 
@@ -124,15 +124,15 @@ func NewAuthRequest(rawEmail string, password string) (*AuthRequest, error) {
 
 	emailAddr, err := NewEmailAddressFromString(rawEmail)
 	if err != nil {
-		validationErr.push(err)
+		validationErr.Push(err)
 	}
 
 	pwDigest, err := digest(password)
 	if err != nil {
-		validationErr.push(err)
+		validationErr.Push(err)
 	}
 
-	if validationErr.any() {
+	if validationErr.Any() {
 		return nil, validationErr
 	}
 
@@ -179,7 +179,7 @@ func NewUpdateRequest(
 	if rawEmail != nil {
 		emailAddr, err := NewEmailAddressFromString(*rawEmail)
 		if err != nil {
-			validationErr.push(err)
+			validationErr.Push(err)
 		}
 		req.email = &emailAddr
 	}
@@ -187,19 +187,19 @@ func NewUpdateRequest(
 	if password != nil {
 		pwDigest, err := digest(*password)
 		if err != nil {
-			validationErr.push(err)
+			validationErr.Push(err)
 		}
 		req.passwordDigest = &pwDigest
 	}
 
 	if imageURL != nil {
 		if _, err := url.Parse(*imageURL); err != nil {
-			validationErr.push(ErrImageURLUnparseable)
+			validationErr.Push(ErrImageURLUnparseable)
 		}
 		req.imageURL = imageURL
 	}
 
-	if validationErr.any() {
+	if validationErr.Any() {
 		return nil, validationErr
 	}
 

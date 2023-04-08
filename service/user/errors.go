@@ -36,11 +36,11 @@ func (e *ValidationError) FieldErrors() []error {
 	return e.fieldErrors
 }
 
-func (e *ValidationError) push(err error) {
-	e.fieldErrors = append(e.fieldErrors, err)
+func (e *ValidationError) Push(errs ...error) {
+	e.fieldErrors = append(e.fieldErrors, errs...)
 }
 
-func (e *ValidationError) any() bool {
+func (e *ValidationError) Any() bool {
 	return len(e.fieldErrors) > 0
 }
 
