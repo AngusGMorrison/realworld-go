@@ -3,6 +3,7 @@ package rest
 import (
 	"time"
 
+	"github.com/angusgmorrison/realworld/config"
 	"github.com/angusgmorrison/realworld/service/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -13,8 +14,12 @@ type Server struct {
 	innerServer *fiber.App
 }
 
-func NewServer(userService *user.Service) *Server {
-	app := fiber.New()
+func NewServer(cfg config.Config, userService *user.Service) *Server {
+	app := fiber.New(fiber.Config{
+		AppName:      "realworld-hexagonal",
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	})
 	app.Use(
 		logger.New(),
 		recover.New(recover.Config{
