@@ -2,7 +2,10 @@ package users
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,13 +16,19 @@ import (
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/gofiber/fiber/v2"
+	jwtware "github.com/gofiber/jwt/v3"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_UsersGroup_Login(t *testing.T) {
+func Test_Handler_Login(t *testing.T) {
 	t.Parallel()
+
+	t.Run("when the request is valid it responds 200 OK with the user", func(t *testing.T) {
+
+	})
 
 	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
 		t.Parallel()
@@ -120,6 +129,49 @@ func Test_UsersGroup_Login(t *testing.T) {
 	})
 }
 
+func Test_Handler_GetCurrentUser(t *testing.T) {
+	t.Parallel()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err, "generate RSA keypair")
+	authMW := jwtware.New(jwtware.Config{
+		SigningKey:    key.PublicKey,
+		SigningMethod: "RS256",
+	})
+
+	t.Run("when the request is valid it responds 200 OK with the user", func(t *testing.T) {
+
+	})
+
+	t.Run("when the auth token is invalid it responds 401 Unauthorized", func(t *testing.T) {
+		t.Parallel()
+
+		server := newTestServer(t)
+		server.Use(authMW)
+		server.Get("/api/users", NewHandler(nil).GetCurrentUser)
+		claims := jwt.MapClaims{
+			"userID": "invalid-uuid",
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+		signedToken, err := token.SignedString(key)
+		require.NoError(t, err, "sign token")
+		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", signedToken))
+
+		resp, err := server.Test(req)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("when the user service returns AuthError it responds 401 Unauthorized", func(t *testing.T) {
+	})
+
+	t.Run("when the user service returns an unhandled error it responds 500 Internal Server Error", func(t *testing.T) {
+	})
+
+}
+
 func newTestServer(t *testing.T) *fiber.App {
 	t.Helper()
 
@@ -145,10 +197,10 @@ func (m *mockUserService) Register(c context.Context, req *user.RegistrationRequ
 	panic("not implemented")
 }
 
-func (m *mockUserService) Get(c context.Context, id uuid.UUID) (*user.User, error) {
+func (m *mockUserService) Get(c context.Context, id uuid.UUID) (*user.AuthenticatedUser, error) {
 	panic("not implemented")
 }
 
-func (m *mockUserService) Update(c context.Context, req *user.UpdateRequest) (*user.User, error) {
+func (m *mockUserService) Update(c context.Context, req *user.UpdateRequest) (*user.AuthenticatedUser, error) {
 	panic("not implemented")
 }

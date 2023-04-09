@@ -8,6 +8,8 @@ import (
 	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -38,6 +40,7 @@ func newUserResponseFromDomain(authUser *user.AuthenticatedUser) *userResponse {
 	}
 }
 
+// Register creates and returns a new user, along with an auth token.
 func (users *Handler) Register(c *fiber.Ctx) error {
 	var regReq user.RegistrationRequest
 	if err := c.BodyParser(&regReq); err != nil {
@@ -53,6 +56,7 @@ func (users *Handler) Register(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
+// Login authenticates a user and returns the user and token if successful.
 func (users *Handler) Login(c *fiber.Ctx) error {
 	var authReq user.AuthRequest
 	if err := c.BodyParser(&authReq); err != nil {
@@ -66,6 +70,40 @@ func (users *Handler) Login(c *fiber.Ctx) error {
 
 	res := newUserResponseFromDomain(authenticatedUser)
 	return c.Status(fiber.StatusOK).JSON(res)
+}
+
+// GetCurrentUser returns the user corresponding to the ID contained in the
+// request JWT.
+func (users *Handler) GetCurrentUser(c *fiber.Ctx) error {
+	userID, err := currentUserID(c)
+	if err != nil {
+		return err
+	}
+
+	user, err := users.service.Get(c.Context(), userID)
+	if err != nil {
+		return formatUserServiceError(c, err)
+	}
+
+	res := newUserResponseFromDomain(user)
+	return c.Status(fiber.StatusOK).JSON(res)
+}
+
+func currentUserID(c *fiber.Ctx) (uuid.UUID, error) {
+	token, ok := c.Locals("user").(*jwt.Token)
+	if !ok {
+		return uuid.UUID{}, fiber.NewError(fiber.StatusUnauthorized)
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	rawUserID := claims["userID"].([]byte)
+	userID, err := uuid.FromBytes(rawUserID)
+	if err != nil {
+		c.Context().Logger().Printf("Failed to parse user UUID from JWT claims: %v", err)
+		return uuid.UUID{}, fiber.NewError(fiber.StatusUnauthorized)
+	}
+
+	return userID, nil
 }
 
 // formatUserServiceError maps user service errors to HTTP errors. Panics if it encounters

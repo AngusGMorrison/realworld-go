@@ -75,6 +75,9 @@ func applyRoutes(
 	authMW := jwtware.New(jwtware.Config{
 		SigningKey:    signingKey,
 		SigningMethod: signingAlg,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return fiber.NewError(fiber.StatusUnauthorized)
+		},
 	})
 
 	app.Use(
@@ -89,13 +92,13 @@ func applyRoutes(
 	// /api
 	api := app.Group("/api")
 
-	// /api/usersGroup
-	usersGroup := api.Group("/users")
+	// /api/users
 	usersHandler := users.NewHandler(userService)
-	// Unauthenticated routes.
-	usersGroup.Post("/", usersHandler.Register)
-	usersGroup.Post("/login", usersHandler.Login)
-	// Authenticated routes.
-	usersGroup.Use(authMW)
-	// usersGroup.Get("/", usersHandler.GetCurrentUser)
+	// Unauthenticated.
+	unauthenticatedUsersGroup := api.Group("/users")
+	unauthenticatedUsersGroup.Post("/", usersHandler.Register)
+	unauthenticatedUsersGroup.Post("/login", usersHandler.Login)
+	// Authenticated.
+	authenticatedUsersGroup := api.Group("/users", authMW)
+	authenticatedUsersGroup.Get("/", usersHandler.GetCurrentUser)
 }
