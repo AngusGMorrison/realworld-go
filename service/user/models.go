@@ -2,7 +2,6 @@ package user
 
 import (
 	"net/mail"
-	"net/url"
 
 	"github.com/google/uuid"
 )
@@ -24,13 +23,11 @@ func NewEmailAddressFromString(raw string) (EmailAddress, error) {
 	return EmailAddress(raw), nil
 }
 
-type PasswordDigest string
-
 // User is the central domain type for this package.
 type User struct {
 	username       string
 	email          EmailAddress
-	passwordDigest PasswordDigest
+	passwordDigest string
 	bio            string
 	imageURL       string
 }
@@ -38,7 +35,7 @@ type User struct {
 func NewUser(
 	username string,
 	email EmailAddress,
-	digest PasswordDigest,
+	digest string,
 	bio string,
 	imageURL string,
 ) *User {
@@ -62,7 +59,7 @@ func (u *User) Email() EmailAddress {
 }
 
 // Digest returns the user's password digest.
-func (u *User) Digest() PasswordDigest {
+func (u *User) Digest() string {
 	return u.passwordDigest
 }
 
@@ -76,132 +73,44 @@ func (u *User) ImageURL() string {
 	return u.imageURL
 }
 
-// RegisterRequest describes the data required to register a new user.
-type RegisterRequest struct {
-	username       string
-	email          EmailAddress
-	passwordDigest PasswordDigest
+// AuthenticatedUser is a User with a valid token.
+type AuthenticatedUser struct {
+	token string
+	*User
 }
 
-// NewRegisterRequest instantiates a *RegisterRequest, validating rawEmail.
-func NewRegisterRequest(
-	username string,
-	rawEmail string,
-	password string,
-) (*RegisterRequest, error) {
-	validationErr := &ValidationError{}
+func (au *AuthenticatedUser) Token() string {
+	return au.token
+}
 
-	emailAddr, err := NewEmailAddressFromString(rawEmail)
-	if err != nil {
-		validationErr.Push(err)
-	}
-
-	pwDigest, err := digest(password)
-	if err != nil {
-		validationErr.Push(err)
-	}
-
-	if validationErr.Any() {
-		return nil, validationErr
-	}
-
-	return &RegisterRequest{
-		username:       username,
-		email:          emailAddr,
-		passwordDigest: pwDigest,
-	}, nil
+// RegisterRequest describes the data required to register a new user.
+type RegisterRequest struct {
+	Username string       `json:"username" validate:"required"`
+	Email    EmailAddress `json:"email" validate:"required,email"`
+	RequiredValidatingPassword
 }
 
 // AuthRequest describes the data required to authenticate a user.
+//
+// Password is not validated beyond checking its presence. For security, all
+// errors related to hashing and comparing the password with the stored hash
+// MUST be obfuscated using the generic AuthError.
 type AuthRequest struct {
-	email          EmailAddress
-	passwordDigest PasswordDigest
+	Email    EmailAddress `json:"email" validate:"required,email"`
+	Password string       `json:"password" validate:"required"`
 }
 
-// NewAuthRequest instantiates a *AuthRequest, validating rawEmail.
-func NewAuthRequest(rawEmail string, password string) (*AuthRequest, error) {
-	validationErr := &ValidationError{}
-
-	emailAddr, err := NewEmailAddressFromString(rawEmail)
-	if err != nil {
-		validationErr.Push(err)
-	}
-
-	pwDigest, err := digest(password)
-	if err != nil {
-		validationErr.Push(err)
-	}
-
-	if validationErr.Any() {
-		return nil, validationErr
-	}
-
-	return &AuthRequest{
-		email:          emailAddr,
-		passwordDigest: pwDigest,
-	}, nil
-}
-
-func (ar *AuthRequest) Email() EmailAddress {
-	return ar.email
-}
-
-func (ar *AuthRequest) PasswordDigest() PasswordDigest {
-	return ar.passwordDigest
+func (ar *AuthRequest) PasswordHash() (string, error) {
+	return bcryptHash(ar.Password)
 }
 
 // UpdateRequest describes the data required to update a user. Since zero or
 // more fields may be updated in a single request, pointer fields are required
 // to distinguish the absence of a value (i.e. no change) from the zero value.
 type UpdateRequest struct {
-	userID         uuid.UUID
-	email          *EmailAddress
-	passwordDigest *PasswordDigest
-	bio            *string
-	imageURL       *string
-}
-
-// NewUpdateRequest instantiates a *UpdateRequest, validating rawEmail and
-// imageURL.
-func NewUpdateRequest(
-	userID uuid.UUID,
-	rawEmail *string,
-	password *string,
-	bio *string,
-	imageURL *string,
-) (*UpdateRequest, error) {
-	req := &UpdateRequest{
-		userID: userID,
-		bio:    bio,
-	}
-	validationErr := &ValidationError{}
-
-	if rawEmail != nil {
-		emailAddr, err := NewEmailAddressFromString(*rawEmail)
-		if err != nil {
-			validationErr.Push(err)
-		}
-		req.email = &emailAddr
-	}
-
-	if password != nil {
-		pwDigest, err := digest(*password)
-		if err != nil {
-			validationErr.Push(err)
-		}
-		req.passwordDigest = &pwDigest
-	}
-
-	if imageURL != nil {
-		if _, err := url.Parse(*imageURL); err != nil {
-			validationErr.Push(ErrImageURLUnparseable)
-		}
-		req.imageURL = imageURL
-	}
-
-	if validationErr.Any() {
-		return nil, validationErr
-	}
-
-	return req, nil
+	UserID   uuid.UUID     `validate:"required"`
+	Email    *EmailAddress `validate:"omitempty,email"`
+	Bio      *string
+	ImageURL *string `validate:"omitempty,url"`
+	OptionalValidatingPassword
 }

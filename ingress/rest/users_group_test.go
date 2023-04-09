@@ -3,12 +3,14 @@ package rest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/angusgmorrison/realworld/entity/validate"
 	"github.com/angusgmorrison/realworld/service/user"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -35,8 +37,8 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		t.Parallel()
 
 		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.User, string, error) {
-				return nil, "", &user.AuthError{}
+			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
+				return nil, &user.AuthError{}
 			},
 		}
 		s := NewServer(mockService, testOptions(t)...)
@@ -56,11 +58,16 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 	t.Run("when the user service responds with a validation error it responds 422 Unprocessable Entity", func(t *testing.T) {
 		t.Parallel()
 
+		invalidEmail := "invalid-email"
 		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.User, string, error) {
-				validationErr := &user.ValidationError{}
-				validationErr.Push(user.ErrEmailAddressUnparseable, user.ErrPasswordTooLong)
-				return nil, "", validationErr
+			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
+				err := validate.Struct(struct {
+					Email string `json:"email" validate:"required,email"`
+				}{
+					Email: invalidEmail,
+				})
+
+				return nil, err
 			},
 		}
 		s := NewServer(mockService, testOptions(t)...)
@@ -80,7 +87,7 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		require.NoError(t, err)
 		assert.JSONEq(
 			t,
-			`{"errors":{"email":["is invalid"],"password":["length exceeds 72 bytes"]}}`,
+			fmt.Sprintf("{\"errors\":{\"email\":[\"%s is invalid\"]}}", invalidEmail),
 			string(gotBody),
 		)
 	})
@@ -89,8 +96,8 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		t.Parallel()
 
 		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.User, string, error) {
-				return nil, "", errors.New("unhandled error")
+			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
+				return nil, errors.New("unhandled error")
 			},
 		}
 		s := NewServer(mockService, testOptions(t)...)
@@ -121,16 +128,16 @@ func testOptions(t *testing.T) []Option {
 
 // Mock implementation of the user.Service interface. Only the Authenticate method is implemented.
 type mockUserService struct {
-	AuthenticateFn func(c context.Context, req *user.AuthRequest) (*user.User, string, error)
+	AuthenticateFn func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error)
 }
 
 var _ user.Service = (*mockUserService)(nil)
 
-func (m *mockUserService) Authenticate(c context.Context, req *user.AuthRequest) (*user.User, string, error) {
+func (m *mockUserService) Authenticate(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
 	return m.AuthenticateFn(c, req)
 }
 
-func (m *mockUserService) Register(c context.Context, req *user.RegisterRequest) (*user.User, error) {
+func (m *mockUserService) Register(c context.Context, req *user.RegisterRequest) (*user.AuthenticatedUser, error) {
 	panic("not implemented")
 }
 

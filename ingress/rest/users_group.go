@@ -4,18 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/angusgmorrison/realworld/entity/validate"
 	"github.com/angusgmorrison/realworld/service/user"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
-
-type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-func (lr *loginRequest) toDomain() (*user.AuthRequest, error) {
-	return user.NewAuthRequest(lr.Email, lr.Password)
-}
 
 type loginResponse struct {
 	Token    string            `json:"token"`
@@ -25,13 +18,13 @@ type loginResponse struct {
 	Image    string            `json:"image"`
 }
 
-func newLoginResponseFromDomain(user *user.User, token string) *loginResponse {
+func newLoginResponseFromDomain(authUser *user.AuthenticatedUser) *loginResponse {
 	return &loginResponse{
-		Token:    token,
-		Email:    user.Email(),
-		Username: user.Username(),
-		Bio:      user.Bio(),
-		Image:    user.ImageURL(),
+		Token:    authUser.Token(),
+		Email:    authUser.Email(),
+		Username: authUser.Username(),
+		Bio:      authUser.Bio(),
+		Image:    authUser.ImageURL(),
 	}
 }
 
@@ -40,60 +33,50 @@ type usersGroup struct {
 }
 
 func (users *usersGroup) loginHandler(c *fiber.Ctx) error {
-	var req loginRequest
-	if err := c.BodyParser(&req); err != nil {
+	var authReq user.AuthRequest
+	if err := c.BodyParser(&authReq); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Invalid request body",
+			"message": "request body is not a valid JSON string",
 		})
 	}
 
-	authReq, err := req.toDomain()
+	authenticatedUser, err := users.service.Authenticate(c.Context(), &authReq)
 	if err != nil {
-		return newUsersEndpointError(c, err)
+		return formatUserServiceError(c, err)
 	}
 
-	user, token, err := users.service.Authenticate(c.Context(), authReq)
-	if err != nil {
-		return newUsersEndpointError(c, err)
-	}
-
-	res := newLoginResponseFromDomain(user, token)
+	res := newLoginResponseFromDomain(authenticatedUser)
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
-// newUsersEndpointError maps user service errors to HTTP errors. Panics if it encounters
+// formatUserServiceError maps user service errors to HTTP errors. Panics if it encounters
 // an unhandled error, which MUST be handled by recovery middleware.
-func newUsersEndpointError(c *fiber.Ctx, err error) error {
+func formatUserServiceError(c *fiber.Ctx, err error) error {
 	var authErr *user.AuthError
 	if errors.As(err, &authErr) {
 		return fiber.NewError(fiber.StatusUnauthorized)
-	}
-
-	fieldErrs := make(map[string][]string)
-	var validationErr *user.ValidationError
-	if errors.As(err, &validationErr) {
-		for _, fieldErr := range validationErr.FieldErrors() {
-			if errors.Is(fieldErr, user.ErrImageURLUnparseable) {
-				fieldErrs["image"] = []string{"is invalid"}
-			} else if errors.Is(fieldErr, user.ErrEmailAddressUnparseable) {
-				fieldErrs["email"] = []string{"is invalid"}
-			} else if errors.Is(fieldErr, user.ErrPasswordTooLong) {
-				fieldErrs["password"] = []string{"length exceeds 72 bytes"}
-			} else {
-				panic(fmt.Errorf("unhandled validation error: %w", err))
-			}
-		}
-
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(
-			fiber.Map{
-				"errors": fieldErrs,
-			},
-		)
 	}
 
 	if errors.Is(err, user.ErrUserNotFound) {
 		return fiber.NewError(fiber.StatusNotFound)
 	}
 
+	if validationErrs, ok := err.(validator.ValidationErrors); ok {
+		return formatValidationErrors(c, validationErrs)
+	}
+
 	panic(fmt.Errorf("unhandled user service error: %w", err))
+}
+
+func formatValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
+	fieldErrs := make(map[string][]string)
+	for _, err := range errs {
+		fieldErrs[err.Field()] = append(fieldErrs[err.Field()], validate.Translate(err))
+	}
+
+	return c.Status(fiber.StatusUnprocessableEntity).JSON(
+		fiber.Map{
+			"errors": fieldErrs,
+		},
+	)
 }
