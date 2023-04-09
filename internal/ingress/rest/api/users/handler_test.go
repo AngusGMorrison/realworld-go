@@ -1,33 +1,35 @@
-package rest
+package users
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/angusgmorrison/realworld/pkg/validate"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_UsersGroup_LoginHandler(t *testing.T) {
+func Test_UsersGroup_Login(t *testing.T) {
 	t.Parallel()
 
 	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
 		t.Parallel()
 
-		s := NewServer(&mockUserService{}, testOptions(t)...)
+		server := newTestServer(t)
+		server.Post("/api/users/login", NewHandler(nil).Login)
 		req := httptest.NewRequest(http.MethodPost, "/api/users/login", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := s.innerServer.Test(req)
+		resp, err := server.Test(req)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -41,7 +43,8 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 				return nil, &user.AuthError{}
 			},
 		}
-		s := NewServer(mockService, testOptions(t)...)
+		server := newTestServer(t)
+		server.Post("/api/users/login", NewHandler(mockService).Login)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
@@ -49,7 +52,7 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		)
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := s.innerServer.Test(req)
+		resp, err := server.Test(req)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -70,7 +73,8 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 				return nil, err
 			},
 		}
-		s := NewServer(mockService, testOptions(t)...)
+		server := newTestServer(t)
+		server.Post("/api/users/login", NewHandler(mockService).Login)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
@@ -78,7 +82,7 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		)
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := s.innerServer.Test(req)
+		resp, err := server.Test(req)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
@@ -87,7 +91,7 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		require.NoError(t, err)
 		assert.JSONEq(
 			t,
-			fmt.Sprintf("{\"errors\":{\"email\":[\"%s is invalid\"]}}", invalidEmail),
+			`{"errors":{"email":["\"invalid-email\" is not a valid email address"]}}`,
 			string(gotBody),
 		)
 	})
@@ -100,7 +104,8 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 				return nil, errors.New("unhandled error")
 			},
 		}
-		s := NewServer(mockService, testOptions(t)...)
+		server := newTestServer(t)
+		server.Post("/api/users/login", NewHandler(mockService).Login)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
@@ -108,22 +113,21 @@ func Test_UsersGroup_LoginHandler(t *testing.T) {
 		)
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := s.innerServer.Test(req)
+		resp, err := server.Test(req)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 }
 
-// testOptions returns a set of server option for suppressing logging and stack
-// traces during tests.
-func testOptions(t *testing.T) []Option {
+func newTestServer(t *testing.T) *fiber.App {
 	t.Helper()
 
-	return []Option{
-		&LogOutputOption{W: io.Discard},
-		&StackTraceOption{Enable: false},
-	}
+	return fiber.New(fiber.Config{
+		AppName:      "realworld-hexagonal-test",
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	})
 }
 
 // Mock implementation of the user.Service interface. Only the Authenticate method is implemented.
@@ -137,7 +141,7 @@ func (m *mockUserService) Authenticate(c context.Context, req *user.AuthRequest)
 	return m.AuthenticateFn(c, req)
 }
 
-func (m *mockUserService) Register(c context.Context, req *user.RegisterRequest) (*user.AuthenticatedUser, error) {
+func (m *mockUserService) Register(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
 	panic("not implemented")
 }
 

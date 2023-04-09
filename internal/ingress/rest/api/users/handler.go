@@ -1,4 +1,4 @@
-package rest
+package users
 
 import (
 	"errors"
@@ -10,7 +10,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type loginResponse struct {
+type Handler struct {
+	service user.Service
+}
+
+func NewHandler(service user.Service) *Handler {
+	return &Handler{
+		service: service,
+	}
+}
+
+type userResponse struct {
 	Token    string            `json:"token"`
 	Email    user.EmailAddress `json:"email"`
 	Username string            `json:"username"`
@@ -18,8 +28,8 @@ type loginResponse struct {
 	Image    string            `json:"image"`
 }
 
-func newLoginResponseFromDomain(authUser *user.AuthenticatedUser) *loginResponse {
-	return &loginResponse{
+func newUserResponseFromDomain(authUser *user.AuthenticatedUser) *userResponse {
+	return &userResponse{
 		Token:    authUser.Token(),
 		Email:    authUser.Email(),
 		Username: authUser.Username(),
@@ -28,16 +38,25 @@ func newLoginResponseFromDomain(authUser *user.AuthenticatedUser) *loginResponse
 	}
 }
 
-type usersGroup struct {
-	service user.Service
+func (users *Handler) Register(c *fiber.Ctx) error {
+	var regReq user.RegistrationRequest
+	if err := c.BodyParser(&regReq); err != nil {
+		return badRequest(c)
+	}
+
+	authenticatedUser, err := users.service.Register(c.Context(), &regReq)
+	if err != nil {
+		return formatUserServiceError(c, err)
+	}
+
+	res := newUserResponseFromDomain(authenticatedUser)
+	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
-func (users *usersGroup) loginHandler(c *fiber.Ctx) error {
+func (users *Handler) Login(c *fiber.Ctx) error {
 	var authReq user.AuthRequest
 	if err := c.BodyParser(&authReq); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "request body is not a valid JSON string",
-		})
+		return badRequest(c)
 	}
 
 	authenticatedUser, err := users.service.Authenticate(c.Context(), &authReq)
@@ -45,7 +64,7 @@ func (users *usersGroup) loginHandler(c *fiber.Ctx) error {
 		return formatUserServiceError(c, err)
 	}
 
-	res := newLoginResponseFromDomain(authenticatedUser)
+	res := newUserResponseFromDomain(authenticatedUser)
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
@@ -79,4 +98,10 @@ func formatValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error
 			"errors": fieldErrs,
 		},
 	)
+}
+
+func badRequest(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		"message": "request body is not a valid JSON string",
+	})
 }

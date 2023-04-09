@@ -83,8 +83,8 @@ func (au *AuthenticatedUser) Token() string {
 	return au.token
 }
 
-// RegisterRequest describes the data required to register a new user.
-type RegisterRequest struct {
+// RegistrationRequest describes the data required to register a new user.
+type RegistrationRequest struct {
 	Username string       `json:"username" validate:"required"`
 	Email    EmailAddress `json:"email" validate:"required,email"`
 	RequiredValidatingPassword
