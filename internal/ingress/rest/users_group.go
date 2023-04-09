@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/angusgmorrison/realworld/entity/validate"
-	"github.com/angusgmorrison/realworld/service/user"
+	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )

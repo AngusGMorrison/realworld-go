@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld/service/user"
+	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
