@@ -12,7 +12,7 @@ type Service interface {
 	// Authenticate a user, returning the user and token if successful.
 	Authenticate(ctx context.Context, req *AuthRequest) (*AuthenticatedUser, error)
 	// Get a user by ID.
-	Get(ctx context.Context, id uuid.UUID) (*AuthenticatedUser, error)
+	Get(ctx context.Context, id uuid.UUID) (*User, error)
 	// Update a user.
-	Update(ctx context.Context, req *UpdateRequest) (*AuthenticatedUser, error)
+	Update(ctx context.Context, req *UpdateRequest) (*User, error)
 }

@@ -20,6 +20,24 @@ func (o *LogOutputOption) apply(cfg *config) {
 	cfg.logOutput = o.W
 }
 
+// LogPrefixOption overrides the default prefix the server uses when logging.
+type LogPrefixOptions struct {
+	Prefix string
+}
+
+func (o *LogPrefixOptions) apply(cfg *config) {
+	cfg.logPrefix = o.Prefix
+}
+
+// LogFlagsOption overrides the default flags the server uses when logging.
+type LogFlagsOption struct {
+	Flags int
+}
+
+func (o *LogFlagsOption) apply(cfg *config) {
+	cfg.logFlags = o.Flags
+}
+
 // ReadTimeoutOption overrides the server's default read timeout.
 type ReadTimeoutOption struct {
 	Timeout time.Duration

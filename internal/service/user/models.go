@@ -25,62 +25,18 @@ func NewEmailAddressFromString(raw string) (EmailAddress, error) {
 
 // User is the central domain type for this package.
 type User struct {
-	username       string
-	email          EmailAddress
-	passwordDigest string
-	bio            string
-	imageURL       string
-}
-
-func NewUser(
-	username string,
-	email EmailAddress,
-	digest string,
-	bio string,
-	imageURL string,
-) *User {
-	return &User{
-		username:       username,
-		email:          email,
-		passwordDigest: digest,
-		bio:            bio,
-		imageURL:       imageURL,
-	}
-}
-
-// Username returns the user's username.
-func (u *User) Username() string {
-	return u.username
-}
-
-// Email returns the user's email address.
-func (u *User) Email() EmailAddress {
-	return u.email
-}
-
-// Digest returns the user's password digest.
-func (u *User) Digest() string {
-	return u.passwordDigest
-}
-
-// Bio returns the user's bio.
-func (u *User) Bio() string {
-	return u.bio
-}
-
-// ImageURL returns the user's image URL.
-func (u *User) ImageURL() string {
-	return u.imageURL
+	ID             uuid.UUID
+	Username       string
+	Email          EmailAddress
+	PasswordDigest string
+	Bio            string
+	ImageURL       string
 }
 
 // AuthenticatedUser is a User with a valid token.
 type AuthenticatedUser struct {
-	token string
-	*User
-}
-
-func (au *AuthenticatedUser) Token() string {
-	return au.token
+	Token string
+	User  User
 }
 
 // RegistrationRequest describes the data required to register a new user.

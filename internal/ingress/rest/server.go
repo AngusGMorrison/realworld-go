@@ -1,28 +1,43 @@
 package rest
 
 import (
+	"crypto/rsa"
 	"io"
+	"log"
 	"os"
 	"time"
 
 	"github.com/angusgmorrison/realworld/internal/ingress/rest/api/users"
+	"github.com/angusgmorrison/realworld/internal/ingress/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	jwtware "github.com/gofiber/jwt/v3"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
 type config struct {
+	appName          string
 	readTimeout      time.Duration
 	writeTimeout     time.Duration
+	logPrefix        string
+	logFlags         int
 	logOutput        io.Writer
 	enableStackTrace bool
 }
 
+func (c config) applyOptions(opts ...Option) config {
+	for _, opt := range opts {
+		opt.apply(&c)
+	}
+	return c
+}
+
 var defaultConfig = config{
+	appName:          "realworld-hexagonal",
 	readTimeout:      5 * time.Second,
 	writeTimeout:     10 * time.Second,
+	logPrefix:        "",
+	logFlags:         log.LstdFlags,
 	logOutput:        os.Stdout,
 	enableStackTrace: true,
 }
@@ -30,75 +45,74 @@ var defaultConfig = config{
 // Server encapsulates a Fiber app and exposes methods for starting and stopping
 // the server.
 type Server struct {
-	innerServer *fiber.App
+	fiber *fiber.App
+	cfg   config
 }
 
 func NewServer(
 	userService user.Service,
-	signingKey string,
-	signingAlg string,
+	jwtVerificationKey *rsa.PublicKey,
 	opts ...Option,
 ) *Server {
-	cfg := defaultConfig
-	for _, opt := range opts {
-		opt.apply(&cfg)
+	cfg := defaultConfig.applyOptions(opts...)
+	server := &Server{
+		cfg: cfg,
+		fiber: fiber.New(fiber.Config{
+			AppName:      cfg.appName,
+			ReadTimeout:  cfg.readTimeout,
+			WriteTimeout: cfg.writeTimeout,
+		}),
 	}
 
-	app := fiber.New(fiber.Config{
-		AppName:      "realworld-hexagonal",
-		ReadTimeout:  cfg.readTimeout,
-		WriteTimeout: cfg.writeTimeout,
-	})
+	server.applyRoutes(userService, jwtVerificationKey)
 
-	applyRoutes(app, cfg, userService, signingKey, signingAlg)
-
-	return &Server{
-		innerServer: app,
-	}
+	return server
 }
 
 func (s *Server) Listen(addr string) error {
-	return s.innerServer.Listen(addr)
+	return s.fiber.Listen(addr)
 }
 
 func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
-	return s.innerServer.ShutdownWithTimeout(timeout)
+	return s.fiber.ShutdownWithTimeout(timeout)
 }
 
-func applyRoutes(
-	app *fiber.App,
-	cfg config,
-	userService user.Service,
-	signingKey string,
-	signingAlg string,
-) {
-	authMW := jwtware.New(jwtware.Config{
-		SigningKey:    signingKey,
-		SigningMethod: signingAlg,
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return fiber.NewError(fiber.StatusUnauthorized)
-		},
-	})
+func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.PublicKey) {
+	s.useGlobalMiddleware()
 
-	app.Use(
-		logger.New(logger.Config{
-			Output: cfg.logOutput,
-		}),
-		recover.New(recover.Config{
-			EnableStackTrace: cfg.enableStackTrace,
-		}),
-	)
+	authMW := middleware.NewRS256Auth(jwtVerificationKey)
 
 	// /api
-	api := app.Group("/api")
+	api := s.fiber.Group("/api")
 
-	// /api/users
+	// /api/users unauthenticated
 	usersHandler := users.NewHandler(userService)
-	// Unauthenticated.
 	unauthenticatedUsersGroup := api.Group("/users")
 	unauthenticatedUsersGroup.Post("/", usersHandler.Register)
 	unauthenticatedUsersGroup.Post("/login", usersHandler.Login)
-	// Authenticated.
+	// /api/users authenticated
 	authenticatedUsersGroup := api.Group("/users", authMW)
 	authenticatedUsersGroup.Get("/", usersHandler.GetCurrentUser)
+}
+
+func (s *Server) newLogger() *log.Logger {
+	return log.New(s.cfg.logOutput, s.cfg.logPrefix, s.cfg.logFlags)
+}
+
+// useGlobalMiddleware applies essential middleware to all routes.
+func (s *Server) useGlobalMiddleware() {
+	// Order of middleware is important.
+	s.fiber.Use(
+		// Add a UUID to each request.
+		requestid.New(),
+		// Add a logger to the context for each request that automatically logs
+		// the request's ID.
+		middleware.RequestScopedLogging(s.newLogger()),
+		// Log request stats.
+		middleware.RequestStatsLogging(s.cfg.logOutput),
+		// Recover from panics.
+		recover.New(recover.Config{
+			EnableStackTrace: s.cfg.enableStackTrace,
+		}),
+	)
 }

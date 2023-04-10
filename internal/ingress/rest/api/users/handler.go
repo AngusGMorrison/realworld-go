@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/angusgmorrison/realworld/internal/ingress/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -23,6 +23,10 @@ func NewHandler(service user.Service) *Handler {
 }
 
 type userResponse struct {
+	User userFields `json:"user"`
+}
+
+type userFields struct {
 	Token    string            `json:"token"`
 	Email    user.EmailAddress `json:"email"`
 	Username string            `json:"username"`
@@ -30,14 +34,20 @@ type userResponse struct {
 	Image    string            `json:"image"`
 }
 
-func newUserResponseFromDomain(authUser *user.AuthenticatedUser) *userResponse {
+func newUserResponseFromDomain(u *user.User) *userResponse {
 	return &userResponse{
-		Token:    authUser.Token(),
-		Email:    authUser.Email(),
-		Username: authUser.Username(),
-		Bio:      authUser.Bio(),
-		Image:    authUser.ImageURL(),
+		User: userFields{
+			Email:    u.Email,
+			Username: u.Username,
+			Bio:      u.Bio,
+			Image:    u.ImageURL,
+		},
 	}
+}
+
+func (u *userResponse) withToken(token string) *userResponse {
+	u.User.Token = token
+	return u
 }
 
 // Register creates and returns a new user, along with an auth token.
@@ -52,7 +62,7 @@ func (users *Handler) Register(c *fiber.Ctx) error {
 		return formatUserServiceError(c, err)
 	}
 
-	res := newUserResponseFromDomain(authenticatedUser)
+	res := newUserResponseFromDomain(&authenticatedUser.User).withToken(authenticatedUser.Token)
 	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
@@ -68,42 +78,20 @@ func (users *Handler) Login(c *fiber.Ctx) error {
 		return formatUserServiceError(c, err)
 	}
 
-	res := newUserResponseFromDomain(authenticatedUser)
+	res := newUserResponseFromDomain(&authenticatedUser.User).withToken(authenticatedUser.Token)
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
 // GetCurrentUser returns the user corresponding to the ID contained in the
 // request JWT.
 func (users *Handler) GetCurrentUser(c *fiber.Ctx) error {
-	userID, err := currentUserID(c)
-	if err != nil {
-		return err
-	}
-
-	user, err := users.service.Get(c.Context(), userID)
+	user, err := users.service.Get(c.Context(), middleware.CurrentUser(c))
 	if err != nil {
 		return formatUserServiceError(c, err)
 	}
 
-	res := newUserResponseFromDomain(user)
+	res := newUserResponseFromDomain(user).withToken(tokenFromRequest(c))
 	return c.Status(fiber.StatusOK).JSON(res)
-}
-
-func currentUserID(c *fiber.Ctx) (uuid.UUID, error) {
-	token, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return uuid.UUID{}, fiber.NewError(fiber.StatusUnauthorized)
-	}
-
-	claims := token.Claims.(jwt.MapClaims)
-	rawUserID := claims["userID"].([]byte)
-	userID, err := uuid.FromBytes(rawUserID)
-	if err != nil {
-		c.Context().Logger().Printf("Failed to parse user UUID from JWT claims: %v", err)
-		return uuid.UUID{}, fiber.NewError(fiber.StatusUnauthorized)
-	}
-
-	return userID, nil
 }
 
 // formatUserServiceError maps user service errors to HTTP errors. Panics if it encounters
@@ -142,4 +130,13 @@ func badRequest(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 		"message": "request body is not a valid JSON string",
 	})
+}
+
+func tokenFromRequest(c *fiber.Ctx) string {
+	token, ok := c.Locals("user").(*jwt.Token)
+	if !ok {
+		return ""
+	}
+
+	return token.Raw
 }
