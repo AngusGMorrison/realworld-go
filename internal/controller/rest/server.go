@@ -2,13 +2,14 @@ package rest
 
 import (
 	"crypto/rsa"
+	"errors"
 	"io"
 	"log"
 	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld/internal/ingress/rest/api/users"
-	"github.com/angusgmorrison/realworld/internal/ingress/rest/middleware"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/api/users"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -61,6 +62,7 @@ func NewServer(
 			AppName:      cfg.appName,
 			ReadTimeout:  cfg.readTimeout,
 			WriteTimeout: cfg.writeTimeout,
+			ErrorHandler: globalErrorHandler,
 		}),
 	}
 
@@ -93,6 +95,7 @@ func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.P
 	// /api/users authenticated
 	authenticatedUsersGroup := api.Group("/users", authMW)
 	authenticatedUsersGroup.Get("/", usersHandler.GetCurrentUser)
+	authenticatedUsersGroup.Put("/", usersHandler.UpdateCurrentUser)
 }
 
 func (s *Server) newLogger() *log.Logger {
@@ -115,4 +118,18 @@ func (s *Server) useGlobalMiddleware() {
 			EnableStackTrace: s.cfg.enableStackTrace,
 		}),
 	)
+}
+
+// The top-level error handler for the server.
+func globalErrorHandler(c *fiber.Ctx, err error) error {
+	code := fiber.StatusInternalServerError
+
+	var e *fiber.Error
+	if ok := errors.As(err, &e); ok {
+		code = e.Code
+	}
+
+	return c.Status(code).JSON(fiber.Map{
+		"error": "Internal Server Error",
+	})
 }

@@ -4,15 +4,13 @@ import (
 	"context"
 	"crypto/rsa"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/angusgmorrison/realworld/pkg/validate"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
 
-// Service describes the business API accessible to ingress methods.
+// Service describes the business API accessible to controller methods.
 type Service interface {
 	// Register a new user.
 	Register(ctx context.Context, req *RegistrationRequest) (*AuthenticatedUser, error)
@@ -57,7 +55,7 @@ func (s *service) Register(ctx context.Context, req *RegistrationRequest) (*Auth
 		return nil, err
 	}
 
-	jwt, err := s.newJWT(user.ID)
+	jwt, err := newJWT(s.jwtPrivateKey, s.jwtTTL, user.ID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +94,7 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 		return nil, &AuthError{cause: ErrPasswordMismatch}
 	}
 
-	jwt, err := s.newJWT(user.ID)
+	jwt, err := newJWT(s.jwtPrivateKey, s.jwtTTL, user.ID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -110,21 +108,4 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 // Get returns the user with the given ID.
 func (s *service) Get(ctx context.Context, id uuid.UUID) (*User, error) {
 	return s.repo.GetUserByID(ctx, id)
-}
-
-func (s *service) newJWT(userID uuid.UUID) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": userID.String(),
-		"exp": time.Now().Add(s.jwtTTL).Unix(),
-		"iat": time.Now().Unix(),
-		"nbf": time.Now().Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	signedToken, err := token.SignedString(s.jwtPrivateKey)
-	if err != nil {
-		return "", fmt.Errorf("sign JWT: %w", err)
-	}
-
-	return signedToken, nil
 }

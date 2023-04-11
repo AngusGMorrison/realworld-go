@@ -11,7 +11,7 @@ import (
 
 type userIDKeyT int
 
-const userIDKey userIDKeyT = 0
+const UserIDKey userIDKeyT = 0
 
 // NewRS256Auth returns middleware wrapping Fiber's JWT middleware that parses
 // the current user ID from the JWT claims and sets it on the request context.
@@ -56,7 +56,7 @@ func DefaultRS256AuthSuccessHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	c.Locals(userIDKey, userID)
+	c.Locals(UserIDKey, userID)
 
 	return c.Next()
 }
@@ -64,6 +64,6 @@ func DefaultRS256AuthSuccessHandler(c *fiber.Ctx) error {
 // CurrentUser returns the user ID from the request context. If no user ID is
 // set (e.g. because the route is not authenticated), an empty UUID is returned.
 func CurrentUser(c *fiber.Ctx) uuid.UUID {
-	userID, _ := c.Locals(userIDKey).(uuid.UUID)
+	userID, _ := c.Locals(UserIDKey).(uuid.UUID)
 	return userID
 }

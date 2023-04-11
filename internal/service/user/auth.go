@@ -1,8 +1,11 @@
 package user
 
 import (
+	"crypto/rsa"
 	"fmt"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -42,4 +45,21 @@ func bcryptHash(password string) (string, error) {
 	}
 
 	return string(hashBytes), nil
+}
+
+func newJWT(key *rsa.PrivateKey, ttl time.Duration, sub string) (string, error) {
+	claims := jwt.MapClaims{
+		"sub": sub,
+		"exp": time.Now().Add(ttl).Unix(),
+		"iat": time.Now().Unix(),
+		"nbf": time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	signedToken, err := token.SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("sign JWT: %w", err)
+	}
+
+	return signedToken, nil
 }

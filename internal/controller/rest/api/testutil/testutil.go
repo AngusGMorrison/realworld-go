@@ -8,12 +8,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/angusgmorrison/realworld/internal/ingress/rest/middleware"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	jwtware "github.com/gofiber/jwt/v3"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 )
+
+// NewMockAuthMiddleware sets the request token and current user ID, bypassing authentication.
+func NewMockAuthMiddleware(t *testing.T, userID uuid.UUID, rawToken string) fiber.Handler {
+	t.Helper()
+
+	return func(c *fiber.Ctx) error {
+		c.Locals(middleware.UserIDKey, userID)
+		c.Locals("user", &jwt.Token{Raw: rawToken})
+		return c.Next()
+	}
+}
 
 func NewRS256AuthMiddleware(t *testing.T, key crypto.PublicKey) fiber.Handler {
 	t.Helper()

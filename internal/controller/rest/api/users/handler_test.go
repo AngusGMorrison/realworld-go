@@ -2,22 +2,18 @@ package users
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/angusgmorrison/realworld/internal/ingress/rest/api/testutil"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/api/testutil"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -293,10 +289,6 @@ func Test_Handler_Register(t *testing.T) {
 func Test_Handler_GetCurrentUser(t *testing.T) {
 	t.Parallel()
 
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err, "generate RSA keypair")
-	authMW := testutil.NewRS256AuthMiddleware(t, key.Public())
-
 	t.Run("when the request is valid it responds 200 OK with the user", func(t *testing.T) {
 		t.Parallel()
 
@@ -315,25 +307,17 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 			},
 		}
 		server := testutil.NewServer(t)
-		server.Use(authMW)
+		mockToken := "token"
+		server.Use(testutil.NewMockAuthMiddleware(t, subject.ID, mockToken))
 		server.Get("/api/users", NewHandler(mockService).GetCurrentUser)
 
-		// Set up token.
-		claims := jwt.MapClaims{
-			"sub": subject.ID.String(),
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-		signedToken, err := token.SignedString(key)
-		require.NoError(t, err, "sign token")
-
 		// Expected output.
-		wantUserRes := newUserResponseFromDomain(subject).withToken(signedToken)
+		wantUserRes := newUserResponseFromDomain(subject).withToken(mockToken)
 		wantBody, err := json.Marshal(wantUserRes)
 		require.NoError(t, err, "marshal user response")
 
 		// Set up request.
 		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
-		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", signedToken))
 
 		// Make request.
 		res, err := server.Test(req)
@@ -345,23 +329,26 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 		assert.JSONEq(t, string(wantBody), string(bodyBytes))
 	})
 
-	t.Run("when the request is invalid", func(t *testing.T) {
+	t.Run("when the user service returns an error it responds with an error", func(t *testing.T) {
 		t.Parallel()
 
 		testCases := []struct {
 			name           string
 			mockServiceErr error
 			wantStatus     int
+			wantBody       string
 		}{
 			{
-				name:           "when the user service responds with ErrUserNotFound it responds 404 Not Found",
+				name:           "when ErrUserNotFound it responds 404 Not Found",
 				mockServiceErr: user.ErrUserNotFound,
 				wantStatus:     fiber.StatusNotFound,
+				wantBody:       `{"errors": {"email": ["user not found"]}}`,
 			},
 			{
-				name:           "when the user service responds with an unhandled error it responds 500 Internal Server Error",
+				name:           "when unhandled it responds 500 Internal Server Error",
 				mockServiceErr: errors.New("unhandled error"),
 				wantStatus:     fiber.StatusInternalServerError,
+				wantBody:       "something",
 			},
 		}
 
@@ -377,28 +364,80 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 					},
 				}
 				server := testutil.NewServer(t)
-				server.Use(authMW)
 				server.Get("/api/users", NewHandler(mockService).GetCurrentUser)
-
-				// Set up token.
-				claims := jwt.MapClaims{
-					"sub": uuid.New().String(),
-				}
-				token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-				signedToken, err := token.SignedString(key)
-				require.NoError(t, err, "sign token")
 
 				// Set up request.
 				req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
-				req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", signedToken))
 
 				// Make request.
 				res, err := server.Test(req)
 
 				require.NoError(t, err)
 				assert.Equal(t, tc.wantStatus, res.StatusCode)
+
+				bodyBytes, err := io.ReadAll(res.Body)
+				require.NoError(t, err, "read response body")
+				assert.JSON(t, tc.wantBody, string(bodyBytes))
 			})
 		}
+	})
+}
+
+func Test_Handler_UpdateCurrentUser(t *testing.T) {
+	t.Parallel()
+
+	t.Run("when the request is valid it responds 200 OK with the updated user", func(t *testing.T) {
+		t.Parallel()
+
+		subject := &user.User{
+			ID:       uuid.New(),
+			Username: "test",
+			Email:    "test@test.com",
+			Bio:      "I am a test user",
+			ImageURL: "https://test.com/image.png",
+		}
+
+		// Set up server.
+		mockService := &mockUserService{
+			GetFn: func(c context.Context, id uuid.UUID) (*user.User, error) {
+				return subject, nil
+			},
+		}
+		server := testutil.NewServer(t)
+		mockToken := "token"
+		server.Use(testutil.NewMockAuthMiddleware(t, subject.ID, mockToken))
+		server.Put("/api/users", NewHandler(mockService).GetCurrentUser)
+
+		// Expected output.
+		wantUserRes := newUserResponseFromDomain(subject).withToken(mockToken)
+		wantBody, err := json.Marshal(wantUserRes)
+		require.NoError(t, err, "marshal user response")
+
+		// Set up request.
+		req := httptest.NewRequest(http.MethodPut, "/api/users", http.NoBody)
+
+		// Make request.
+		res, err := server.Test(req)
+
+		require.NoError(t, err)
+		assert.Equal(t, fiber.StatusOK, res.StatusCode)
+		bodyBytes, err := io.ReadAll(res.Body)
+		require.NoError(t, err, "read response body")
+		assert.JSONEq(t, string(wantBody), string(bodyBytes))
+	})
+
+	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
+		t.Parallel()
+
+		server := testutil.NewServer(t)
+		server.Put("/api/users", NewHandler(nil).Login)
+		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(`{`))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := server.Test(req)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }
 

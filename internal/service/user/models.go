@@ -48,8 +48,8 @@ func (ar *AuthRequest) PasswordHash() (string, error) {
 // to distinguish the absence of a value (i.e. no change) from the zero value.
 type UpdateRequest struct {
 	UserID   uuid.UUID     `validate:"required"`
-	Email    *EmailAddress `validate:"omitempty,email"`
-	Bio      *string
-	ImageURL *string `validate:"omitempty,url"`
+	Email    *EmailAddress `json:"email" validate:"omitempty,email"`
+	Bio      *string       `json:"bio"`
+	ImageURL *string       `json:"image" validate:"omitempty,url"`
 	OptionalValidatingPassword
 }
