@@ -174,6 +174,122 @@ func Test_Handler_Login(t *testing.T) {
 	})
 }
 
+func Test_Handler_Register(t *testing.T) {
+	t.Parallel()
+
+	t.Run("when the request is valid it responds 201 Created with the user", func(t *testing.T) {
+		t.Parallel()
+
+		// Mock service.
+		subject := &user.AuthenticatedUser{
+			User: user.User{
+				ID:             uuid.New(),
+				Username:       "testuser",
+				Email:          "test@test.com",
+				PasswordDigest: "abc",
+				Bio:            "Test bio",
+				ImageURL:       "https://test.com/image.png",
+			},
+			Token: "test-token",
+		}
+		mockService := &mockUserService{
+			RegisterFn: func(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
+				return subject, nil
+			},
+		}
+
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Post("/api/users", NewHandler(mockService).Register)
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/api/users",
+			strings.NewReader(`{"email":"test@test.com", "username": "testuser", "password":"test"}`),
+		)
+		req.Header.Add("Content-Type", "application/json")
+
+		// Expected output.
+		wantUserRes := newUserResponseFromDomain(&subject.User).withToken(subject.Token)
+		wantBody, err := json.Marshal(wantUserRes)
+		require.NoError(t, err, "marshal user response")
+
+		res, err := server.Test(req)
+		require.NoError(t, err)
+
+		// Check status code.
+		assert.Equal(t, http.StatusCreated, res.StatusCode)
+
+		// Check body.
+		bodyBytes, err := io.ReadAll(res.Body)
+		require.NoError(t, err, "read response body")
+		assert.JSONEq(t, string(wantBody), string(bodyBytes))
+	})
+
+	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
+		t.Parallel()
+
+		server := testutil.NewServer(t)
+		server.Post("/api/users", NewHandler(nil).Login)
+		req := httptest.NewRequest(http.MethodPost, "/api/users", strings.NewReader(`{`))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := server.Test(req)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("when the user service responds with an error", func(t *testing.T) {
+		t.Parallel()
+
+		testCases := []struct {
+			name           string
+			mockServiceErr error
+			wantStatus     int
+		}{
+			{
+				name:           "when the error is ErrUserExists it responds 422 Unprocessable Entity",
+				mockServiceErr: user.ErrUserExists,
+				wantStatus:     fiber.StatusUnprocessableEntity,
+			},
+			{
+				name:           "when the error is unhandled it responds 500 Internal Server Error",
+				mockServiceErr: errors.New("unhandled error"),
+				wantStatus:     fiber.StatusInternalServerError,
+			},
+		}
+
+		for _, tc := range testCases {
+			tc := tc
+
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				mockService := &mockUserService{
+					RegisterFn: func(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
+						return nil, tc.mockServiceErr
+					},
+				}
+				server := testutil.NewServer(t)
+				server.Post("/api/users", NewHandler(mockService).Register)
+
+				// Set up request.
+				req := httptest.NewRequest(
+					http.MethodPost,
+					"/api/users", strings.NewReader(`{"email":"test@test.com", "username": "testuser", "password":"test"}`),
+				)
+				req.Header.Add("Content-Type", "application/json")
+
+				// Make request.
+				res, err := server.Test(req)
+
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantStatus, res.StatusCode)
+			})
+		}
+	})
+}
+
 func Test_Handler_GetCurrentUser(t *testing.T) {
 	t.Parallel()
 
@@ -232,9 +348,6 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 	t.Run("when the request is invalid", func(t *testing.T) {
 		t.Parallel()
 
-		// Table-driven tests taht use mockUserService to test the response status when the user service returns:
-		// - ErrUserNotFound
-		// - an unhandled error.
 		testCases := []struct {
 			name           string
 			mockServiceErr error
@@ -292,6 +405,7 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 // Mock implementation of the user.Service interface. Only the Authenticate method is implemented.
 type mockUserService struct {
 	AuthenticateFn func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error)
+	RegisterFn     func(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error)
 	GetFn          func(c context.Context, id uuid.UUID) (*user.User, error)
 }
 
@@ -302,7 +416,7 @@ func (m *mockUserService) Authenticate(c context.Context, req *user.AuthRequest)
 }
 
 func (m *mockUserService) Register(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
-	panic("not implemented")
+	return m.RegisterFn(c, req)
 }
 
 func (m *mockUserService) Get(c context.Context, id uuid.UUID) (*user.User, error) {

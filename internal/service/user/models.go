@@ -1,27 +1,10 @@
 package user
 
 import (
-	"net/mail"
-
 	"github.com/google/uuid"
 )
 
 type EmailAddress string
-
-// NewEmailAddressFromString returns a new EmailAddress from a raw string. If
-// the raw string is not a valid email address according to RFC 5322 standards,
-// an EmailAddressValidationError is returned.
-//
-// Note that RFC 5322 permits some seemingly bad email addresses such as
-// mail@localdestination, since an email addresses don't necessarily need a
-// public domain.
-func NewEmailAddressFromString(raw string) (EmailAddress, error) {
-	if _, err := mail.ParseAddress(raw); err != nil {
-		return "", ErrEmailAddressUnparseable
-	}
-
-	return EmailAddress(raw), nil
-}
 
 // User is the central domain type for this package.
 type User struct {

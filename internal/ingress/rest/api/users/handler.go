@@ -103,7 +103,19 @@ func formatUserServiceError(c *fiber.Ctx, err error) error {
 	}
 
 	if errors.Is(err, user.ErrUserNotFound) {
-		return fiber.NewError(fiber.StatusNotFound)
+		return c.Status(fiber.StatusNotFound).JSON(
+			newJsonErrors(map[string][]string{
+				"email": {"user not found"},
+			}),
+		)
+	}
+
+	if errors.Is(err, user.ErrUserExists) {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(
+			newJsonErrors(map[string][]string{
+				"email": {"user already registered"},
+			}),
+		)
 	}
 
 	if validationErrs, ok := err.(validator.ValidationErrors); ok {
@@ -113,17 +125,19 @@ func formatUserServiceError(c *fiber.Ctx, err error) error {
 	panic(fmt.Errorf("unhandled user service error: %w", err))
 }
 
+func newJsonErrors(errs map[string][]string) fiber.Map {
+	return fiber.Map{
+		"errors": errs,
+	}
+}
+
 func formatValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
 	fieldErrs := make(map[string][]string)
 	for _, err := range errs {
 		fieldErrs[err.Field()] = append(fieldErrs[err.Field()], validate.Translate(err))
 	}
 
-	return c.Status(fiber.StatusUnprocessableEntity).JSON(
-		fiber.Map{
-			"errors": fieldErrs,
-		},
-	)
+	return c.Status(fiber.StatusUnprocessableEntity).JSON(newJsonErrors(fieldErrs))
 }
 
 func badRequest(c *fiber.Ctx) error {
