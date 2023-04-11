@@ -8,18 +8,18 @@ type EmailAddress string
 
 // User is the central domain type for this package.
 type User struct {
-	ID             uuid.UUID
-	Username       string
-	Email          EmailAddress
-	PasswordDigest string
-	Bio            string
-	ImageURL       string
+	ID           uuid.UUID
+	Username     string
+	Email        EmailAddress
+	PasswordHash string
+	Bio          string
+	ImageURL     string
 }
 
 // AuthenticatedUser is a User with a valid token.
 type AuthenticatedUser struct {
 	Token string
-	User  User
+	User  *User
 }
 
 // RegistrationRequest describes the data required to register a new user.

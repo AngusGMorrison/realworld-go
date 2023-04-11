@@ -20,5 +20,9 @@ func (e *AuthError) Unwrap() error {
 	return e.cause
 }
 
+// ErrPasswordMismatch may be given as the cause of an AuthError when the
+// password provided with an AuthRequest does not match the password stored for
+// the user.
+var ErrPasswordMismatch = errors.New("password mismatch")
 var ErrUserNotFound = errors.New("user not found")
 var ErrUserExists = errors.New("user already exists")

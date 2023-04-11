@@ -62,7 +62,7 @@ func (users *Handler) Register(c *fiber.Ctx) error {
 		return formatUserServiceError(c, err)
 	}
 
-	res := newUserResponseFromDomain(&authenticatedUser.User).withToken(authenticatedUser.Token)
+	res := newUserResponseFromDomain(authenticatedUser.User).withToken(authenticatedUser.Token)
 	return c.Status(fiber.StatusCreated).JSON(res)
 }
 
@@ -78,7 +78,7 @@ func (users *Handler) Login(c *fiber.Ctx) error {
 		return formatUserServiceError(c, err)
 	}
 
-	res := newUserResponseFromDomain(&authenticatedUser.User).withToken(authenticatedUser.Token)
+	res := newUserResponseFromDomain(authenticatedUser.User).withToken(authenticatedUser.Token)
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 

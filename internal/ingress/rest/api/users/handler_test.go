@@ -31,13 +31,13 @@ func Test_Handler_Login(t *testing.T) {
 
 		// Mock service.
 		subject := &user.AuthenticatedUser{
-			User: user.User{
-				ID:             uuid.New(),
-				Username:       "testuser",
-				Email:          "test@test.com",
-				PasswordDigest: "abc",
-				Bio:            "Test bio",
-				ImageURL:       "https://test.com/image.png",
+			User: &user.User{
+				ID:           uuid.New(),
+				Username:     "testuser",
+				Email:        "test@test.com",
+				PasswordHash: "abc",
+				Bio:          "Test bio",
+				ImageURL:     "https://test.com/image.png",
 			},
 			Token: "test-token",
 		}
@@ -58,7 +58,7 @@ func Test_Handler_Login(t *testing.T) {
 		req.Header.Add("Content-Type", "application/json")
 
 		// Expected output.
-		wantUserRes := newUserResponseFromDomain(&subject.User).withToken(subject.Token)
+		wantUserRes := newUserResponseFromDomain(subject.User).withToken(subject.Token)
 		wantBody, err := json.Marshal(wantUserRes)
 		require.NoError(t, err, "marshal user response")
 
@@ -182,13 +182,13 @@ func Test_Handler_Register(t *testing.T) {
 
 		// Mock service.
 		subject := &user.AuthenticatedUser{
-			User: user.User{
-				ID:             uuid.New(),
-				Username:       "testuser",
-				Email:          "test@test.com",
-				PasswordDigest: "abc",
-				Bio:            "Test bio",
-				ImageURL:       "https://test.com/image.png",
+			User: &user.User{
+				ID:           uuid.New(),
+				Username:     "testuser",
+				Email:        "test@test.com",
+				PasswordHash: "abc",
+				Bio:          "Test bio",
+				ImageURL:     "https://test.com/image.png",
 			},
 			Token: "test-token",
 		}
@@ -209,7 +209,7 @@ func Test_Handler_Register(t *testing.T) {
 		req.Header.Add("Content-Type", "application/json")
 
 		// Expected output.
-		wantUserRes := newUserResponseFromDomain(&subject.User).withToken(subject.Token)
+		wantUserRes := newUserResponseFromDomain(subject.User).withToken(subject.Token)
 		wantBody, err := json.Marshal(wantUserRes)
 		require.NoError(t, err, "marshal user response")
 
