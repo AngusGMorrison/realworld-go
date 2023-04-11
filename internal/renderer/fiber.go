@@ -1,4 +1,4 @@
-package render
+package renderer
 
 import (
 	"errors"
@@ -11,12 +11,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// FiberRenderer implements handler Renderer interfaces for Fiber.
-type FiberRenderer struct{}
+// Fiber implements handler Renderer interfaces for the Fiber HTTP framework.
+type Fiber struct{}
 
-var _ usershandler.Renderer = (*FiberRenderer)(nil)
+var _ usershandler.Renderer = (*Fiber)(nil)
 
-func (r *FiberRenderer) BadRequest(c *fiber.Ctx) error {
+func (r *Fiber) BadRequest(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 		"message": "request body is not a valid JSON string",
 	})
@@ -24,7 +24,7 @@ func (r *FiberRenderer) BadRequest(c *fiber.Ctx) error {
 
 // UserError maps user service errors to HTTP errors. Panics if it encounters an
 // unhandled error, which MUST be handled by recovery middleware.
-func (r *FiberRenderer) UserError(c *fiber.Ctx, err error) error {
+func (r *Fiber) UserError(c *fiber.Ctx, err error) error {
 	var authErr *user.AuthError
 	if errors.As(err, &authErr) {
 		return fiber.NewError(fiber.StatusUnauthorized)
@@ -54,22 +54,22 @@ func (r *FiberRenderer) UserError(c *fiber.Ctx, err error) error {
 }
 
 // RegisterSuccess renders an authorized user as JSON with status 201.
-func (r *FiberRenderer) RegisterSuccess(c *fiber.Ctx, user *user.User, token string) error {
+func (r *Fiber) RegisterSuccess(c *fiber.Ctx, user *user.User, token string) error {
 	return renderUserWithToken(c, fiber.StatusCreated, user, token)
 }
 
 // LoginSuccess renders an authorized user as JSON with status 200.
-func (r *FiberRenderer) LoginSuccess(c *fiber.Ctx, user *user.User, token string) error {
+func (r *Fiber) LoginSuccess(c *fiber.Ctx, user *user.User, token string) error {
 	return renderUserWithToken(c, fiber.StatusOK, user, token)
 }
 
 // GetCurrentUserSuccess renders an authorized user as JSON with status 200.
-func (r *FiberRenderer) GetCurrentUserSuccess(c *fiber.Ctx, user *user.User, token string) error {
+func (r *Fiber) GetCurrentUserSuccess(c *fiber.Ctx, user *user.User, token string) error {
 	return renderUserWithToken(c, fiber.StatusOK, user, token)
 }
 
 // UpdateCurrentCurrentUserSuccess renders an authorized user as JSON with status 200.
-func (r *FiberRenderer) UpdateCurrentCurrentUserSuccess(c *fiber.Ctx, user *user.User, token string) error {
+func (r *Fiber) UpdateCurrentCurrentUserSuccess(c *fiber.Ctx, user *user.User, token string) error {
 	return renderUserWithToken(c, fiber.StatusOK, user, token)
 }
 
