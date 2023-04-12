@@ -16,7 +16,7 @@ import (
 // Changes to password validation tags MUST be kept in sync with
 // OptionalValidatingPassword.
 type RequiredValidatingPassword struct {
-	Password string `json:"password" validate:"required,pw_min,pw_max"`
+	Password string `json:"password" validate:"required,min=8,max=72"` // bcrypt max password length is 72 bytes
 }
 
 // Hash returns the hashed password.
@@ -30,7 +30,7 @@ func (rvp RequiredValidatingPassword) Hash() (string, error) {
 // Changes to password validation tags MUST be kept in sync with
 // RequiredValidatingPassword.
 type OptionalValidatingPassword struct {
-	Password string `json:"password" validate:"omitempty,pw_min,pw_max"`
+	Password string `json:"password" validate:"omitempty,min=8,max=72"`
 }
 
 // Hash returns the hashed password.

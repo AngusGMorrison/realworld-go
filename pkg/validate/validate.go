@@ -17,8 +17,6 @@ func init() {
 	translator = ut.New(en.New()).GetFallback()
 
 	registerTagNameFuncs()
-	registerTranslations()
-	registerValidations()
 }
 
 // Struct validates the given struct.
