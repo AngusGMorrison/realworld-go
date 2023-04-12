@@ -10,7 +10,6 @@ import (
 
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/golang-jwt/jwt/v4"
@@ -50,8 +49,7 @@ type ServerConfig struct {
 }
 
 var defaultServerConfig = ServerConfig{
-	PrintLogs:               false,
-	PrintRecoveryStackTrace: false,
+	PrintLogs: false,
 }
 
 func NewServer(t *testing.T, cfgOverride ...ServerConfig) *fiber.App {
@@ -78,9 +76,6 @@ func NewServer(t *testing.T, cfgOverride ...ServerConfig) *fiber.App {
 			middleware.RequestStatsLogging(os.Stdout),
 		)
 	}
-	app.Use(recover.New(recover.Config{
-		EnableStackTrace: cfg.PrintRecoveryStackTrace,
-	}))
 
 	return app
 }

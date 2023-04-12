@@ -16,10 +16,10 @@ type Service interface {
 	Register(ctx context.Context, req *RegistrationRequest) (*AuthenticatedUser, error)
 	// Authenticate a user, returning the user and token if successful.
 	Authenticate(ctx context.Context, req *AuthRequest) (*AuthenticatedUser, error)
-	// Get a user by ID.
-	Get(ctx context.Context, id uuid.UUID) (*User, error)
+	// GetUser a user by ID.
+	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
 	// Update a user.
-	Update(ctx context.Context, req *UpdateRequest) (*User, error)
+	UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error)
 }
 
 // Repository is a store of user data.
@@ -106,6 +106,6 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 }
 
 // Get returns the user with the given ID.
-func (s *service) Get(ctx context.Context, id uuid.UUID) (*User, error) {
+func (s *service) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
 	return s.repo.GetUserByID(ctx, id)
 }

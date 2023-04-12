@@ -2,9 +2,8 @@ package users
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,456 +11,464 @@ import (
 
 	"github.com/angusgmorrison/realworld/internal/controller/rest/api/testutil"
 	"github.com/angusgmorrison/realworld/internal/service/user"
-	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	email        = "test@test.com"
+	username     = "testuser"
+	password     = "password"
+	passwordHash = "abc123"
+	bio          = "test bio"
+	imageURL     = "https://test.com/image.png"
+	token        = "test-token"
 )
 
 func Test_Handler_Login(t *testing.T) {
 	t.Parallel()
 
-	t.Run("when the request is valid it responds 200 OK with the user", func(t *testing.T) {
+	t.Run("when the request succeeds it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		// Mock service.
-		subject := &user.AuthenticatedUser{
+		expectedUser := &user.AuthenticatedUser{
 			User: &user.User{
 				ID:           uuid.New(),
-				Username:     "testuser",
-				Email:        "test@test.com",
-				PasswordHash: "abc",
-				Bio:          "Test bio",
-				ImageURL:     "https://test.com/image.png",
+				Username:     username,
+				Email:        email,
+				PasswordHash: passwordHash,
+				Bio:          bio,
+				ImageURL:     imageURL,
 			},
-			Token: "test-token",
+			Token: token,
 		}
-		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
-				return subject, nil
-			},
+		expectedAuthRequest := &user.AuthRequest{
+			Email:    email,
+			Password: password,
 		}
+
+		// Mock service.
+		service := &mockUserService{}
+		service.On("Authenticate", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedAuthRequest).Return(expectedUser, nil)
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowLogin", mock.AnythingOfType("*fiber.Ctx"), expectedUser.User, token).Return(nil)
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(mockService).Login)
+		server.Post("/api/users/login", NewHandler(service, presenter).Login)
+		reqBody := fmt.Sprintf("{%q:%q,%q:%q}", "email", email, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
-			strings.NewReader(`{"email":"test@test.com","password":"test"}`),
+			strings.NewReader(reqBody),
 		)
+
 		req.Header.Add("Content-Type", "application/json")
 
-		// Expected output.
-		wantUserRes := newUserResponseFromDomain(subject.User).withToken(subject.Token)
-		wantBody, err := json.Marshal(wantUserRes)
-		require.NoError(t, err, "marshal user response")
+		// Make request.
+		_, err := server.Test(req)
 
-		res, err := server.Test(req)
 		require.NoError(t, err)
-
-		// Check status code.
-		assert.Equal(t, http.StatusOK, res.StatusCode)
-
-		// Check body.
-		bodyBytes, err := io.ReadAll(res.Body)
-		require.NoError(t, err, "read response body")
-		assert.JSONEq(t, string(wantBody), string(bodyBytes))
-
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 
-	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
+	t.Run("when the request is malformed it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowBadRequest", mock.AnythingOfType("*fiber.Ctx")).Return(nil)
+
+		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(nil).Login)
+		server.Post("/api/users/login", NewHandler(nil, presenter).Login)
 		req := httptest.NewRequest(http.MethodPost, "/api/users/login", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := server.Test(req)
+		// Make request.
+		_, err := server.Test(req)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		presenter.AssertExpectations(t)
 	})
 
-	t.Run("when the user service responds with an auth error it responds 401 Unauthorized", func(t *testing.T) {
+	t.Run("when the user service responds with an error it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
-				return nil, &user.AuthError{}
-			},
+		expectedAuthRequest := &user.AuthRequest{
+			Email:    email,
+			Password: password,
 		}
+
+		// Mock service.
+		service := &mockUserService{}
+		userServiceError := errors.New("some error")
+		service.On("Authenticate", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedAuthRequest).Return((*user.AuthenticatedUser)(nil), userServiceError)
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowUserError", mock.AnythingOfType("*fiber.Ctx"), userServiceError).Return(nil)
+
+		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(mockService).Login)
+		server.Post("/api/users/login", NewHandler(service, presenter).Login)
+		reqBody := fmt.Sprintf("{%q:%q,%q:%q}", "email", email, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
-			strings.NewReader(`{"email":"test@test.com","password":"test"}`),
+			strings.NewReader(reqBody),
 		)
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := server.Test(req)
+		// Make request.
+		_, err := server.Test(req)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	})
-
-	t.Run("when the user service responds with a validation error it responds 422 Unprocessable Entity", func(t *testing.T) {
-		t.Parallel()
-
-		invalidEmail := "invalid-email"
-		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
-				err := validate.Struct(struct {
-					Email string `json:"email" validate:"required,email"`
-				}{
-					Email: invalidEmail,
-				})
-
-				return nil, err
-			},
-		}
-		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(mockService).Login)
-		req := httptest.NewRequest(
-			http.MethodPost,
-			"/api/users/login",
-			strings.NewReader(`{"email":"test@test.com","password":"test"}`),
-		)
-		req.Header.Add("Content-Type", "application/json")
-
-		resp, err := server.Test(req)
-
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
-
-		gotBody, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		assert.JSONEq(
-			t,
-			`{"errors":{"email":["\"invalid-email\" is not a valid email address"]}}`,
-			string(gotBody),
-		)
-	})
-
-	t.Run("when the user service responds with an unhandled error it responds 500 Internal Server Error", func(t *testing.T) {
-		t.Parallel()
-
-		mockService := &mockUserService{
-			AuthenticateFn: func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
-				return nil, errors.New("unhandled error")
-			},
-		}
-		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(mockService).Login)
-		req := httptest.NewRequest(
-			http.MethodPost,
-			"/api/users/login",
-			strings.NewReader(`{"email":"test@test.com","password":"test"}`),
-		)
-		req.Header.Add("Content-Type", "application/json")
-
-		resp, err := server.Test(req)
-
-		require.NoError(t, err)
-		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 }
 
 func Test_Handler_Register(t *testing.T) {
 	t.Parallel()
 
-	t.Run("when the request is valid it responds 201 Created with the user", func(t *testing.T) {
+	t.Run("when the request succeeds it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		// Mock service.
-		subject := &user.AuthenticatedUser{
+		expectedUser := &user.AuthenticatedUser{
 			User: &user.User{
 				ID:           uuid.New(),
-				Username:     "testuser",
-				Email:        "test@test.com",
-				PasswordHash: "abc",
-				Bio:          "Test bio",
-				ImageURL:     "https://test.com/image.png",
+				Username:     username,
+				Email:        email,
+				PasswordHash: passwordHash,
 			},
-			Token: "test-token",
+			Token: token,
 		}
-		mockService := &mockUserService{
-			RegisterFn: func(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
-				return subject, nil
+		expectedRegistrationRequest := &user.RegistrationRequest{
+			Username: username,
+			Email:    email,
+			RequiredValidatingPassword: user.RequiredValidatingPassword{
+				Password: password,
 			},
 		}
+
+		// Mock service.
+		service := &mockUserService{}
+		service.On("Register", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedRegistrationRequest).Return(expectedUser, nil)
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowRegister", mock.AnythingOfType("*fiber.Ctx"), expectedUser.User, token).Return(nil)
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users", NewHandler(mockService).Register)
+		server.Post("/api/users", NewHandler(service, presenter).Register)
+		reqBody := fmt.Sprintf("{%q:%q,%q:%q,%q:%q}", "email", email, "username", username, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users",
-			strings.NewReader(`{"email":"test@test.com", "username": "testuser", "password":"test"}`),
+			strings.NewReader(reqBody),
 		)
 		req.Header.Add("Content-Type", "application/json")
 
-		// Expected output.
-		wantUserRes := newUserResponseFromDomain(subject.User).withToken(subject.Token)
-		wantBody, err := json.Marshal(wantUserRes)
-		require.NoError(t, err, "marshal user response")
+		// Make request.
+		_, err := server.Test(req)
 
-		res, err := server.Test(req)
 		require.NoError(t, err)
-
-		// Check status code.
-		assert.Equal(t, http.StatusCreated, res.StatusCode)
-
-		// Check body.
-		bodyBytes, err := io.ReadAll(res.Body)
-		require.NoError(t, err, "read response body")
-		assert.JSONEq(t, string(wantBody), string(bodyBytes))
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 
-	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
+	t.Run("when the request is malformed it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowBadRequest", mock.AnythingOfType("*fiber.Ctx")).Return(nil)
+
+		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users", NewHandler(nil).Login)
+		server.Post("/api/users", NewHandler(nil, presenter).Register)
 		req := httptest.NewRequest(http.MethodPost, "/api/users", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := server.Test(req)
+		// Make request.
+		_, err := server.Test(req)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		presenter.AssertExpectations(t)
 	})
 
-	t.Run("when the user service responds with an error", func(t *testing.T) {
+	t.Run("when the user service responds with an error it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		testCases := []struct {
-			name           string
-			mockServiceErr error
-			wantStatus     int
-		}{
-			{
-				name:           "when the error is ErrUserExists it responds 422 Unprocessable Entity",
-				mockServiceErr: user.ErrUserExists,
-				wantStatus:     fiber.StatusUnprocessableEntity,
-			},
-			{
-				name:           "when the error is unhandled it responds 500 Internal Server Error",
-				mockServiceErr: errors.New("unhandled error"),
-				wantStatus:     fiber.StatusInternalServerError,
+		expectedRegistrationRequest := &user.RegistrationRequest{
+			Username: username,
+			Email:    email,
+			RequiredValidatingPassword: user.RequiredValidatingPassword{
+				Password: password,
 			},
 		}
 
-		for _, tc := range testCases {
-			tc := tc
+		// Mock service.
+		service := &mockUserService{}
+		userServiceError := errors.New("some error")
+		service.On("Register", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedRegistrationRequest).Return((*user.AuthenticatedUser)(nil), userServiceError)
 
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowUserError", mock.AnythingOfType("*fiber.Ctx"), userServiceError).Return(nil)
 
-				mockService := &mockUserService{
-					RegisterFn: func(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
-						return nil, tc.mockServiceErr
-					},
-				}
-				server := testutil.NewServer(t)
-				server.Post("/api/users", NewHandler(mockService).Register)
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Post("/api/users", NewHandler(service, presenter).Register)
+		reqBody := fmt.Sprintf("{%q:%q,%q:%q,%q:%q}", "email", email, "username", username, "password", password)
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/api/users",
+			strings.NewReader(reqBody),
+		)
+		req.Header.Add("Content-Type", "application/json")
 
-				// Set up request.
-				req := httptest.NewRequest(
-					http.MethodPost,
-					"/api/users", strings.NewReader(`{"email":"test@test.com", "username": "testuser", "password":"test"}`),
-				)
-				req.Header.Add("Content-Type", "application/json")
+		// Make request.
+		_, err := server.Test(req)
 
-				// Make request.
-				res, err := server.Test(req)
-
-				require.NoError(t, err)
-				assert.Equal(t, tc.wantStatus, res.StatusCode)
-			})
-		}
+		require.NoError(t, err)
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 }
 
 func Test_Handler_GetCurrentUser(t *testing.T) {
 	t.Parallel()
 
-	t.Run("when the request is valid it responds 200 OK with the user", func(t *testing.T) {
+	t.Run("when the request is valid it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		subject := &user.User{
-			ID:       uuid.New(),
-			Username: "test",
-			Email:    "test@test.com",
-			Bio:      "I am a test user",
-			ImageURL: "https://test.com/image.png",
+		expectedUser := &user.User{
+			ID:           uuid.New(),
+			Username:     username,
+			Email:        email,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
 		}
 
-		// Set up server.
-		mockService := &mockUserService{
-			GetFn: func(c context.Context, id uuid.UUID) (*user.User, error) {
-				return subject, nil
-			},
-		}
-		server := testutil.NewServer(t)
-		mockToken := "token"
-		server.Use(testutil.NewMockAuthMiddleware(t, subject.ID, mockToken))
-		server.Get("/api/users", NewHandler(mockService).GetCurrentUser)
+		// Mock service.
+		service := &mockUserService{}
+		service.On("GetUser", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedUser.ID).Return(expectedUser, nil)
 
-		// Expected output.
-		wantUserRes := newUserResponseFromDomain(subject).withToken(mockToken)
-		wantBody, err := json.Marshal(wantUserRes)
-		require.NoError(t, err, "marshal user response")
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowGetCurrentUser", mock.AnythingOfType("*fiber.Ctx"), expectedUser, token).Return(nil)
 
 		// Set up request.
+		server := testutil.NewServer(t)
+		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
+		server.Get("/api/users", NewHandler(service, presenter).GetCurrentUser)
 		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
 
 		// Make request.
-		res, err := server.Test(req)
+		_, err := server.Test(req)
 
 		require.NoError(t, err)
-		assert.Equal(t, fiber.StatusOK, res.StatusCode)
-		bodyBytes, err := io.ReadAll(res.Body)
-		require.NoError(t, err, "read response body")
-		assert.JSONEq(t, string(wantBody), string(bodyBytes))
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 
-	t.Run("when the user service returns an error it responds with an error", func(t *testing.T) {
+	t.Run("when the user service returns an error it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		testCases := []struct {
-			name           string
-			mockServiceErr error
-			wantStatus     int
-			wantBody       string
-		}{
-			{
-				name:           "when ErrUserNotFound it responds 404 Not Found",
-				mockServiceErr: user.ErrUserNotFound,
-				wantStatus:     fiber.StatusNotFound,
-				wantBody:       `{"errors": {"email": ["user not found"]}}`,
-			},
-			{
-				name:           "when unhandled it responds 500 Internal Server Error",
-				mockServiceErr: errors.New("unhandled error"),
-				wantStatus:     fiber.StatusInternalServerError,
-				wantBody:       "something",
-			},
-		}
+		userID := uuid.New()
 
-		for _, tc := range testCases {
-			tc := tc
+		// Mock service.
+		service := &mockUserService{}
+		serviceErr := errors.New("some error")
+		service.On("GetUser", mock.AnythingOfType("*fasthttp.RequestCtx"), userID).Return((*user.User)(nil), serviceErr)
 
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowUserError", mock.AnythingOfType("*fiber.Ctx"), serviceErr).Return(nil)
 
-				mockService := &mockUserService{
-					GetFn: func(c context.Context, id uuid.UUID) (*user.User, error) {
-						return nil, tc.mockServiceErr
-					},
-				}
-				server := testutil.NewServer(t)
-				server.Get("/api/users", NewHandler(mockService).GetCurrentUser)
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Use(testutil.NewMockAuthMiddleware(t, userID, token))
+		server.Get("/api/users", NewHandler(service, presenter).GetCurrentUser)
+		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
 
-				// Set up request.
-				req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
+		// Make request.
+		_, err := server.Test(req)
 
-				// Make request.
-				res, err := server.Test(req)
-
-				require.NoError(t, err)
-				assert.Equal(t, tc.wantStatus, res.StatusCode)
-
-				bodyBytes, err := io.ReadAll(res.Body)
-				require.NoError(t, err, "read response body")
-				assert.JSON(t, tc.wantBody, string(bodyBytes))
-			})
-		}
+		require.NoError(t, err)
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
+
 }
 
 func Test_Handler_UpdateCurrentUser(t *testing.T) {
 	t.Parallel()
 
-	t.Run("when the request is valid it responds 200 OK with the updated user", func(t *testing.T) {
+	t.Run("when the request is valid it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		subject := &user.User{
-			ID:       uuid.New(),
-			Username: "test",
-			Email:    "test@test.com",
-			Bio:      "I am a test user",
-			ImageURL: "https://test.com/image.png",
+		email := user.EmailAddress(email)
+
+		expectedUser := &user.User{
+			ID:           uuid.New(),
+			Username:     username,
+			Email:        email,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
 		}
 
-		// Set up server.
-		mockService := &mockUserService{
-			GetFn: func(c context.Context, id uuid.UUID) (*user.User, error) {
-				return subject, nil
-			},
+		expectedUpdateReq := &user.UpdateRequest{
+			UserID: expectedUser.ID,
+			Email:  &email,
 		}
-		server := testutil.NewServer(t)
-		mockToken := "token"
-		server.Use(testutil.NewMockAuthMiddleware(t, subject.ID, mockToken))
-		server.Put("/api/users", NewHandler(mockService).GetCurrentUser)
 
-		// Expected output.
-		wantUserRes := newUserResponseFromDomain(subject).withToken(mockToken)
-		wantBody, err := json.Marshal(wantUserRes)
-		require.NoError(t, err, "marshal user response")
+		// Mock service.
+		service := &mockUserService{}
+		service.On("UpdateUser", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedUpdateReq).Return(expectedUser, nil)
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowUpdateCurrentUser", mock.AnythingOfType("*fiber.Ctx"), expectedUser, token).Return(nil)
 
 		// Set up request.
-		req := httptest.NewRequest(http.MethodPut, "/api/users", http.NoBody)
+		server := testutil.NewServer(t)
+		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
+		server.Put("/api/users", NewHandler(service, presenter).UpdateCurrentUser)
+		reqBody := fmt.Sprintf("{%q:%q}", "email", *(expectedUpdateReq.Email))
+		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))
+		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
-		res, err := server.Test(req)
+		_, err := server.Test(req)
 
 		require.NoError(t, err)
-		assert.Equal(t, fiber.StatusOK, res.StatusCode)
-		bodyBytes, err := io.ReadAll(res.Body)
-		require.NoError(t, err, "read response body")
-		assert.JSONEq(t, string(wantBody), string(bodyBytes))
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 
-	t.Run("when the request is malformed it responds 400 Bad Request", func(t *testing.T) {
+	t.Run("when the request is malformed it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowBadRequest", mock.AnythingOfType("*fiber.Ctx")).Return(nil)
+
+		// Set up request.
 		server := testutil.NewServer(t)
-		server.Put("/api/users", NewHandler(nil).Login)
+		server.Put("/api/users", NewHandler(nil, presenter).Register)
 		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
-		resp, err := server.Test(req)
+		// Make request.
+		_, err := server.Test(req)
 
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		presenter.AssertExpectations(t)
+	})
+
+	t.Run("when the user service returns an error it invokes the corresponding presenter method", func(t *testing.T) {
+		t.Parallel()
+
+		email := user.EmailAddress(email)
+
+		expectedUpdateReq := &user.UpdateRequest{
+			UserID: uuid.New(),
+			Email:  &email,
+		}
+
+		// Mock service.
+		service := &mockUserService{}
+		serviceErr := errors.New("some error")
+		service.On("UpdateUser", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedUpdateReq).Return((*user.User)(nil), serviceErr)
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowUserError", mock.AnythingOfType("*fiber.Ctx"), serviceErr).Return(nil)
+
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Use(testutil.NewMockAuthMiddleware(t, expectedUpdateReq.UserID, token))
+		server.Put("/api/users", NewHandler(service, presenter).UpdateCurrentUser)
+		reqBody := fmt.Sprintf("{%q:%q}", "email", *(expectedUpdateReq.Email))
+		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))
+		req.Header.Add("Content-Type", "application/json")
+
+		// Make request.
+		_, err := server.Test(req)
+
+		require.NoError(t, err)
+		service.AssertExpectations(t)
+		presenter.AssertExpectations(t)
 	})
 }
 
-// Mock implementation of the user.Service interface. Only the Authenticate method is implemented.
 type mockUserService struct {
-	AuthenticateFn func(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error)
-	RegisterFn     func(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error)
-	GetFn          func(c context.Context, id uuid.UUID) (*user.User, error)
+	mock.Mock
 }
 
 var _ user.Service = (*mockUserService)(nil)
 
-func (m *mockUserService) Authenticate(c context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
-	return m.AuthenticateFn(c, req)
+func (m *mockUserService) Register(ctx context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*user.AuthenticatedUser), args.Error(1)
 }
 
-func (m *mockUserService) Register(c context.Context, req *user.RegistrationRequest) (*user.AuthenticatedUser, error) {
-	return m.RegisterFn(c, req)
+func (m *mockUserService) Authenticate(ctx context.Context, req *user.AuthRequest) (*user.AuthenticatedUser, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*user.AuthenticatedUser), args.Error(1)
 }
 
-func (m *mockUserService) Get(c context.Context, id uuid.UUID) (*user.User, error) {
-	return m.GetFn(c, id)
+func (m *mockUserService) GetUser(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(*user.User), args.Error(1)
 }
 
-func (m *mockUserService) Update(c context.Context, req *user.UpdateRequest) (*user.User, error) {
-	panic("not implemented")
+func (m *mockUserService) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
+	args := m.Called(ctx, req)
+	return args.Get(0).(*user.User), args.Error(1)
+}
+
+type mockPresenter struct {
+	mock.Mock
+}
+
+func (m *mockPresenter) ShowBadRequest(c *fiber.Ctx) error {
+	args := m.Called(c)
+	return args.Error(0)
+}
+
+func (m *mockPresenter) ShowUserError(c *fiber.Ctx, err error) error {
+	args := m.Called(c, err)
+	return args.Error(0)
+}
+
+func (m *mockPresenter) ShowRegister(c *fiber.Ctx, user *user.User, token string) error {
+	args := m.Called(c, user, token)
+	return args.Error(0)
+}
+
+func (m *mockPresenter) ShowLogin(c *fiber.Ctx, user *user.User, token string) error {
+	args := m.Called(c, user, token)
+	return args.Error(0)
+}
+
+func (m *mockPresenter) ShowGetCurrentUser(c *fiber.Ctx, user *user.User, token string) error {
+	args := m.Called(c, user, token)
+	return args.Error(0)
+}
+
+func (m *mockPresenter) ShowUpdateCurrentUser(c *fiber.Ctx, user *user.User, token string) error {
+	args := m.Called(c, user, token)
+	return args.Error(0)
 }

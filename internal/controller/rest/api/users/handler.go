@@ -1,6 +1,8 @@
 package users
 
 import (
+	"fmt"
+
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
@@ -8,14 +10,14 @@ import (
 )
 
 type Handler struct {
-	service user.Service
-	render  Renderer
+	service   user.Service
+	presenter Presenter
 }
 
-func NewHandler(service user.Service, renderer Renderer) *Handler {
+func NewHandler(service user.Service, presenter Presenter) *Handler {
 	return &Handler{
-		service: service,
-		render:  renderer,
+		service:   service,
+		presenter: presenter,
 	}
 }
 
@@ -23,41 +25,42 @@ func NewHandler(service user.Service, renderer Renderer) *Handler {
 func (h *Handler) Register(c *fiber.Ctx) error {
 	var regReq user.RegistrationRequest
 	if err := c.BodyParser(&regReq); err != nil {
-		return h.render.BadRequest(c)
+		return h.presenter.ShowBadRequest(c)
 	}
 
 	authenticatedUser, err := h.service.Register(c.Context(), &regReq)
 	if err != nil {
-		return h.render.UserError(c, err)
+		return h.presenter.ShowUserError(c, err)
 	}
 
-	return h.render.RegisterSuccess(c, authenticatedUser.User, authenticatedUser.Token)
+	return h.presenter.ShowRegister(c, authenticatedUser.User, authenticatedUser.Token)
 }
 
 // Login authenticates a user and returns the user and token if successful.
 func (h *Handler) Login(c *fiber.Ctx) error {
 	var authReq user.AuthRequest
 	if err := c.BodyParser(&authReq); err != nil {
-		return h.render.BadRequest(c)
+		return h.presenter.ShowBadRequest(c)
 	}
 
+	fmt.Println("parsed")
 	authenticatedUser, err := h.service.Authenticate(c.Context(), &authReq)
 	if err != nil {
-		return h.render.UserError(c, err)
+		return h.presenter.ShowUserError(c, err)
 	}
 
-	return h.render.LoginSuccess(c, authenticatedUser.User, authenticatedUser.Token)
+	return h.presenter.ShowLogin(c, authenticatedUser.User, authenticatedUser.Token)
 }
 
 // GetCurrentUser returns the user corresponding to the ID contained in the
 // request JWT.
 func (h *Handler) GetCurrentUser(c *fiber.Ctx) error {
-	user, err := h.service.Get(c.Context(), middleware.CurrentUser(c))
+	user, err := h.service.GetUser(c.Context(), middleware.CurrentUser(c))
 	if err != nil {
-		return h.render.UserError(c, err)
+		return h.presenter.ShowUserError(c, err)
 	}
 
-	return h.render.GetCurrentUserSuccess(c, user, tokenFromRequest(c))
+	return h.presenter.ShowGetCurrentUser(c, user, tokenFromRequest(c))
 }
 
 // UpdateCurrentUser updates the user corresponding to the ID contained in the
@@ -65,16 +68,17 @@ func (h *Handler) GetCurrentUser(c *fiber.Ctx) error {
 func (h *Handler) UpdateCurrentUser(c *fiber.Ctx) error {
 	var updateReq user.UpdateRequest
 	if err := c.BodyParser(&updateReq); err != nil {
-		return h.render.BadRequest(c)
+		fmt.Println(err)
+		return h.presenter.ShowBadRequest(c)
 	}
 
 	updateReq.UserID = middleware.CurrentUser(c)
-	user, err := h.service.Update(c.Context(), &updateReq)
+	user, err := h.service.UpdateUser(c.Context(), &updateReq)
 	if err != nil {
-		return h.render.UserError(c, err)
+		return h.presenter.ShowUserError(c, err)
 	}
 
-	return h.render.UpdateCurrentCurrentUserSuccess(c, user, tokenFromRequest(c))
+	return h.presenter.ShowUpdateCurrentUser(c, user, tokenFromRequest(c))
 }
 
 func tokenFromRequest(c *fiber.Ctx) string {
