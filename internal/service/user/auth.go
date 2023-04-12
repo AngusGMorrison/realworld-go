@@ -20,7 +20,7 @@ type RequiredValidatingPassword struct {
 }
 
 // Hash returns the hashed password.
-func (rvp RequiredValidatingPassword) Hash() (string, error) {
+func (rvp RequiredValidatingPassword) HashPassword() (string, error) {
 	return bcryptHash(rvp.Password)
 }
 
@@ -30,12 +30,12 @@ func (rvp RequiredValidatingPassword) Hash() (string, error) {
 // Changes to password validation tags MUST be kept in sync with
 // RequiredValidatingPassword.
 type OptionalValidatingPassword struct {
-	Password string `json:"password" validate:"omitempty,min=8,max=72"`
+	Password *string `json:"password" validate:"omitempty,min=8,max=72"`
 }
 
 // Hash returns the hashed password.
-func (ovp OptionalValidatingPassword) Hash() (string, error) {
-	return bcryptHash(ovp.Password)
+func (ovp OptionalValidatingPassword) HashPassword() (string, error) {
+	return bcryptHash(*ovp.Password)
 }
 
 func bcryptHash(password string) (string, error) {

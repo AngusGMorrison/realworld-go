@@ -24,9 +24,10 @@ type Service interface {
 
 // Repository is a store of user data.
 type Repository interface {
-	CreateUser(ctx context.Context, req *RegistrationRequest) (*User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetUserByEmail(ctx context.Context, email EmailAddress) (*User, error)
+	CreateUser(ctx context.Context, req *RegistrationRequest) (*User, error)
+	UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error)
 }
 
 type service struct {
