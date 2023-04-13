@@ -83,15 +83,7 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 		return nil, err
 	}
 
-	reqPasswordHash, err := req.PasswordHash()
-	if err != nil {
-		// The only way this operation can fail is if the input password exceeds
-		// bycrypt's maxiumum hashable length. We return an AuthError to
-		// obfuscate the cause.
-		return nil, &AuthError{cause: err}
-	}
-
-	if user.PasswordHash != reqPasswordHash {
+	if !user.HasPassword(req.Password) {
 		return nil, &AuthError{cause: ErrPasswordMismatch}
 	}
 

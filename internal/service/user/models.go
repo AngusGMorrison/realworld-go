@@ -47,10 +47,6 @@ type AuthRequest struct {
 	Password string       `json:"password" validate:"required"`
 }
 
-func (ar *AuthRequest) PasswordHash() (string, error) {
-	return bcryptHash(ar.Password)
-}
-
 // UpdateRequest describes the data required to update a user. Since zero or
 // more fields may be updated in a single request, pointer fields are required
 // to distinguish the absence of a value (i.e. no change) from the zero value.
