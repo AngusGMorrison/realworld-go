@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type EmailAddress string
@@ -14,6 +15,13 @@ type User struct {
 	PasswordHash string
 	Bio          string
 	ImageURL     string
+}
+
+func (u *User) HasPassword(password string) bool {
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
+		return false
+	}
+	return true
 }
 
 // AuthenticatedUser is a User with a valid token.
