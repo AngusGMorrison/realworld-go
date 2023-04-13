@@ -25,4 +25,5 @@ func (e *AuthError) Unwrap() error {
 // the user.
 var ErrPasswordMismatch = errors.New("password mismatch")
 var ErrUserNotFound = errors.New("user not found")
-var ErrUserExists = errors.New("user already exists")
+var ErrEmailRegistered = errors.New("email address is already registered")
+var ErrUsernameTaken = errors.New("username is taken")

@@ -14,7 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
+	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 //go:embed migrations/*.sql
@@ -135,6 +135,10 @@ func insertUser(ctx context.Context, ex executor, usr *user.User) (*user.User, e
 	query := `INSERT INTO users (id, email, username, password_hash, bio, image_url) VALUES (?, ?, ?, ?, ?, ?)`
 	_, err := ex.ExecContext(ctx, query, id, usr.Email, usr.Username, usr.PasswordHash, usr.Bio, usr.ImageURL)
 	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			return nil, sqliteErrToDomain(sqliteErr)
+		}
 		return nil, err
 	}
 
@@ -193,6 +197,11 @@ func newUserFromRow(row *sql.Row) (*user.User, error) {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.ErrUserNotFound
 		}
+
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			return nil, sqliteErrToDomain(sqliteErr)
+		}
 		return nil, err
 	}
 
@@ -211,4 +220,21 @@ func (db *SQLite) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
 	}
 
 	return tx.Commit()
+}
+
+func sqliteErrToDomain(err sqlite3.Error) error {
+	if err.ExtendedCode == sqlite3.ErrConstraintUnique {
+		msg := err.Error()
+		if strings.Contains(msg, "users.") {
+			if strings.Contains(msg, ".email") {
+				return user.ErrEmailRegistered
+			}
+			if strings.Contains(msg, ".username") {
+				return user.ErrUsernameTaken
+			}
+		}
+	}
+
+	// Default to the original error if unhandled.
+	return err
 }

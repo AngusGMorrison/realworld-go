@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"testing"
@@ -11,6 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// It is essential that each package uses a distinct test database to avoid
+// unexpected drops by parallel tests.
+const dbPath = "testdata/sqlite_test.db"
 
 func TestMain(m *testing.M) {
 	code, err := setUpAndTearDown(m)
@@ -22,7 +27,7 @@ func TestMain(m *testing.M) {
 }
 
 func setUpAndTearDown(m *testing.M) (int, error) {
-	db, err := New("testdata/test.db")
+	db, err := New(dbPath)
 	if err != nil {
 		return 1, err
 	}
@@ -34,20 +39,27 @@ func setUpAndTearDown(m *testing.M) (int, error) {
 
 	code := m.Run()
 
-	tables := []string{"users"}
-	var errs []error
-	for _, table := range tables {
-		_, err := db.innerDB.Exec(fmt.Sprintf("DELETE FROM %s;", table))
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) > 0 {
-		return 1, fmt.Errorf("truncate tables: %v", errs)
+	if err := os.Remove(dbPath); err != nil {
+		return 1, err
 	}
 
 	return code, nil
+}
+
+func newTx(t *testing.T) (tx *sql.Tx, rollback func()) {
+	db, err := New(dbPath)
+	require.NoError(t, err, "open DB connection")
+
+	tx, err = db.innerDB.Begin()
+	if err != nil {
+		db.Close()
+		require.NoError(t, err, "begin transaction")
+	}
+
+	return tx, func() {
+		tx.Rollback()
+		db.Close()
+	}
 }
 
 const (
@@ -73,15 +85,10 @@ func Test_getUserByID(t *testing.T) {
 			ImageURL:     imageURL,
 		}
 
-		db, err := New("testdata/test.db")
-		require.NoError(t, err, "open DB connection")
-		defer db.Close()
+		tx, rollback := newTx(t)
+		defer rollback()
 
-		tx, err := db.innerDB.Begin()
-		require.NoError(t, err, "begin transaction")
-		defer tx.Rollback()
-
-		expectedUser, err = insertUser(context.Background(), tx, expectedUser)
+		expectedUser, err := insertUser(context.Background(), tx, expectedUser)
 		require.NoError(t, err, "insert user")
 
 		gotUser, err := getUserByID(context.Background(), tx, expectedUser.ID)
@@ -93,13 +100,8 @@ func Test_getUserByID(t *testing.T) {
 	t.Run("when user does not exist it returns ErrUserNotFound", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New("testdata/test.db")
-		require.NoError(t, err, "open DB connection")
-		defer db.Close()
-
-		tx, err := db.innerDB.Begin()
-		require.NoError(t, err, "begin transaction")
-		defer tx.Rollback()
+		tx, rollback := newTx(t)
+		defer rollback()
 
 		gotUser, err := getUserByID(context.Background(), tx, uuid.New())
 		require.ErrorIs(t, err, user.ErrUserNotFound)
@@ -122,15 +124,10 @@ func Test_getUserByEmail(t *testing.T) {
 			ImageURL:     imageURL,
 		}
 
-		db, err := New("testdata/test.db")
-		require.NoError(t, err, "open DB connection")
-		defer db.Close()
+		tx, rollback := newTx(t)
+		defer rollback()
 
-		tx, err := db.innerDB.Begin()
-		require.NoError(t, err, "begin transaction")
-		defer tx.Rollback()
-
-		expectedUser, err = insertUser(context.Background(), tx, expectedUser)
+		expectedUser, err := insertUser(context.Background(), tx, expectedUser)
 		require.NoError(t, err, "insert user")
 
 		gotUser, err := getUserByEmail(context.Background(), tx, expectedUser.Email)
@@ -142,13 +139,8 @@ func Test_getUserByEmail(t *testing.T) {
 	t.Run("when user does not exist it returns ErrUserNotFound", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New("testdata/test.db")
-		require.NoError(t, err, "open DB connection")
-		defer db.Close()
-
-		tx, err := db.innerDB.Begin()
-		require.NoError(t, err, "begin transaction")
-		defer tx.Rollback()
+		tx, rollback := newTx(t)
+		defer rollback()
 
 		gotUser, err := getUserByEmail(context.Background(), tx, "missing@test.com")
 		require.ErrorIs(t, err, user.ErrUserNotFound)
@@ -160,39 +152,75 @@ func Test_getUserByEmail(t *testing.T) {
 func Test_insertUser(t *testing.T) {
 	t.Parallel()
 
-	usr := &user.User{
-		Email:        email,
-		Username:     username,
-		PasswordHash: passwordHash,
-		Bio:          bio,
-		ImageURL:     imageURL,
-	}
+	t.Run("when constraints are met it inserts the user", func(t *testing.T) {
+		usr := &user.User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
+		}
 
-	db, err := New("testdata/test.db")
-	require.NoError(t, err, "open DB connection")
-	defer db.Close()
+		tx, rollback := newTx(t)
+		defer rollback()
 
-	tx, err := db.innerDB.Begin()
-	require.NoError(t, err, "begin transaction")
-	defer tx.Rollback()
+		usr, err := insertUser(context.Background(), tx, usr)
+		require.NoError(t, err, "insert user")
 
-	usr, err = insertUser(context.Background(), tx, usr)
-	require.NoError(t, err, "insert user")
+		usr, err = getUserByID(context.Background(), tx, usr.ID)
+		require.NoError(t, err, "get inserted user")
+	})
 
-	usr, err = getUserByID(context.Background(), tx, usr.ID)
-	require.NoError(t, err, "get inserted user")
+	// TODO: Return different errors for email and username.
+	t.Run("when the email is not unique it returns ErrUserExists", func(t *testing.T) {
+		originalUser := &user.User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
+		}
+		dup := *originalUser
+		dup.Username = "unique username"
+
+		tx, rollback := newTx(t)
+		defer rollback()
+
+		_, err := insertUser(context.Background(), tx, originalUser)
+		require.NoError(t, err, "insert user")
+
+		gotUser, err := insertUser(context.Background(), tx, &dup)
+
+		assert.ErrorIs(t, err, user.ErrEmailRegistered)
+		assert.Nil(t, gotUser)
+	})
+
+	t.Run("when the username is not unique it returns ErrUserExists", func(t *testing.T) {
+		originalUser := &user.User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
+		}
+		dup := *originalUser
+		dup.Email = "unique@test.com"
+
+		tx, rollback := newTx(t)
+		defer rollback()
+
+		_, err := insertUser(context.Background(), tx, originalUser)
+		require.NoError(t, err, "insert user")
+
+		gotUser, err := insertUser(context.Background(), tx, &dup)
+
+		assert.ErrorIs(t, err, user.ErrUsernameTaken)
+		assert.Nil(t, gotUser)
+	})
 }
 
 func Test_updateUser(t *testing.T) {
 	t.Parallel()
-
-	originalUser := &user.User{
-		Email:        email,
-		Username:     username,
-		PasswordHash: passwordHash,
-		Bio:          bio,
-		ImageURL:     imageURL,
-	}
 
 	var (
 		newEmail    = user.EmailAddress("newemail@test.com")
@@ -254,7 +282,15 @@ func Test_updateUser(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				db, err := New("testdata/test.db")
+				originalUser := &user.User{
+					Email:        email,
+					Username:     username,
+					PasswordHash: passwordHash,
+					Bio:          bio,
+					ImageURL:     imageURL,
+				}
+
+				db, err := New(dbPath)
 				require.NoError(t, err, "open DB connection")
 				defer db.Close()
 
@@ -279,13 +315,16 @@ func Test_updateUser(t *testing.T) {
 	t.Run("when the password_hash field is updated it updates the user", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New("testdata/test.db")
-		require.NoError(t, err, "open DB connection")
-		defer db.Close()
+		originalUser := &user.User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
+		}
 
-		tx, err := db.innerDB.Begin()
-		require.NoError(t, err, "begin transaction")
-		defer tx.Rollback()
+		tx, rollback := newTx(t)
+		defer rollback()
 
 		insertedUser, err := insertUser(context.Background(), tx, originalUser)
 		require.NoError(t, err, "insert test user")
@@ -300,6 +339,41 @@ func Test_updateUser(t *testing.T) {
 		require.NoError(t, err, "update user")
 
 		assert.True(t, updatedUser.HasPassword(newPassword), "password mismatch")
+	})
+
+	t.Run("when the email unique constraint is violated it returns ErrUserExists", func(t *testing.T) {
+		t.Parallel()
+
+		targetUser := &user.User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: passwordHash,
+			Bio:          bio,
+			ImageURL:     imageURL,
+		}
+		targetUserCopy := *targetUser
+		targetUserCopy.Email = newEmail
+		targetUserCopy.Username = "unique username"
+		userWithDesiredEmail := &targetUserCopy
+
+		tx, rollback := newTx(t)
+		defer rollback()
+
+		targetUser, err := insertUser(context.Background(), tx, targetUser)
+		require.NoError(t, err, "insert targetUser")
+
+		_, err = insertUser(context.Background(), tx, userWithDesiredEmail)
+		require.NoError(t, err, "insert userWithDesiredEmail")
+
+		updateReq := &user.UpdateRequest{
+			UserID: targetUser.ID,
+			Email:  &newEmail,
+		}
+
+		updatedUser, err := updateUser(context.Background(), tx, updateReq)
+
+		assert.ErrorIs(t, err, user.ErrEmailRegistered)
+		assert.Nil(t, updatedUser)
 	})
 
 }

@@ -32,7 +32,7 @@ type AuthenticatedUser struct {
 
 // RegistrationRequest describes the data required to register a new user.
 type RegistrationRequest struct {
-	Username string       `json:"username" validate:"required"`
+	Username string       `json:"username" validate:"required,max=32"`
 	Email    EmailAddress `json:"email" validate:"required,email"`
 	RequiredValidatingPassword
 }

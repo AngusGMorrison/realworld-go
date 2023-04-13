@@ -245,12 +245,22 @@ func Test_Fiber_ShowUserError(t *testing.T) {
 			},
 		},
 		{
-			name:       "user.ErrUserExists",
-			err:        user.ErrUserExists,
+			name:       "user.ErrEmailRegistered",
+			err:        user.ErrEmailRegistered,
 			wantStatus: fiber.StatusUnprocessableEntity,
 			wantResBody: fiber.Map{
 				"errors": fiber.Map{
-					"email": []string{"user already registered"},
+					"email": []string{"is already registered"},
+				},
+			},
+		},
+		{
+			name:       "user.ErrUsernameTaken",
+			err:        user.ErrUsernameTaken,
+			wantStatus: fiber.StatusUnprocessableEntity,
+			wantResBody: fiber.Map{
+				"errors": fiber.Map{
+					"username": []string{"is taken"},
 				},
 			},
 		},

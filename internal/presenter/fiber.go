@@ -42,10 +42,18 @@ func (r *Fiber) ShowUserError(c *fiber.Ctx, err error) error {
 		)
 	}
 
-	if errors.Is(err, user.ErrUserExists) {
+	if errors.Is(err, user.ErrEmailRegistered) {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(
 			newJsonErrors(map[string][]string{
-				"email": {"user already registered"},
+				"email": {"is already registered"},
+			}),
+		)
+	}
+
+	if errors.Is(err, user.ErrUsernameTaken) {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(
+			newJsonErrors(map[string][]string{
+				"username": {"is taken"},
 			}),
 		)
 	}
