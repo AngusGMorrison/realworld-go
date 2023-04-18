@@ -44,7 +44,7 @@ func run() error {
 		return fmt.Errorf("load JWT private key: %w", err)
 	}
 
-	userService := user.NewService(db, jwtPrivateKey, cfg.AuthTokenTTL)
+	userService := user.NewService(db, jwtPrivateKey, cfg.JWTTTL)
 
 	jwtPublicKey, err := cfg.AuthTokenRS256PublicKey()
 	if err != nil {
