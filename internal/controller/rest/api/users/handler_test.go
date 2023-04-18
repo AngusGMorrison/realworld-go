@@ -11,6 +11,7 @@ import (
 
 	"github.com/angusgmorrison/realworld/internal/controller/rest/api/testutil"
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -60,7 +61,7 @@ func Test_Handler_Login(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Post("/api/users/login", NewHandler(service, presenter).Login)
-		reqBody := fmt.Sprintf("{%q:%q,%q:%q}", "email", email, "password", password)
+		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q}}", "user", "email", email, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
@@ -97,6 +98,26 @@ func Test_Handler_Login(t *testing.T) {
 		presenter.AssertExpectations(t)
 	})
 
+	t.Run("when the request fails validation it invokes the corresponding presenter method", func(t *testing.T) {
+		t.Parallel()
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowValidationErrors", mock.AnythingOfType("*fiber.Ctx"), mock.AnythingOfType("validator.ValidationErrors")).Return(nil)
+
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Post("/api/users/login", NewHandler(nil, presenter).Login)
+		req := httptest.NewRequest(http.MethodPost, "/api/users/login", strings.NewReader(`{}`))
+		req.Header.Add("Content-Type", "application/json")
+
+		// Make request.
+		_, err := server.Test(req)
+
+		require.NoError(t, err)
+		presenter.AssertExpectations(t)
+	})
+
 	t.Run("when the user service responds with an error it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
@@ -117,7 +138,7 @@ func Test_Handler_Login(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Post("/api/users/login", NewHandler(service, presenter).Login)
-		reqBody := fmt.Sprintf("{%q:%q,%q:%q}", "email", email, "password", password)
+		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q}}", "user", "email", email, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users/login",
@@ -168,7 +189,7 @@ func Test_Handler_Register(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Post("/api/users", NewHandler(service, presenter).Register)
-		reqBody := fmt.Sprintf("{%q:%q,%q:%q,%q:%q}", "email", email, "username", username, "password", password)
+		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q,%q:%q}}", "user", "email", email, "username", username, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users",
@@ -204,6 +225,26 @@ func Test_Handler_Register(t *testing.T) {
 		presenter.AssertExpectations(t)
 	})
 
+	t.Run("when the request fails validation it invokes the corresponding presenter method", func(t *testing.T) {
+		t.Parallel()
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowValidationErrors", mock.AnythingOfType("*fiber.Ctx"), mock.AnythingOfType("validator.ValidationErrors")).Return(nil)
+
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Post("/api/users", NewHandler(nil, presenter).Register)
+		req := httptest.NewRequest(http.MethodPost, "/api/users", strings.NewReader(`{}`))
+		req.Header.Add("Content-Type", "application/json")
+
+		// Make request.
+		_, err := server.Test(req)
+
+		require.NoError(t, err)
+		presenter.AssertExpectations(t)
+	})
+
 	t.Run("when the user service responds with an error it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
@@ -227,7 +268,7 @@ func Test_Handler_Register(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Post("/api/users", NewHandler(service, presenter).Register)
-		reqBody := fmt.Sprintf("{%q:%q,%q:%q,%q:%q}", "email", email, "username", username, "password", password)
+		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q,%q:%q}}", "user", "email", email, "username", username, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
 			"/api/users",
@@ -345,7 +386,7 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 		server := testutil.NewServer(t)
 		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
 		server.Put("/api/users", NewHandler(service, presenter).UpdateCurrentUser)
-		reqBody := fmt.Sprintf("{%q:%q}", "email", *(expectedUpdateReq.Email))
+		reqBody := fmt.Sprintf("{%q: {%q:%q}}", "user", "email", *(expectedUpdateReq.Email))
 		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))
 		req.Header.Add("Content-Type", "application/json")
 
@@ -368,6 +409,26 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 		server := testutil.NewServer(t)
 		server.Put("/api/users", NewHandler(nil, presenter).Register)
 		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(`{`))
+		req.Header.Add("Content-Type", "application/json")
+
+		// Make request.
+		_, err := server.Test(req)
+
+		require.NoError(t, err)
+		presenter.AssertExpectations(t)
+	})
+
+	t.Run("when the request fails validation it invokes the corresponding presenter method", func(t *testing.T) {
+		t.Parallel()
+
+		// Mock presenter.
+		presenter := &mockPresenter{}
+		presenter.On("ShowValidationErrors", mock.AnythingOfType("*fiber.Ctx"), mock.AnythingOfType("validator.ValidationErrors")).Return(nil)
+
+		// Set up request.
+		server := testutil.NewServer(t)
+		server.Put("/api/users", NewHandler(nil, presenter).Register)
+		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(`{}`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -400,7 +461,7 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 		server := testutil.NewServer(t)
 		server.Use(testutil.NewMockAuthMiddleware(t, expectedUpdateReq.UserID, token))
 		server.Put("/api/users", NewHandler(service, presenter).UpdateCurrentUser)
-		reqBody := fmt.Sprintf("{%q:%q}", "email", *(expectedUpdateReq.Email))
+		reqBody := fmt.Sprintf("{%q: {%q:%q}}", "user", "email", *(expectedUpdateReq.Email))
 		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))
 		req.Header.Add("Content-Type", "application/json")
 
@@ -445,6 +506,11 @@ type mockPresenter struct {
 
 func (m *mockPresenter) ShowBadRequest(c *fiber.Ctx) error {
 	args := m.Called(c)
+	return args.Error(0)
+}
+
+func (m *mockPresenter) ShowValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
+	args := m.Called(c, errs)
 	return args.Error(0)
 }
 

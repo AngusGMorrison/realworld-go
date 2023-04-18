@@ -59,7 +59,7 @@ func (r *Fiber) ShowUserError(c *fiber.Ctx, err error) error {
 	}
 
 	if validationErrs, ok := err.(validator.ValidationErrors); ok {
-		return showValidationErrors(c, validationErrs)
+		return ShowValidationErrors(c, validationErrs)
 	}
 
 	panic(fmt.Errorf("unhandled user service error: %w", err))
@@ -96,7 +96,7 @@ func newJsonErrors(errs map[string][]string) fiber.Map {
 	}
 }
 
-func showValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
+func ShowValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
 	fieldErrs := make(map[string][]string)
 	for _, err := range errs {
 		fieldErrs[err.Field()] = append(fieldErrs[err.Field()], userFriendlyErrMessage(err.Tag(), err.Param()))
@@ -116,6 +116,7 @@ func userFriendlyErrMessage(tag string, param string) string {
 	return "is invalid"
 }
 
+// TODO: Map domain fields to JSON fields.
 var validationTagsToErrMessages = map[string]string{
 	"required": "is required",
 	"email":    "is invalid",

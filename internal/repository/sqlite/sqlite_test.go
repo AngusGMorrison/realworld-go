@@ -171,8 +171,7 @@ func Test_insertUser(t *testing.T) {
 		require.NoError(t, err, "get inserted user")
 	})
 
-	// TODO: Return different errors for email and username.
-	t.Run("when the email is not unique it returns ErrUserExists", func(t *testing.T) {
+	t.Run("when the email is not unique it returns ErrEmailRegistered", func(t *testing.T) {
 		originalUser := &user.User{
 			Email:        email,
 			Username:     username,
@@ -195,7 +194,7 @@ func Test_insertUser(t *testing.T) {
 		assert.Nil(t, gotUser)
 	})
 
-	t.Run("when the username is not unique it returns ErrUserExists", func(t *testing.T) {
+	t.Run("when the username is not unique it returns ErrUsernameTaken", func(t *testing.T) {
 		originalUser := &user.User{
 			Email:        email,
 			Username:     username,
@@ -341,7 +340,7 @@ func Test_updateUser(t *testing.T) {
 		assert.True(t, updatedUser.HasPassword(newPassword), "password mismatch")
 	})
 
-	t.Run("when the email unique constraint is violated it returns ErrUserExists", func(t *testing.T) {
+	t.Run("when the email unique constraint is violated it returns ErrEmailRegistered", func(t *testing.T) {
 		t.Parallel()
 
 		targetUser := &user.User{

@@ -1,12 +1,13 @@
 package users
 
 import (
-	"fmt"
-
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/pkg/validate"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -21,14 +22,22 @@ func NewHandler(service user.Service, presenter Presenter) *Handler {
 	}
 }
 
+type registrationRequestBody struct {
+	User *user.RegistrationRequest `json:"user" validate:"required"`
+}
+
 // Register creates and returns a new user, along with an auth token.
 func (h *Handler) Register(c *fiber.Ctx) error {
-	var regReq user.RegistrationRequest
-	if err := c.BodyParser(&regReq); err != nil {
+	var body registrationRequestBody
+	if err := c.BodyParser(&body); err != nil {
 		return h.presenter.ShowBadRequest(c)
 	}
 
-	authenticatedUser, err := h.service.Register(c.Context(), &regReq)
+	if err := validate.Struct(&body); err != nil {
+		return h.presenter.ShowValidationErrors(c, err.(validator.ValidationErrors))
+	}
+
+	authenticatedUser, err := h.service.Register(c.Context(), body.User)
 	if err != nil {
 		return h.presenter.ShowUserError(c, err)
 	}
@@ -36,15 +45,22 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 	return h.presenter.ShowRegister(c, authenticatedUser.User, authenticatedUser.Token)
 }
 
+type loginRequestBody struct {
+	User *user.AuthRequest `json:"user" validate:"required"`
+}
+
 // Login authenticates a user and returns the user and token if successful.
 func (h *Handler) Login(c *fiber.Ctx) error {
-	var authReq user.AuthRequest
-	if err := c.BodyParser(&authReq); err != nil {
+	var body loginRequestBody
+	if err := c.BodyParser(&body); err != nil {
 		return h.presenter.ShowBadRequest(c)
 	}
 
-	fmt.Println("parsed")
-	authenticatedUser, err := h.service.Authenticate(c.Context(), &authReq)
+	if err := validate.Struct(&body); err != nil {
+		return h.presenter.ShowValidationErrors(c, err.(validator.ValidationErrors))
+	}
+
+	authenticatedUser, err := h.service.Authenticate(c.Context(), body.User)
 	if err != nil {
 		return h.presenter.ShowUserError(c, err)
 	}
@@ -63,17 +79,46 @@ func (h *Handler) GetCurrentUser(c *fiber.Ctx) error {
 	return h.presenter.ShowGetCurrentUser(c, user, tokenFromRequest(c))
 }
 
+// For updates, we decouple the REST model from the domain model, since they are
+// structurally disinct and require different validations (the REST request
+// contains no user ID, which is derived from the request context and is
+// required by the domain).
+type updateCurrentUserRequestBody struct {
+	User userUpdates `json:"user" validate:"required"`
+}
+type userUpdates struct {
+	Email    *user.EmailAddress `json:"email" validate:"omitempty,email"`
+	Bio      *string            `json:"bio"`
+	ImageURL *string            `json:"image" validate:"omitempty,url"`
+	Password *string            `json:"password"`
+}
+
+func (body *updateCurrentUserRequestBody) toDomain(userID uuid.UUID) *user.UpdateRequest {
+	return &user.UpdateRequest{
+		UserID:   userID,
+		Email:    body.User.Email,
+		Bio:      body.User.Bio,
+		ImageURL: body.User.ImageURL,
+		OptionalValidatingPassword: user.OptionalValidatingPassword{
+			Password: body.User.Password,
+		},
+	}
+}
+
 // UpdateCurrentUser updates the user corresponding to the ID contained in the
 // request JWT.
 func (h *Handler) UpdateCurrentUser(c *fiber.Ctx) error {
-	var updateReq user.UpdateRequest
-	if err := c.BodyParser(&updateReq); err != nil {
-		fmt.Println(err)
+	var body updateCurrentUserRequestBody
+	if err := c.BodyParser(&body); err != nil {
 		return h.presenter.ShowBadRequest(c)
 	}
 
-	updateReq.UserID = middleware.CurrentUser(c)
-	user, err := h.service.UpdateUser(c.Context(), &updateReq)
+	if err := validate.Struct(&body); err != nil {
+		return h.presenter.ShowValidationErrors(c, err.(validator.ValidationErrors))
+	}
+
+	updateReq := body.toDomain(middleware.CurrentUser(c))
+	user, err := h.service.UpdateUser(c.Context(), updateReq)
 	if err != nil {
 		return h.presenter.ShowUserError(c, err)
 	}

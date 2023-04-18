@@ -1,22 +1,16 @@
 package validate
 
 import (
-	"github.com/go-playground/locales/en"
-	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 )
 
-// TODO: Delete translation code.
 var (
 	// validate is a singleton exposing thread-safe struct validation methods.
-	validate   *validator.Validate
-	translator ut.Translator
+	validate *validator.Validate
 )
 
 func init() {
 	validate = validator.New()
-	translator = ut.New(en.New()).GetFallback()
-
 	registerTagNameFuncs()
 }
 
@@ -25,6 +19,7 @@ func Struct(s any) error {
 	return validate.Struct(s)
 }
 
-func Translate(err validator.FieldError) string {
-	return err.Translate(translator)
+// Fields validates the given struct fields.
+func Fields(s any, fields ...string) error {
+	return validate.StructPartial(s, fields...)
 }

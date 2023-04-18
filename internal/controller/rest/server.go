@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -131,6 +132,6 @@ func globalErrorHandler(c *fiber.Ctx, err error) error {
 	}
 
 	return c.Status(code).JSON(fiber.Map{
-		"error": "Internal Server Error",
+		"error": http.StatusText(code),
 	})
 }
