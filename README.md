@@ -54,9 +54,9 @@ for more details.
 
 Here's what's been implemented so far:
 
-[x] Users
-[x] Authentication
-[ ] Profiles
-[ ] Articles
-[ ] Comments
-[ ] Tags
+- [x] Users
+- [x] Authentication
+- [ ] Profiles
+- [ ] Articles
+- [ ] Comments
+- [ ] Tags
