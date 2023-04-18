@@ -1,9 +1,9 @@
 #!/bin/bash
 
+# Load environment variables from .env file.
 set -o allexport
 source /app/.env
 set +o allexport
 
-ls -ld $REALWORLD_VOLUME_MOUNT_PATH
-
+# Start the server.
 /app/server
