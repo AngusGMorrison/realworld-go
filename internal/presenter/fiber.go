@@ -59,7 +59,7 @@ func (r *Fiber) ShowUserError(c *fiber.Ctx, err error) error {
 	}
 
 	if validationErrs, ok := err.(validator.ValidationErrors); ok {
-		return ShowValidationErrors(c, validationErrs)
+		return r.ShowValidationErrors(c, validationErrs)
 	}
 
 	panic(fmt.Errorf("unhandled user service error: %w", err))
@@ -85,6 +85,15 @@ func (r *Fiber) ShowUpdateCurrentUser(c *fiber.Ctx, user *user.User, token strin
 	return showUserWithToken(c, fiber.StatusOK, user, token)
 }
 
+func (r *Fiber) ShowValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
+	fieldErrs := make(map[string][]string)
+	for _, err := range errs {
+		fieldErrs[err.Field()] = append(fieldErrs[err.Field()], userFriendlyErrMessage(err.Tag(), err.Param()))
+	}
+
+	return c.Status(fiber.StatusUnprocessableEntity).JSON(newJsonErrors(fieldErrs))
+}
+
 func showUserWithToken(c *fiber.Ctx, status int, user *user.User, token string) error {
 	res := newUserResponseFromDomain(user, token)
 	return c.Status(status).JSON(res)
@@ -94,15 +103,6 @@ func newJsonErrors(errs map[string][]string) fiber.Map {
 	return fiber.Map{
 		"errors": errs,
 	}
-}
-
-func ShowValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
-	fieldErrs := make(map[string][]string)
-	for _, err := range errs {
-		fieldErrs[err.Field()] = append(fieldErrs[err.Field()], userFriendlyErrMessage(err.Tag(), err.Param()))
-	}
-
-	return c.Status(fiber.StatusUnprocessableEntity).JSON(newJsonErrors(fieldErrs))
 }
 
 func userFriendlyErrMessage(tag string, param string) string {
