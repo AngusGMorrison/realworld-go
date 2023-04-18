@@ -3,7 +3,6 @@ module github.com/angusgmorrison/realworld
 go 1.20
 
 require (
-	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.12.0

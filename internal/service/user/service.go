@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/angusgmorrison/realworld/pkg/validate"
@@ -26,7 +27,7 @@ type Service interface {
 type Repository interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetUserByEmail(ctx context.Context, email EmailAddress) (*User, error)
-	CreateUser(ctx context.Context, req *RegistrationRequest) (*User, error)
+	CreateUser(ctx context.Context, user *User) (*User, error)
 	UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error)
 }
 
@@ -51,7 +52,12 @@ func (s *service) Register(ctx context.Context, req *RegistrationRequest) (*Auth
 		return nil, err
 	}
 
-	user, err := s.repo.CreateUser(ctx, req)
+	user, err := NewUserFromRegistrationRequest(req)
+	if err != nil {
+		return nil, fmt.Errorf("creating user from registration request failed after passing request validation: %w", err)
+	}
+
+	user, err = s.repo.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -101,4 +107,13 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 // Get returns the user with the given ID.
 func (s *service) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
 	return s.repo.GetUserByID(ctx, id)
+}
+
+// Update updates the user with the given ID.
+func (s *service) UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error) {
+	if err := validate.Struct(req); err != nil {
+		return nil, err
+	}
+
+	return s.repo.UpdateUser(ctx, req)
 }

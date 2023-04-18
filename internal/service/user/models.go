@@ -1,6 +1,8 @@
 package user
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,6 +19,19 @@ type User struct {
 	ImageURL     string
 }
 
+func NewUserFromRegistrationRequest(req *RegistrationRequest) (*User, error) {
+	hash, err := bcryptHash(req.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return &User{
+		Email:        req.Email,
+		Username:     req.Username,
+		PasswordHash: string(hash),
+	}, nil
+}
+
 func (u *User) HasPassword(password string) bool {
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
 		return false
@@ -24,10 +39,26 @@ func (u *User) HasPassword(password string) bool {
 	return true
 }
 
+// Equals returns true if two users are equal in all fields but their password
+// hash, since direct comparison of bcrypt hashes without the input password is
+// impossible by design.
+func (u *User) Equals(other *User) bool {
+	return u.ID == other.ID &&
+		u.Username == other.Username &&
+		u.Email == other.Email &&
+		u.Bio == other.Bio &&
+		u.ImageURL == other.ImageURL
+}
+
 // AuthenticatedUser is a User with a valid token.
 type AuthenticatedUser struct {
 	Token string
 	User  *User
+}
+
+// Equals returns true if two authenticated users are equal in all fields but password hash.
+func (au *AuthenticatedUser) Equals(other *AuthenticatedUser) bool {
+	return au.Token == other.Token && au.User.Equals(other.User)
 }
 
 // RegistrationRequest describes the data required to register a new user.

@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// TODO: Delete translation code.
 var (
 	// validate is a singleton exposing thread-safe struct validation methods.
 	validate   *validator.Validate
