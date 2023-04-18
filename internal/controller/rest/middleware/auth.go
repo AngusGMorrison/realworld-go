@@ -23,6 +23,7 @@ func NewRS256Auth(key *rsa.PublicKey) fiber.Handler {
 		SigningMethod:  "RS256",
 		ErrorHandler:   DefaultRS256AuthFailureHandler,
 		SuccessHandler: DefaultRS256AuthSuccessHandler,
+		AuthScheme:     "Token", // required by the RealWorld spec
 	})
 }
 

@@ -63,3 +63,28 @@ func newJWT(key *rsa.PrivateKey, ttl time.Duration, sub string) (string, error) 
 
 	return signedToken, nil
 }
+
+func jwtSubjectsEqual(first, second string, publicKey *rsa.PublicKey) bool {
+	jwtParser := jwt.NewParser()
+	keyFunc := func(_ *jwt.Token) (any, error) {
+		return publicKey, nil
+	}
+	parsedFirstToken, err := jwtParser.Parse(first, keyFunc)
+	if err != nil {
+		return false
+	}
+	firstClaims, ok := parsedFirstToken.Claims.(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+	parsedOtherToken, err := jwtParser.Parse(second, keyFunc)
+	if err != nil {
+		return false
+	}
+	secondClaims, ok := parsedOtherToken.Claims.(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+
+	return firstClaims["sub"] == secondClaims["sub"]
+}

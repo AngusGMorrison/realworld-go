@@ -1,6 +1,7 @@
 package user
 
 import (
+	"crypto/rsa"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -56,9 +57,12 @@ type AuthenticatedUser struct {
 	User  *User
 }
 
-// Equals returns true if two authenticated users are equal in all fields but password hash.
-func (au *AuthenticatedUser) Equals(other *AuthenticatedUser) bool {
-	return au.Token == other.Token && au.User.Equals(other.User)
+// Equals returns true if two authenticated users:
+//   - have JWTs with the same subject claim (timestamp fields are not compared);
+//   - are equal in all other fields but password hash (which can't be compared).
+func (au *AuthenticatedUser) Equals(other *AuthenticatedUser, jwtPublicKey *rsa.PublicKey) bool {
+	return jwtSubjectsEqual(au.Token, other.Token, jwtPublicKey) &&
+		au.User.Equals(other.User)
 }
 
 // RegistrationRequest describes the data required to register a new user.

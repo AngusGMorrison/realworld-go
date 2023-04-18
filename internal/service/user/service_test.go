@@ -127,17 +127,28 @@ func Test_service_Register(t *testing.T) {
 		t.Parallel()
 
 		repo := &mockRepository{}
-		expectedRegistrationReq := &RegistrationRequest{
+		req := &RegistrationRequest{
 			Email:    email,
 			Username: username,
 			RequiredValidatingPassword: RequiredValidatingPassword{
 				Password: password,
 			},
 		}
-		repo.On("CreateUser", mock.AnythingOfType("*context.emptyCtx"), expectedRegistrationReq).Return((*User)(nil), errors.New("error"))
+
+		pwHash, err := req.HashPassword()
+		require.NoError(t, err, "hash password")
+
+		expectedUser := &User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: pwHash,
+		}
+
+		userMatcher := newUserMatcher(expectedUser, req.Password)
+		repo.On("CreateUser", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(userMatcher)).Return((*User)(nil), errors.New("error"))
 		s := NewService(repo, nil, 0)
 
-		usr, err := s.Register(context.Background(), expectedRegistrationReq)
+		usr, err := s.Register(context.Background(), req)
 
 		assert.Error(t, err)
 		assert.Nil(t, usr)
@@ -158,10 +169,19 @@ func Test_service_Register(t *testing.T) {
 		pwHash, err := req.HashPassword()
 		require.NoError(t, err, "hash password")
 
+		expectedRepoUser := &User{
+			Email:        email,
+			Username:     username,
+			PasswordHash: pwHash,
+		}
+
+		repoUserMatcher := newUserMatcher(expectedRepoUser, req.Password)
+
 		id := uuid.New()
 		jwtTTL := 1 * time.Hour
 		jwt, err := newJWT(key, jwtTTL, id.String())
 		require.NoError(t, err, "generate JWT")
+
 		expectedAuthUser := &AuthenticatedUser{
 			User: &User{
 				ID:           id,
@@ -175,7 +195,7 @@ func Test_service_Register(t *testing.T) {
 		}
 
 		repo := &mockRepository{}
-		repo.On("CreateUser", mock.AnythingOfType("*context.emptyCtx"), req).Return(expectedAuthUser.User, nil)
+		repo.On("CreateUser", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(repoUserMatcher)).Return(expectedAuthUser.User, nil)
 
 		s := NewService(repo, key, jwtTTL)
 
@@ -183,7 +203,8 @@ func Test_service_Register(t *testing.T) {
 
 		require.NoError(t, err, "call service")
 
-		assert.Truef(t, expectedAuthUser.Equals(gotAuthUser), "expected AutheticatedUser %#v, got %#v", expectedAuthUser, gotAuthUser)
+		authUsersEqual := expectedAuthUser.Equals(gotAuthUser, &key.PublicKey)
+		assert.Truef(t, authUsersEqual, "expected AutheticatedUser %#v, got %#v", expectedAuthUser, gotAuthUser)
 	})
 }
 
@@ -341,7 +362,8 @@ func Test_service_Authenticate(t *testing.T) {
 
 		require.NoError(t, err, "call service")
 
-		assert.Truef(t, expectedAuthUser.Equals(gotAuthUser), "expected AutheticatedUser %#v, got %#v", expectedAuthUser, gotAuthUser)
+		authUsersEqual := expectedAuthUser.Equals(gotAuthUser, &key.PublicKey)
+		assert.Truef(t, authUsersEqual, "expected AutheticatedUser %#v, got %#v", expectedAuthUser, gotAuthUser)
 	})
 }
 
@@ -517,12 +539,25 @@ func (m *mockRepository) GetUserByEmail(ctx context.Context, email EmailAddress)
 	return args.Get(0).(*User), args.Error(1)
 }
 
-func (m *mockRepository) CreateUser(ctx context.Context, req *RegistrationRequest) (*User, error) {
-	args := m.Called(ctx, req)
+func (m *mockRepository) CreateUser(ctx context.Context, user *User) (*User, error) {
+	args := m.Called(ctx, user)
 	return args.Get(0).(*User), args.Error(1)
 }
 
 func (m *mockRepository) UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error) {
 	args := m.Called(ctx, req)
 	return args.Get(0).(*User), args.Error(1)
+}
+
+// bcrypt returns a different hash each time, so we need a custom matcher that
+// avoids direct hash comparison.
+func newUserMatcher(expected *User, password string) func(arg any) bool {
+	return func(arg any) bool {
+		user, ok := arg.(*User)
+		if !ok {
+			return false
+		}
+
+		return expected.Equals(user) && user.HasPassword(password)
+	}
 }

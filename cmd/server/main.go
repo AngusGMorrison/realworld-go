@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/angusgmorrison/realworld/internal/config"
 	"github.com/angusgmorrison/realworld/internal/controller/rest"
@@ -22,12 +21,6 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-
-	dbFile, err := os.Create(cfg.DBPath())
-	if err != nil {
-		return fmt.Errorf("create DB file at %q: %w", cfg.DBPath(), err)
-	}
-	dbFile.Close()
 
 	db, err := sqlite.New(cfg.DBPath())
 	if err != nil {

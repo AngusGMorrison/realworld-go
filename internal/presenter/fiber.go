@@ -88,7 +88,8 @@ func (r *Fiber) ShowUpdateCurrentUser(c *fiber.Ctx, user *user.User, token strin
 func (r *Fiber) ShowValidationErrors(c *fiber.Ctx, errs validator.ValidationErrors) error {
 	fieldErrs := make(map[string][]string)
 	for _, err := range errs {
-		fieldErrs[err.Field()] = append(fieldErrs[err.Field()], userFriendlyErrMessage(err.Tag(), err.Param()))
+		fieldName := requestFieldName(err.Field())
+		fieldErrs[fieldName] = append(fieldErrs[fieldName], userFriendlyErrMessage(err.Tag(), err.Param()))
 	}
 
 	return c.Status(fiber.StatusUnprocessableEntity).JSON(newJsonErrors(fieldErrs))
@@ -105,8 +106,16 @@ func newJsonErrors(errs map[string][]string) fiber.Map {
 	}
 }
 
+func requestFieldName(modelFieldName string) string {
+	if name, ok := modelFieldToRequestField[modelFieldName]; ok {
+		return name
+	}
+
+	return modelFieldName
+}
+
 func userFriendlyErrMessage(tag string, param string) string {
-	if format, ok := validationTagsToErrMessages[tag]; ok {
+	if format, ok := validationTagToErrMessage[tag]; ok {
 		if param == "" {
 			return format
 		}
@@ -116,8 +125,15 @@ func userFriendlyErrMessage(tag string, param string) string {
 	return "is invalid"
 }
 
-// TODO: Map domain fields to JSON fields.
-var validationTagsToErrMessages = map[string]string{
+var modelFieldToRequestField = map[string]string{
+	"Email":    "email",
+	"ImageURL": "image",
+	"Password": "password",
+	"User":     "user",
+	"Username": "username",
+}
+
+var validationTagToErrMessage = map[string]string{
 	"required": "is required",
 	"email":    "is invalid",
 	"min":      "must be at least %s characters",

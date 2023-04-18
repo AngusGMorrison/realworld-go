@@ -210,15 +210,15 @@ func Test_Fiber_ShowUserError(t *testing.T) {
 	t.Parallel()
 
 	invalidStruct := struct {
-		Email         string `validate:"email"`
-		Required      string `validate:"required"`
-		ShortPassword string `validate:"min=2"`
-		LongPassword  string `validate:"max=2"`
+		Email    string `validate:"email"`
+		Username string `validate:"required"`
+		Password string `validate:"min=2"`
+		ImageURL string `validate:"max=2"`
 	}{
-		Email:         "invalid",
-		Required:      "",
-		ShortPassword: "1",
-		LongPassword:  "123",
+		Email:    "invalid",
+		Username: "",
+		Password: "1",
+		ImageURL: "123",
 	}
 	validationErrs := validate.Struct(invalidStruct).(validator.ValidationErrors)
 
@@ -270,10 +270,10 @@ func Test_Fiber_ShowUserError(t *testing.T) {
 			wantStatus: fiber.StatusUnprocessableEntity,
 			wantResBody: fiber.Map{
 				"errors": fiber.Map{
-					"Email":         []string{"is invalid"},
-					"Required":      []string{"is required"},
-					"ShortPassword": []string{"must be at least 2 characters"},
-					"LongPassword":  []string{"must be at most 2 bytes"},
+					"email":    []string{"is invalid"},
+					"username": []string{"is required"},
+					"password": []string{"must be at least 2 characters"},
+					"image":    []string{"must be at most 2 bytes"},
 				},
 			},
 		},
@@ -305,6 +305,52 @@ func Test_Fiber_ShowUserError(t *testing.T) {
 				require.NoError(t, err, "marshal wantResBody")
 				assert.JSONEq(t, string(wantResBody), string(gotResBody))
 			}
+		})
+	}
+}
+
+func Test_requestFieldName(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		fieldName           string
+		expectedTranslation string
+	}{
+		{
+			fieldName:           "Email",
+			expectedTranslation: "email",
+		},
+		{
+			fieldName:           "Username",
+			expectedTranslation: "username",
+		},
+		{
+			fieldName:           "Password",
+			expectedTranslation: "password",
+		},
+		{
+			fieldName:           "ImageURL",
+			expectedTranslation: "image",
+		},
+		{
+			fieldName:           "User",
+			expectedTranslation: "user",
+		},
+	}
+
+	t.Run("when the developer hasn't updated the tests for requestFieldName this test fails", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, len(modelFieldToRequestField), len(testCases), "new fields have been added to modelFieldToRequestField, but the tests haven't been updated")
+	})
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.fieldName, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tc.expectedTranslation, requestFieldName(tc.fieldName))
 		})
 	}
 }

@@ -89,15 +89,16 @@ func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.P
 	// /api
 	api := s.fiber.Group("/api")
 
-	// /api/users unauthenticated
+	// /api/users
 	usersHandler := users.NewHandler(userService, presenter.NewFiberPresenter())
-	unauthenticatedUsersGroup := api.Group("/users")
-	unauthenticatedUsersGroup.Post("/", usersHandler.Register)
-	unauthenticatedUsersGroup.Post("/login", usersHandler.Login)
-	// /api/users authenticated
-	authenticatedUsersGroup := api.Group("/users", authMW)
-	authenticatedUsersGroup.Get("/", usersHandler.GetCurrentUser)
-	authenticatedUsersGroup.Put("/", usersHandler.UpdateCurrentUser)
+	usersGroup := api.Group("/users")
+	usersGroup.Post("/", usersHandler.Register)
+	usersGroup.Post("/login", usersHandler.Login)
+
+	// /api/user
+	authenticatedUserGroup := api.Group("/user", authMW)
+	authenticatedUserGroup.Get("/", usersHandler.GetCurrentUser)
+	authenticatedUserGroup.Put("/", usersHandler.UpdateCurrentUser)
 }
 
 func (s *Server) newLogger() *log.Logger {
