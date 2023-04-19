@@ -20,7 +20,7 @@ inwards, towards the domain models for any given route.
 For a primer on hexagonal architecture, see this blog entry from
 [Netflix](https://netflixtechblog.com/ready-for-changes-with-hexagonal-architecture-b315ec967749).
 
-The business logic, stored under `internal/service` is agnostic to the
+The business logic, stored under `internal/service`, is agnostic to the
 controllers that receive requests from the outside world. I've used the [Fiber
 package](https://gofiber.io/) as my web server, but I could just as well have
 used the standard library http package or Gin. Check out the web server code
@@ -42,13 +42,13 @@ for more details.
 
 1. Copy `.env_template` to `.env` and add an RSA private key in the space
    indicated. `.env` is gitignored. Be sure to keep it that way.
-2. Load `.env` into your environment however you please. Here's my personal preference:
+2. Load `.env` into your environment, since it contains variables required by Make. Here's my preferred way to do it:
     ```bash
-    $ set -o allexport; source ./.env; set +o allexport
+    set -o allexport; source ./.env; set +o allexport
     ```
-3. Run the app interactively with `make docker_run_it`, or `make docker_run` to
-   run it in the background.
-4. Test the app with the [RealWorld Postman collection](https://github.com/gothinkster/realworld/blob/main/api/Conduit.postman_collection.json).
+3. Ensure the Docker daemon is running on your system.
+4. Run the app interactively with `make docker_run_it`, or in the background with `make docker_run`.
+5. Try out the endpoints with the [RealWorld Postman collection](https://github.com/gothinkster/realworld/blob/main/api/Conduit.postman_collection.json).
 
 # Progress
 
