@@ -15,5 +15,6 @@ func init() {
 
 // Struct validates the given struct.
 func Struct(s any) error {
+	// nolint:wrapcheck
 	return validate.Struct(s)
 }

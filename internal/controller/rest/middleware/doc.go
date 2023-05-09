@@ -1,2 +1,2 @@
-// Package log provides middleware for Fiber servers.
+// Package middleware provides middleware for Fiber servers.
 package middleware

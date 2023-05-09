@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/google/uuid"
 )
@@ -26,7 +27,7 @@ type Service interface {
 // Repository is a store of user data.
 type Repository interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*User, error)
-	GetUserByEmail(ctx context.Context, email EmailAddress) (*User, error)
+	GetUserByEmail(ctx context.Context, email primitive.EmailAddress) (*User, error)
 	CreateUser(ctx context.Context, user *User) (*User, error)
 	UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error)
 }
@@ -38,7 +39,7 @@ type service struct {
 }
 
 // NewService creates a new user service.
-func NewService(repo Repository, jwtPrivateKey *rsa.PrivateKey, jwtTTL time.Duration) *service {
+func NewService(repo Repository, jwtPrivateKey *rsa.PrivateKey, jwtTTL time.Duration) Service {
 	return &service{
 		repo:          repo,
 		jwtPrivateKey: jwtPrivateKey,
@@ -49,17 +50,17 @@ func NewService(repo Repository, jwtPrivateKey *rsa.PrivateKey, jwtTTL time.Dura
 // Register creates a new user and returns it with a signed JWT.
 func (s *service) Register(ctx context.Context, req *RegistrationRequest) (*AuthenticatedUser, error) {
 	if err := validate.Struct(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid request %#v: %w", req, err)
 	}
 
 	user, err := NewUserFromRegistrationRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("creating user from registration request failed after passing request validation: %w", err)
+		return nil, fmt.Errorf("create user from request %#v: %w", req, err)
 	}
 
 	user, err = s.repo.CreateUser(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("persist user to DB: %w", err)
 	}
 
 	jwt, err := newJWT(s.jwtPrivateKey, s.jwtTTL, user.ID.String())
@@ -78,7 +79,7 @@ func (s *service) Register(ctx context.Context, req *RegistrationRequest) (*Auth
 // JWT.
 func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*AuthenticatedUser, error) {
 	if err := validate.Struct(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid request %#v: %w", req, err)
 	}
 
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
@@ -86,7 +87,7 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 		if errors.Is(err, ErrUserNotFound) {
 			return nil, &AuthError{cause: err}
 		}
-		return nil, err
+		return nil, fmt.Errorf("get user with email %q: %w", req.Email, err)
 	}
 
 	if !user.HasPassword(req.Password) {
@@ -106,14 +107,24 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*Authenti
 
 // Get returns the user with the given ID.
 func (s *service) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
-	return s.repo.GetUserByID(ctx, id)
+	user, err := s.repo.GetUserByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get user with ID %s: %w", id, err)
+	}
+
+	return user, nil
 }
 
 // Update updates the user with the given ID.
 func (s *service) UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error) {
 	if err := validate.Struct(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid UpdateRequest %#v: %w", req, err)
 	}
 
-	return s.repo.UpdateUser(ctx, req)
+	user, err := s.repo.UpdateUser(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("update user with ID %s: %w", req.UserID, err)
+	}
+
+	return user, nil
 }

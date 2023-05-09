@@ -1,2 +1,4 @@
 *.env
 notes.md
+bin/*
+.vscode

@@ -3,6 +3,7 @@ package users
 import (
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/angusgmorrison/realworld/pkg/validate"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -10,11 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// Handler holds dependencies for users endpoints.
 type Handler struct {
 	service   user.Service
 	presenter Presenter
 }
 
+// NewHandler returns a new Handler from the injected dependencies.
 func NewHandler(service user.Service, presenter Presenter) *Handler {
 	return &Handler{
 		service:   service,
@@ -87,10 +90,10 @@ type updateCurrentUserRequestBody struct {
 	User userUpdates `json:"user" validate:"required"`
 }
 type userUpdates struct {
-	Email    *user.EmailAddress `json:"email" validate:"omitempty,email"`
-	Bio      *string            `json:"bio"`
-	ImageURL *string            `json:"image" validate:"omitempty,url"`
-	Password *string            `json:"password"`
+	Email    *primitive.EmailAddress    `json:"email" validate:"omitempty,email"`
+	Bio      *string                    `json:"bio"`
+	ImageURL *string                    `json:"image" validate:"omitempty,url"`
+	Password *primitive.SensitiveString `json:"password"`
 }
 
 func (body *updateCurrentUserRequestBody) toDomain(userID uuid.UUID) *user.UpdateRequest {

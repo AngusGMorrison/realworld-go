@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -80,7 +81,7 @@ func Test_service_Register(t *testing.T) {
 					Email:    email,
 					Username: username,
 					RequiredValidatingPassword: RequiredValidatingPassword{
-						Password: strings.Repeat("1", 73),
+						Password: primitive.SensitiveString(strings.Repeat("1", 73)),
 					},
 				},
 			},
@@ -155,6 +156,8 @@ func Test_service_Register(t *testing.T) {
 	})
 
 	t.Run("when the repository call succeeds it returns an authenticated user", func(t *testing.T) {
+		t.Parallel()
+
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		require.NoError(t, err, "generate RSA key")
 
@@ -326,6 +329,8 @@ func Test_service_Authenticate(t *testing.T) {
 	})
 
 	t.Run("when the request succeeds it returns the authenticated user", func(t *testing.T) {
+		t.Parallel()
+
 		key, err := rsa.GenerateKey(rand.Reader, 2048)
 		require.NoError(t, err, "generate RSA key")
 
@@ -416,10 +421,10 @@ func Test_service_UpdateUser(t *testing.T) {
 		t.Parallel()
 
 		var (
-			email         = EmailAddress("invalid")
+			email         = primitive.EmailAddress("invalid")
 			imageURL      = "invalid"
-			shortPassword = "a"
-			longPassword  = strings.Repeat("a", 73)
+			shortPassword = primitive.SensitiveString("a")
+			longPassword  = primitive.SensitiveString(strings.Repeat("a", 73))
 		)
 
 		testCases := []struct {
@@ -534,7 +539,7 @@ func (m *mockRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*User, 
 	return args.Get(0).(*User), args.Error(1)
 }
 
-func (m *mockRepository) GetUserByEmail(ctx context.Context, email EmailAddress) (*User, error) {
+func (m *mockRepository) GetUserByEmail(ctx context.Context, email primitive.EmailAddress) (*User, error) {
 	args := m.Called(ctx, email)
 	return args.Get(0).(*User), args.Error(1)
 }
@@ -551,7 +556,7 @@ func (m *mockRepository) UpdateUser(ctx context.Context, req *UpdateRequest) (*U
 
 // bcrypt returns a different hash each time, so we need a custom matcher that
 // avoids direct hash comparison.
-func newUserMatcher(expected *User, password string) func(arg any) bool {
+func newUserMatcher(expected *User, password primitive.SensitiveString) func(arg any) bool {
 	return func(arg any) bool {
 		user, ok := arg.(*User)
 		if !ok {

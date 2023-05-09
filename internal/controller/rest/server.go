@@ -3,6 +3,7 @@ package rest
 import (
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -52,6 +53,8 @@ type Server struct {
 	cfg   config
 }
 
+// NewServer configures an application server with the injected dependencies. Options may be
+// passed to override the server defaults.
 func NewServer(
 	userService user.Service,
 	jwtVerificationKey *rsa.PublicKey,
@@ -73,12 +76,21 @@ func NewServer(
 	return server
 }
 
+// Listen on the given address.
 func (s *Server) Listen(addr string) error {
-	return s.fiber.Listen(addr)
+	if err := s.fiber.Listen(addr); err != nil {
+		return fmt.Errorf("listen on %s: %w", addr, err)
+	}
+	return nil
 }
 
+// ShutdownWithTimeout gracefully shuts down the server, closing open
+// connections at `timeout`.
 func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
-	return s.fiber.ShutdownWithTimeout(timeout)
+	if err := s.fiber.ShutdownWithTimeout(timeout); err != nil {
+		return fmt.Errorf("shutdown with timeout %s: %w", timeout, err)
+	}
+	return nil
 }
 
 func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.PublicKey) {

@@ -1,9 +1,7 @@
 package testutil
 
 import (
-	"crypto"
 	"log"
-	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -11,7 +9,6 @@ import (
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
@@ -27,22 +24,7 @@ func NewMockAuthMiddleware(t *testing.T, userID uuid.UUID, rawToken string) fibe
 	}
 }
 
-func NewRS256AuthMiddleware(t *testing.T, key crypto.PublicKey) fiber.Handler {
-	t.Helper()
-
-	return jwtware.New(jwtware.Config{
-		SigningKey:    key,
-		SigningMethod: "RS256",
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			// Respond with the error details for debugging.
-			return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		},
-		SuccessHandler: middleware.DefaultRS256AuthSuccessHandler,
-	})
-}
-
+// ServerConfig overrides the default test server config, which can be helpful for debugging.
 type ServerConfig struct {
 	PrintLogs               bool
 	PrintRecoveryStackTrace bool
@@ -52,6 +34,7 @@ var defaultServerConfig = ServerConfig{
 	PrintLogs: false,
 }
 
+// NewServer requires a new Fiber server for testing handlers.
 func NewServer(t *testing.T, cfgOverride ...ServerConfig) *fiber.App {
 	t.Helper()
 

@@ -1,8 +1,57 @@
 run:
-  timeout: 1m
-  modules-download-mode: readonly
+  timeout: "1m"
+  modules-download-mode: "readonly"
 
 issues:
   exclude-use-default: false
+  exclude-rules:
+    - path: '(.+)_test\.go'
+      linters:
+        - "wrapcheck"
   max-issues-per-linter: 0
   max-same-issues: 0
+
+linters: # https://golangci-lint.run/usage/linters/
+  enable:
+    - "errcheck"
+    - "gocheckcompilerdirectives"
+    - "gosec"
+    - "gosimple"
+    - "govet"
+    - "ineffassign"
+    - "nilerr"
+    - "nilnil"
+    - "noctx"
+    - "paralleltest"
+    - "prealloc"
+    - "reassign"
+    - "revive"
+    - "rowserrcheck"
+    - "sqlclosecheck"
+    - "staticcheck"
+    - "thelper"
+    - "typecheck"
+    - "unconvert"
+    - "unparam"
+    - "unused"
+    - "usestdlibvars"
+    - "whitespace"
+    - "wrapcheck"
+
+linters-settings:
+  wrapcheck:
+    ignoreSigs:
+      - ".Errorf("
+      - "errors.New("
+      - "errors.Unwrap("
+      - "errors.Join("
+      - ".Wrap("
+      - ".Wrapf("
+      - ".WithMessage("
+      - ".WithMessagef("
+      - ".WithStack("
+      # Fiber HTTP handler-related methods
+      - ".JSON("
+      - ".Next("
+    ignoreInterfaceRegexps:
+      - "Presenter"
