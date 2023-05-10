@@ -11,6 +11,7 @@ import (
 
 type userIDKeyT int
 
+// UserIDKey is the context key under which the current user ID, is any, is stored.
 const UserIDKey userIDKeyT = 0
 
 // NewRS256Auth returns middleware wrapping Fiber's JWT middleware that parses
@@ -29,7 +30,7 @@ func NewRS256Auth(key *rsa.PublicKey) fiber.Handler {
 
 // DefaultRS256AuthFailureHandler is the default failure handler for the JWT
 // middleware. It is exported as a convenience for testing.
-func DefaultRS256AuthFailureHandler(c *fiber.Ctx, err error) error {
+func DefaultRS256AuthFailureHandler(_ *fiber.Ctx, _ error) error {
 	return fiber.NewError(fiber.StatusUnauthorized)
 }
 

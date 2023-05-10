@@ -11,6 +11,7 @@ import (
 
 	"github.com/angusgmorrison/realworld/internal/controller/rest/api/testutil"
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -349,7 +350,6 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 		service.AssertExpectations(t)
 		presenter.AssertExpectations(t)
 	})
-
 }
 
 func Test_Handler_UpdateCurrentUser(t *testing.T) {
@@ -358,7 +358,7 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 	t.Run("when the request is valid it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		email := user.EmailAddress(email)
+		email := primitive.EmailAddress(email)
 
 		expectedUser := &user.User{
 			ID:           uuid.New(),
@@ -441,7 +441,7 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 	t.Run("when the user service returns an error it invokes the corresponding presenter method", func(t *testing.T) {
 		t.Parallel()
 
-		email := user.EmailAddress(email)
+		email := primitive.EmailAddress(email)
 
 		expectedUpdateReq := &user.UpdateRequest{
 			UserID: uuid.New(),

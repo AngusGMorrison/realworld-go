@@ -1,8 +1,9 @@
 package presenter
 
 import (
+	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -34,7 +35,7 @@ func Test_Fiber_ShowBadRequest(t *testing.T) {
 		return presenter.ShowBadRequest(c)
 	})
 
-	req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	wantResBody, err := json.Marshal(fiber.Map{
 		"error": "request body is not a valid JSON string",
 	})
@@ -45,7 +46,7 @@ func Test_Fiber_ShowBadRequest(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fiber.StatusBadRequest, res.StatusCode)
 
-	gotResBody, err := ioutil.ReadAll(res.Body)
+	gotResBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "read response body")
 	assert.JSONEq(t, string(wantResBody), string(gotResBody))
 }
@@ -67,7 +68,7 @@ func Test_Fiber_ShowRegister(t *testing.T) {
 		return presenter.ShowRegister(c, user, token)
 	})
 
-	req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	wantResBody, err := json.Marshal(fiber.Map{
 		"user": fiber.Map{
 			"email":    email,
@@ -84,7 +85,7 @@ func Test_Fiber_ShowRegister(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fiber.StatusCreated, res.StatusCode)
 
-	gotResBody, err := ioutil.ReadAll(res.Body)
+	gotResBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "read response body")
 	assert.JSONEq(t, string(wantResBody), string(gotResBody))
 }
@@ -106,7 +107,7 @@ func Test_Fiber_ShowLogin(t *testing.T) {
 		return presenter.ShowLogin(c, user, token)
 	})
 
-	req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	wantResBody, err := json.Marshal(fiber.Map{
 		"user": fiber.Map{
 			"email":    email,
@@ -123,7 +124,7 @@ func Test_Fiber_ShowLogin(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, res.StatusCode)
 
-	gotResBody, err := ioutil.ReadAll(res.Body)
+	gotResBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "read response body")
 	assert.JSONEq(t, string(wantResBody), string(gotResBody))
 }
@@ -145,7 +146,7 @@ func Test_Fiber_ShowGetCurrentUser(t *testing.T) {
 		return presenter.ShowLogin(c, user, token)
 	})
 
-	req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	wantResBody, err := json.Marshal(fiber.Map{
 		"user": fiber.Map{
 			"email":    email,
@@ -162,7 +163,7 @@ func Test_Fiber_ShowGetCurrentUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, res.StatusCode)
 
-	gotResBody, err := ioutil.ReadAll(res.Body)
+	gotResBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "read response body")
 	assert.JSONEq(t, string(wantResBody), string(gotResBody))
 }
@@ -184,7 +185,7 @@ func Test_Fiber_ShowUpdateCurrentUser(t *testing.T) {
 		return presenter.ShowLogin(c, user, token)
 	})
 
-	req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 	wantResBody, err := json.Marshal(fiber.Map{
 		"user": fiber.Map{
 			"email":    email,
@@ -201,7 +202,7 @@ func Test_Fiber_ShowUpdateCurrentUser(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, res.StatusCode)
 
-	gotResBody, err := ioutil.ReadAll(res.Body)
+	gotResBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err, "read response body")
 	assert.JSONEq(t, string(wantResBody), string(gotResBody))
 }
@@ -291,7 +292,7 @@ func Test_Fiber_ShowUserError(t *testing.T) {
 				return presenter.ShowUserError(c, tc.err)
 			})
 
-			req, _ := http.NewRequest(http.MethodGet, "/", http.NoBody)
+			req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 
 			res, err := app.Test(req)
 
@@ -299,7 +300,7 @@ func Test_Fiber_ShowUserError(t *testing.T) {
 			assert.Equal(t, tc.wantStatus, res.StatusCode)
 
 			if tc.wantResBody != nil {
-				gotResBody, err := ioutil.ReadAll(res.Body)
+				gotResBody, err := io.ReadAll(res.Body)
 				require.NoError(t, err, "read response body")
 				wantResBody, err := json.Marshal(tc.wantResBody)
 				require.NoError(t, err, "marshal wantResBody")

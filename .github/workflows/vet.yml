@@ -1,0 +1,67 @@
+name: "Vet"
+
+on: [push]
+
+jobs:
+  test:
+    environment: "test"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v3"
+
+      - uses: "actions/setup-go@v4"
+        with:
+          go-version-file: "go.mod"
+
+      - name: "Test"
+        run: "make test"
+
+  lint:
+    environment: "test"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v3"
+
+      - uses: "actions/setup-go@v4"
+        with:
+          go-version-file: "go.mod"
+
+      - name: "golangci-lint"
+        uses: "golangci/golangci-lint-action@v3"
+        with:
+          version: "v1.52"
+          args: "--timeout=3m"
+
+  build:
+    environment: "test"
+    runs-on: "ubuntu-latest"
+    env:
+      REALWORLD_CONTAINER_NAME: ${{ vars.REALWORLD_CONTAINER_NAME }}
+      REALWORLD_IMAGE_NAME: ${{ vars.REALWORLD_IMAGE_NAME }}
+      REALWORLD_PORT: ${{ vars.REALWORLD_PORT }}
+      REALWORLD_VOLUME_MOUNT_PATH: ${{ vars.REALWORLD_VOLUME_MOUNT_PATH }}
+      REALWORLD_VOLUME_NAME: ${{ vars.REALWORLD_VOLUME_NAME }}
+    steps:
+      - uses: "actions/checkout@v3"
+
+      - uses: "actions/setup-go@v4"
+        with:
+          go-version-file: "go.mod"
+
+      - name: "Docker build"
+        run: "make docker_build"
+
+  audit:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v3"
+
+      - uses: "actions/setup-go@v4"
+        with:
+          go-version-file: "go.mod"
+
+      - name: "Install govulncheck"
+        run: "go install golang.org/x/vuln/cmd/govulncheck@latest"
+
+      - name: "Audit"
+        run: "govulncheck ./..."

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ import (
 
 // It is essential that each package uses a distinct test database to avoid
 // unexpected drops by parallel tests.
-const dbPath = "testdata/sqlite_test.db"
+var dbPath = fmt.Sprintf("testdata/%s.db", uuid.New().String())
 
 func TestMain(m *testing.M) {
 	code, err := setUpAndTearDown(m)
@@ -27,11 +28,20 @@ func TestMain(m *testing.M) {
 }
 
 func setUpAndTearDown(m *testing.M) (int, error) {
+	if err := createTestdataDirIfNotExists(); err != nil {
+		return 1, err
+	}
+
+	// nolint:gosec
+	if _, err := os.Create(dbPath); err != nil {
+		return 1, fmt.Errorf("create DB file at %s: %w", dbPath, err)
+	}
+
 	db, err := New(dbPath)
 	if err != nil {
 		return 1, err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := db.Migrate(); err != nil {
 		return 1, err
@@ -40,25 +50,40 @@ func setUpAndTearDown(m *testing.M) (int, error) {
 	code := m.Run()
 
 	if err := os.Remove(dbPath); err != nil {
-		return 1, err
+		return 1, fmt.Errorf("remove DB file at %s: %w", dbPath, err)
 	}
 
 	return code, nil
 }
 
+func createTestdataDirIfNotExists() error {
+	if _, err := os.Stat("testdata"); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.Mkdir("testdata", 0700); err != nil {
+				return fmt.Errorf("create testdata dir: %w", err)
+			}
+		} else {
+			return fmt.Errorf("check existence of testdata dir: %w", err)
+		}
+	}
+	return nil
+}
+
 func newTx(t *testing.T) (tx *sql.Tx, rollback func()) {
+	t.Helper()
+
 	db, err := New(dbPath)
 	require.NoError(t, err, "open DB connection")
 
 	tx, err = db.innerDB.Begin()
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		require.NoError(t, err, "begin transaction")
 	}
 
 	return tx, func() {
-		tx.Rollback()
-		db.Close()
+		_ = tx.Rollback()
+		_ = db.Close()
 	}
 }
 
@@ -153,6 +178,8 @@ func Test_insertUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("when constraints are met it inserts the user", func(t *testing.T) {
+		t.Parallel()
+
 		usr := &user.User{
 			Email:        email,
 			Username:     username,
@@ -164,14 +191,18 @@ func Test_insertUser(t *testing.T) {
 		tx, rollback := newTx(t)
 		defer rollback()
 
-		usr, err := insertUser(context.Background(), tx, usr)
+		insertedUser, err := insertUser(context.Background(), tx, usr)
 		require.NoError(t, err, "insert user")
 
-		usr, err = getUserByID(context.Background(), tx, usr.ID)
+		gotUser, err := getUserByID(context.Background(), tx, insertedUser.ID)
 		require.NoError(t, err, "get inserted user")
+
+		assert.Truef(t, insertedUser.Equals(gotUser), "expected %#v, got %#v", insertedUser, gotUser)
 	})
 
 	t.Run("when the email is not unique it returns ErrEmailRegistered", func(t *testing.T) {
+		t.Parallel()
+
 		originalUser := &user.User{
 			Email:        email,
 			Username:     username,
@@ -195,6 +226,8 @@ func Test_insertUser(t *testing.T) {
 	})
 
 	t.Run("when the username is not unique it returns ErrUsernameTaken", func(t *testing.T) {
+		t.Parallel()
+
 		originalUser := &user.User{
 			Email:        email,
 			Username:     username,
@@ -222,9 +255,9 @@ func Test_updateUser(t *testing.T) {
 	t.Parallel()
 
 	var (
-		newEmail    = user.EmailAddress("newemail@test.com")
+		newEmail    = primitive.EmailAddress("newemail@test.com")
 		newBio      = "A new bio."
-		newPassword = "newpassword"
+		newPassword = primitive.SensitiveString("newpassword")
 		newImageURL = "https://test.com/new.jpg"
 	)
 
@@ -291,11 +324,11 @@ func Test_updateUser(t *testing.T) {
 
 				db, err := New(dbPath)
 				require.NoError(t, err, "open DB connection")
-				defer db.Close()
+				defer func() { _ = db.Close() }()
 
 				tx, err := db.innerDB.Begin()
 				require.NoError(t, err, "begin transaction")
-				defer tx.Rollback()
+				defer func() { _ = tx.Rollback() }()
 
 				insertedUser, err := insertUser(context.Background(), tx, originalUser)
 				require.NoError(t, err, "insert test user")
@@ -374,5 +407,4 @@ func Test_updateUser(t *testing.T) {
 		assert.ErrorIs(t, err, user.ErrEmailRegistered)
 		assert.Nil(t, updatedUser)
 	})
-
 }

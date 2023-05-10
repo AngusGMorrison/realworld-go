@@ -20,7 +20,7 @@ func (o *LogOutputOption) apply(cfg *config) {
 	cfg.logOutput = o.W
 }
 
-// LogPrefixOption overrides the default prefix the server uses when logging.
+// LogPrefixOptions overrides the default prefix the server uses when logging.
 type LogPrefixOptions struct {
 	Prefix string
 }

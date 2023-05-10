@@ -1,3 +1,4 @@
+// Bootstrap the realworld web server.
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/angusgmorrison/realworld/internal/controller/rest"
 	"github.com/angusgmorrison/realworld/internal/repository/sqlite"
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/hashicorp/go-multierror"
 )
 
 func main() {
@@ -16,7 +18,7 @@ func main() {
 	}
 }
 
-func run() error {
+func run() (err error) {
 	cfg, err := config.New()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -26,7 +28,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("open DB at %q: %w", cfg.DBPath(), err)
 	}
-	defer db.Close()
+	defer func() {
+		if dbErr := db.Close(); dbErr != nil {
+			err = multierror.Append(err, dbErr)
+		}
+	}()
 
 	if err := db.Migrate(); err != nil {
 		return fmt.Errorf("migrate DB: %w", err)

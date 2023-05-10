@@ -5,14 +5,16 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 
 	"github.com/golang-migrate/migrate/v4"
 	migratesqlite3 "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/golang-migrate/migrate/v4/source/iofs"
+	_ "github.com/golang-migrate/migrate/v4/source/iofs" // register the iofs source
 	"github.com/google/uuid"
 	sqlite3 "github.com/mattn/go-sqlite3"
 )
@@ -29,11 +31,11 @@ type SQLite struct {
 func New(dbPath string) (*SQLite, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open DB at %s: %w", dbPath, err)
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ping DB: %w", err)
 	}
 
 	return &SQLite{db}, nil
@@ -41,7 +43,10 @@ func New(dbPath string) (*SQLite, error) {
 
 // Close closes the database connection.
 func (db *SQLite) Close() error {
-	return db.innerDB.Close()
+	if err := db.innerDB.Close(); err != nil {
+		return fmt.Errorf("close underlying DB: %w", err)
+	}
+	return nil
 }
 
 // Migrate runs all up migrations.
@@ -52,7 +57,7 @@ func (db *SQLite) Migrate() error {
 	}
 
 	if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return err
+		return fmt.Errorf("migrate up: %w", err)
 	}
 
 	return nil
@@ -66,7 +71,7 @@ func (db *SQLite) Rollback() error {
 	}
 
 	if err := migrator.Steps(-1); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return err
+		return fmt.Errorf("migrate one step down: %w", err)
 	}
 
 	return nil
@@ -75,17 +80,17 @@ func (db *SQLite) Rollback() error {
 func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	source, err := iofs.New(migrations, "migrations")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create io.FS migration source: %w", err)
 	}
 
 	dbInstance, err := migratesqlite3.WithInstance(db, &migratesqlite3.Config{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create SQLite migration driver from DB instance: %w", err)
 	}
 
 	m, err := migrate.NewWithInstance("iofs", source, "sqlite3", dbInstance)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create migrator from io.FS source and SQLite driver: %w", err)
 	}
 
 	return m, nil
@@ -97,6 +102,8 @@ type executor interface {
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 }
 
+// GetUserByID returns the [user.User] with the given ID, or
+// [user.ErrUserNotFound] if no user exists with that ID.
 func (db *SQLite) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	return getUserByID(ctx, db.innerDB, id)
 }
@@ -111,21 +118,28 @@ func getUserByID(ctx context.Context, ex executor, id uuid.UUID) (*user.User, er
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.ErrUserNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("scan rows for user ID %s: %w", id, err)
 	}
 	return &usr, nil
 }
 
-func (db *SQLite) GetUserByEmail(ctx context.Context, email user.EmailAddress) (*user.User, error) {
+// GetUserByEmail returns the [user.User] with the given email, or
+// [user.ErrUserNotFound] if no user exists with that email.
+func (db *SQLite) GetUserByEmail(ctx context.Context, email primitive.EmailAddress) (*user.User, error) {
 	return getUserByEmail(ctx, db.innerDB, email)
 }
 
-func getUserByEmail(ctx context.Context, ex executor, email user.EmailAddress) (*user.User, error) {
+func getUserByEmail(ctx context.Context, ex executor, email primitive.EmailAddress) (*user.User, error) {
 	query := `SELECT id, email, username, bio, password_hash, image_url FROM users WHERE email = ?`
 	row := ex.QueryRowContext(ctx, query, email)
 	return newUserFromRow(row)
 }
 
+// CreateUser inserts a new [user.User] into the database, modifying the user
+// in-place to includes its row ID. The modified user is returned.
+//
+// Returns either [user.ErrEmailRegistered] or [user.ErrUsernameTaken] if the
+// the respective unique constraints are violated.
 func (db *SQLite) CreateUser(ctx context.Context, usr *user.User) (*user.User, error) {
 	return insertUser(ctx, db.innerDB, usr)
 }
@@ -139,13 +153,17 @@ func insertUser(ctx context.Context, ex executor, usr *user.User) (*user.User, e
 		if errors.As(err, &sqliteErr) {
 			return nil, sqliteErrToDomain(sqliteErr)
 		}
-		return nil, err
+		return nil, fmt.Errorf("execute INSERT query for user %#v: %w", usr, err)
 	}
 
 	usr.ID = id
 	return usr, nil
 }
 
+// UpdateUser updates the given [user.User] in the database, returning the
+// updated user.
+//
+// Returns [user.ErrEmailRegistered] if the new email is already registered.
 func (db *SQLite) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
 	return updateUser(ctx, db.innerDB, req)
 }
@@ -164,7 +182,7 @@ func updateUser(ctx context.Context, ex executor, req *user.UpdateRequest) (*use
 	if req.Password != nil {
 		passwordHash, err := req.HashPassword()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("hash password: %w", err)
 		}
 		fields = append(fields, "password_hash = ?")
 		args = append(args, passwordHash)
@@ -202,24 +220,10 @@ func newUserFromRow(row *sql.Row) (*user.User, error) {
 		if errors.As(err, &sqliteErr) {
 			return nil, sqliteErrToDomain(sqliteErr)
 		}
-		return nil, err
+		return nil, fmt.Errorf("scan row  into User: %w", err)
 	}
 
 	return &usr, nil
-}
-
-func (db *SQLite) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
-	tx, err := db.innerDB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if err := fn(tx); err != nil {
-		return err
-	}
-
-	return tx.Commit()
 }
 
 func sqliteErrToDomain(err sqlite3.Error) error {

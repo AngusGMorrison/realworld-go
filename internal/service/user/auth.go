@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,11 +17,11 @@ import (
 // Changes to password validation tags MUST be kept in sync with
 // OptionalValidatingPassword.
 type RequiredValidatingPassword struct {
-	Password string `json:"password" validate:"required,min=8,max=72"` // bcrypt max password length is 72 bytes
+	Password primitive.SensitiveString `json:"password" validate:"required,min=8,max=72"` // bcrypt max password length is 72 bytes
 }
 
-// Hash returns the hashed password.
-func (rvp RequiredValidatingPassword) HashPassword() (string, error) {
+// HashPassword returns the hashed password.
+func (rvp RequiredValidatingPassword) HashPassword() (primitive.SensitiveString, error) {
 	return bcryptHash(rvp.Password)
 }
 
@@ -30,21 +31,21 @@ func (rvp RequiredValidatingPassword) HashPassword() (string, error) {
 // Changes to password validation tags MUST be kept in sync with
 // RequiredValidatingPassword.
 type OptionalValidatingPassword struct {
-	Password *string `json:"password" validate:"omitempty,min=8,max=72"`
+	Password *primitive.SensitiveString `json:"password" validate:"omitempty,min=8,max=72"`
 }
 
-// Hash returns the hashed password.
-func (ovp OptionalValidatingPassword) HashPassword() (string, error) {
+// HashPassword returns the hashed password.
+func (ovp OptionalValidatingPassword) HashPassword() (primitive.SensitiveString, error) {
 	return bcryptHash(*ovp.Password)
 }
 
-func bcryptHash(password string) (string, error) {
+func bcryptHash(password primitive.SensitiveString) (primitive.SensitiveString, error) {
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", fmt.Errorf("hash password: %w", err)
 	}
 
-	return string(hashBytes), nil
+	return primitive.SensitiveString(hashBytes), nil
 }
 
 func newJWT(key *rsa.PrivateKey, ttl time.Duration, sub string) (string, error) {

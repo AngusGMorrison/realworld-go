@@ -9,7 +9,7 @@ COPY . .
 
 RUN go mod download
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o ./server ./cmd/server
+RUN GOOS=linux GOARCH=amd64 make build
 
 RUN adduser \
   --disabled-password \
@@ -26,4 +26,4 @@ USER docker:docker
 
 EXPOSE $port
 
-ENTRYPOINT ["bash", "/app/entrypoint.sh"]
+CMD /app/bin/server
