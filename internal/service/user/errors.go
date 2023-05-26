@@ -33,6 +33,9 @@ var ErrUserNotFound = errors.New("user not found")
 // address is already registered.
 var ErrEmailRegistered = errors.New("email address is already registered")
 
+// ErrUserIDEmpty is returned by the domain whenever an empty user UUID is provided.
+var ErrUserIDEmpty = errors.New("user ID must not be empty")
+
 // ErrUsernameTaken should be returned by a [Repository] when the specified
 // username is already registered.
 var ErrUsernameTaken = errors.New("username is taken")

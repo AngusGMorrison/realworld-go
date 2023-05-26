@@ -1,4 +1,4 @@
-package valueobj
+package tidy
 
 import (
 	"testing"

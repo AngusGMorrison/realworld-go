@@ -1,20 +1,17 @@
 package user
 
 import (
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	neturl "net/url"
 	"regexp"
 
-	"github.com/angusgmorrison/realworld/pkg/valueobj"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/uuid"
+	"github.com/angusgmorrison/realworld/pkg/tidy"
 )
 
 const (
 	minUsernameLen  = 1
-	maxUsernameLen  = 32
+	maxUsernameLen  = 16
 	usernamePattern = `^[a-zA-Z0-9_]+$`
 )
 
@@ -36,50 +33,99 @@ var (
 	)
 )
 
-// username represents a valid username.
-type username struct {
+// Username represents a valid Username.
+type Username struct {
 	raw string
 }
 
 // ParseUsername returns either a valid [Username] or an error if the raw username
 // is invalid.
-func ParseUsername(raw string) (username, error) {
+func ParseUsername(raw string) (Username, error) {
 	if len(raw) < minUsernameLen {
-		return username{}, ErrUsernameTooShort
+		return Username{}, ErrUsernameTooShort
 	}
 	if len(raw) > maxUsernameLen {
-		return username{}, ErrUsernameTooLong
+		return Username{}, ErrUsernameTooLong
 	}
 	if !usernameRegex.MatchString(raw) {
-		return username{}, ErrUsernameFormat
+		return Username{}, ErrUsernameFormat
 	}
 
-	return username{raw: raw}, nil
+	return Username{raw: raw}, nil
 }
 
-func (u username) String() string {
+func (u Username) String() string {
 	return u.raw
 }
 
-// User is the central domain type for this package.
-type user struct {
-	id           uuid.UUID
-	username     username
-	email        valueobj.EmailAddress
-	passwordHash passwordHash
-	bio          string
-	imageURL     url
+// NonZero satisfies [tidy.Strict].
+func (u Username) NonZero() error {
+	if u == (Username{}) {
+		return &tidy.ZeroValueError{ZeroStrict: u}
+	}
+	return nil
 }
 
+// Bio represents a user's bio. Implements [tidy.Strict].
+type Bio string
+
+// NonZero satisfies [tidy.Strict].
+func (b Bio) NonZero() error {
+	if b == "" {
+		return &tidy.ZeroValueError{ZeroStrict: b}
+	}
+	return nil
+}
+
+// URL represents a valid, immutable URL.
+type URL struct {
+	inner *neturl.URL
+}
+
+// ParseURL parses `candidate`, returning a valid [URL] if successful, and an
+// error otherwise.
+func ParseURL(candidate string) (*URL, error) {
+	u, err := neturl.Parse(candidate)
+	if err != nil {
+		return nil, fmt.Errorf("parse candidate url %q: %w", candidate, err)
+	}
+
+	return &URL{inner: u}, nil
+}
+
+func (u URL) String() string {
+	return u.inner.String()
+}
+
+// NonZero satisfies [tidy.Strict].
+func (u URL) NonZero() error {
+	if u == (URL{}) {
+		return &tidy.ZeroValueError{ZeroStrict: u}
+	}
+	return nil
+}
+
+// User is the central domain type for this package.
+type User struct {
+	id           tidy.UUIDv4
+	username     Username
+	email        tidy.EmailAddress
+	passwordHash PasswordHash
+	bio          tidy.Option[Bio]
+	imageURL     tidy.Option[URL]
+}
+
+// NewUser returns a new User instance, or an error if any of its required
+// constituent fields are zero values.
 func NewUser(
-	id uuid.UUID,
-	username username,
-	email valueobj.EmailAddress,
-	passwordHash passwordHash,
-	bio string,
-	imageURL url,
-) *user {
-	return &user{
+	id tidy.UUIDv4,
+	username Username,
+	email tidy.EmailAddress,
+	passwordHash PasswordHash,
+	bio tidy.Option[Bio],
+	imageURL tidy.Option[URL],
+) (User, error) {
+	user := User{
 		id:           id,
 		username:     username,
 		email:        email,
@@ -87,42 +133,56 @@ func NewUser(
 		bio:          bio,
 		imageURL:     imageURL,
 	}
+
+	if err := user.NonZero(); err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
+
+// NonZero satisfies [tidy.Strict].
+func (u *User) NonZero() error {
+	if err := tidy.NonZero(u.id, u.username, u.email, u.passwordHash, u.bio, u.imageURL); err != nil {
+		return fmt.Errorf("User entity must not have zero-value fields: %w", err)
+	}
+	return nil
 }
 
 // ID returns the user's unique identifier.
-func (user *user) ID() uuid.UUID {
-	return user.id
+func (u *User) ID() tidy.UUIDv4 {
+	return u.id
 }
 
 // Username returns the user's username.
-func (user *user) Username() username {
-	return user.username
+func (u *User) Username() Username {
+	return u.username
 }
 
 // Email returns the user's email address.
-func (user *user) Email() valueobj.EmailAddress {
-	return user.email
+func (u *User) Email() tidy.EmailAddress {
+	return u.email
 }
 
-// passwordHash returns the user's password hash.
-func (user *user) PasswordHash() passwordHash {
-	return user.passwordHash
+// PasswordHash returns the user's password hash.
+func (u *User) PasswordHash() PasswordHash {
+	return u.passwordHash
 }
 
-// Bio returns the user's bio, which may be empty.
-func (user *user) Bio() string {
-	return user.bio
+// Bio returns the user's bio as a [tidy.Option[Bio]].
+func (u *User) Bio() tidy.Option[Bio] {
+	return u.bio
 }
 
-// ImageURL returns the user's image URL, which may be nil.
-func (user *user) ImageURL() url {
-	return user.imageURL
+// ImageURL returns the user's image URL as a [tidy.Option[URL]].
+func (u *User) ImageURL() tidy.Option[URL] {
+	return u.imageURL
 }
 
-// Equal returns true if two users are equal in all fields but their password
+// Equals returns true if two users are equal in all fields but their password
 // hash, since direct comparison of bcrypt hashes without the input password is
 // impossible by design.
-func (u *user) Equal(other *user) bool {
+func (u *User) Equals(other *User) bool {
 	return u.id == other.id &&
 		u.username == other.username &&
 		u.email == other.email &&
@@ -130,68 +190,85 @@ func (u *user) Equal(other *user) bool {
 		u.imageURL == other.imageURL
 }
 
-// authenticatedUser is a User with a valid JWT.
-type authenticatedUser struct {
+// AuthenticatedUser is a User with a valid JWT.
+type AuthenticatedUser struct {
 	token JWT
-	user  *user
+	user  *User
 }
 
 // Token returns the user's JWT.
-func (au *authenticatedUser) Token() JWT {
+func (au *AuthenticatedUser) Token() JWT {
 	return au.token
 }
 
 // User returns the user.
-func (au *authenticatedUser) User() *user {
+func (au *AuthenticatedUser) User() *User {
 	return au.user
 }
 
-// Equals returns true if two authenticated users:
-//   - have JWTs with the same subject claim (timestamp fields are not compared);
-//   - are equal in all other fields but password hash (which can't be compared).
-func (au *authenticatedUser) Equal(other *authenticatedUser, jwtPublicKey *rsa.PublicKey) bool {
-	return jwtSubjectsEqual(au.token, other.token, jwtPublicKey) &&
-		cmp.Equal(au.User, other.User)
+// Equals returns true if two authenticated users are equal in their user field.
+// The JWT is not considered to be part of the user's identity.
+func (au *AuthenticatedUser) Equals(other *AuthenticatedUser) bool {
+	return au.User().Equals(other.User())
 }
 
-// registrationRequest carries validated data required to register a new user.
-type registrationRequest struct {
-	username     username
-	email        valueobj.EmailAddress
-	passwordHash passwordHash
+// RegistrationRequest carries validated data required to register a new user.
+type RegistrationRequest struct {
+	username     Username
+	email        tidy.EmailAddress
+	passwordHash PasswordHash
 }
 
 // NewRegistrationRequest parses each of its inputs and returns a valid
 // [registrationRequest]. If any one of the inputs can't be parsed, the
 // corresponding error is returned instead.
 func NewRegistrationRequest(
-	username username, email valueobj.EmailAddress, passwordHash passwordHash,
-) (*registrationRequest, error) {
-	return &registrationRequest{
+	username Username, email tidy.EmailAddress, passwordHash PasswordHash,
+) (RegistrationRequest, error) {
+	req := RegistrationRequest{
 		username:     username,
 		email:        email,
 		passwordHash: passwordHash,
-	}, nil
+	}
+
+	if err := req.NonZero(); err != nil {
+		return RegistrationRequest{}, err
+	}
+
+	return req, nil
+}
+
+// NonZero satisfies [tidy.Strict].
+func (r *RegistrationRequest) NonZero() error {
+	if r == nil {
+		return &tidy.ZeroValueError{ZeroStrict: r}
+	}
+
+	if err := tidy.NonZero(r.username, r.email, r.passwordHash); err != nil {
+		return fmt.Errorf("RegistrationRequest strict type must not have zero-value fields: %w", err)
+	}
+
+	return nil
 }
 
 // Username returns the username.
-func (r *registrationRequest) Username() username {
+func (r *RegistrationRequest) Username() Username {
 	return r.username
 }
 
 // EmailAddress returns the email address.
-func (r *registrationRequest) EmailAddress() valueobj.EmailAddress {
+func (r *RegistrationRequest) EmailAddress() tidy.EmailAddress {
 	return r.email
 }
 
-// passwordHash returns the password hash.
-func (r *registrationRequest) PasswordHash() passwordHash {
+// PasswordHash returns the password hash.
+func (r *RegistrationRequest) PasswordHash() PasswordHash {
 	return r.passwordHash
 }
 
-// authRequest describes the data required to authenticate a user.
-type authRequest struct {
-	email             valueobj.EmailAddress
+// AuthRequest describes the data required to authenticate a user.
+type AuthRequest struct {
+	email             tidy.EmailAddress
 	passwordCandidate PasswordCandidate
 }
 
@@ -200,107 +277,116 @@ type authRequest struct {
 // Failure to parse the email address results in a generic [AuthError] to avoid
 // leaking information about the nature of the authentication failure to the end
 // user.
-func NewAuthRequest(email valueobj.EmailAddress, passwordCandidate PasswordCandidate) (*authRequest, error) {
-	return &authRequest{
+func NewAuthRequest(email tidy.EmailAddress, passwordCandidate PasswordCandidate) (AuthRequest, error) {
+	req := AuthRequest{
 		email:             email,
 		passwordCandidate: passwordCandidate,
-	}, nil
+	}
+
+	if err := req.NonZero(); err != nil {
+		return AuthRequest{}, err
+	}
+
+	return req, nil
+}
+
+// NonZero satisfies [tidy.Strict]. Any password candidate is considered
+// non-zero, since it is the comparison with a user's password hash that
+// determines its validity.
+func (ar *AuthRequest) NonZero() error {
+	if ar == nil {
+		return &tidy.ZeroValueError{ZeroStrict: ar}
+	}
+
+	if err := tidy.NonZero(ar.Email()); err != nil {
+		return fmt.Errorf("AuthRequest strict type must not have zero-value fields: %w", err)
+	}
+
+	return nil
 }
 
 // Email returns the email address.
-func (ar *authRequest) Email() valueobj.EmailAddress {
+func (ar *AuthRequest) Email() tidy.EmailAddress {
 	return ar.email
 }
 
 // PasswordCandidate returns the password candidate.
-func (ar *authRequest) PasswordCandidate() PasswordCandidate {
+func (ar *AuthRequest) PasswordCandidate() PasswordCandidate {
 	return ar.passwordCandidate
-}
-
-// url represents a valid, immutable URL.
-type url struct {
-	inner *neturl.URL
-}
-
-// NewURL parses `candidate`, returning a valid [url] if successful, and an
-// error otherwise.
-func NewURL(candidate string) (*url, error) {
-	u, err := neturl.Parse(candidate)
-	if err != nil {
-		return nil, fmt.Errorf("parse candidate url %q: %w", candidate, err)
-	}
-
-	return &url{inner: u}, nil
-}
-
-func (u url) String() string {
-	return u.inner.String()
 }
 
 // UpdateRequest describes the data required to update a user. Since zero or
 // more fields may be updated in a single request, pointer fields are required
 // to distinguish the absence of a value (i.e. no change) from the zero value.
-type updateRequest struct {
-	userID   uuid.UUID
-	email    *valueobj.EmailAddress
-	bio      *string
-	imageURL *url
-	pwHash   *passwordHash
+type UpdateRequest struct {
+	userID   tidy.UUIDv4
+	email    tidy.Option[tidy.EmailAddress]
+	bio      tidy.Option[Bio]
+	imageURL tidy.Option[URL]
+	pwHash   tidy.Option[PasswordHash]
 }
-
-// ErrUserIDEmpty is returned by the domain whenever an empty user UUID is provided.
-var ErrUserIDEmpty = errors.New("user ID must not be empty")
 
 // NewUpdateRequest invokes each of its optional setters in turn, returning a
 // valid [updateRequest] if all succeed, or a composition of all validation errors.
 func NewUpdateRequest(
-	userID uuid.UUID,
-	email *valueobj.EmailAddress,
-	bio *string,
-	imageURL *url,
-	passwordHash *passwordHash,
-) (*updateRequest, error) {
-	if (userID == uuid.UUID{}) {
-		return nil, ErrUserIDEmpty
-	}
-
-	return &updateRequest{
+	userID tidy.UUIDv4,
+	email tidy.Option[tidy.EmailAddress],
+	bio tidy.Option[Bio],
+	imageURL tidy.Option[URL],
+	passwordHash tidy.Option[PasswordHash],
+) (UpdateRequest, error) {
+	req := UpdateRequest{
 		userID:   userID,
 		email:    email,
 		bio:      bio,
 		imageURL: imageURL,
 		pwHash:   passwordHash,
-	}, nil
+	}
+
+	if err := req.NonZero(); err != nil {
+		return UpdateRequest{}, err
+	}
+
+	return req, nil
 }
 
-func (req *updateRequest) UserID() uuid.UUID {
+// NonZero satisfies [tidy.Strict].
+func (req *UpdateRequest) NonZero() error {
+	if req == nil {
+		return &tidy.ZeroValueError{ZeroStrict: req}
+	}
+
+	if err := tidy.NonZero(req.userID); err != nil {
+		return fmt.Errorf("UpdateRequest strict type must not have zero-value fields: %w", err)
+	}
+
+	return nil
+}
+
+// UserID returns the user's ID.
+func (req *UpdateRequest) UserID() tidy.UUIDv4 {
 	return req.userID
 }
 
-func (req *updateRequest) Email() valueobj.EmailAddress {
-	if req.email == nil {
-		return valueobj.EmailAddress{}
-	}
-	return *req.email
+// Email returns the user's new email address, or the zero value if no change is
+// requested.
+func (req *UpdateRequest) Email() tidy.Option[tidy.EmailAddress] {
+	return req.email
 }
 
-func (req *updateRequest) Bio() string {
-	if req.bio == nil {
-		return ""
-	}
-	return *req.bio
+// Bio returns the user's new bio, or the empty string if no change is requested.
+func (req *UpdateRequest) Bio() tidy.Option[Bio] {
+	return req.bio
 }
 
-func (req *updateRequest) ImageURL() url {
-	if req.imageURL == nil {
-		return url{}
-	}
-	return *req.imageURL
+// ImageURL returns the user's new image URL, or the zero value if no change is
+// requested.
+func (req *UpdateRequest) ImageURL() tidy.Option[URL] {
+	return req.imageURL
 }
 
-func (req *updateRequest) PasswordHash() passwordHash {
-	if req.pwHash == nil {
-		return passwordHash{}
-	}
-	return *req.pwHash
+// PasswordHash returns the user's new password hash, or the zero value if no change
+// is requested.
+func (req *UpdateRequest) PasswordHash() tidy.Option[PasswordHash] {
+	return req.pwHash
 }

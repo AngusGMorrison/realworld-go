@@ -566,4 +566,3 @@ package user
 // 		return expected.Equals(user) && user.HasPassword(password)
 // 	}
 // }
-//
