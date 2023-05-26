@@ -45,7 +45,7 @@ type PasswordHash struct {
 
 // NonZero satisfies [tidy.Strict].
 func (ph PasswordHash) NonZero() error {
-	if ph.inner.Expose() == nil {
+	if len(ph.inner.Expose()) == 0 {
 		return &tidy.ZeroValueError{ZeroStrict: ph}
 	}
 	return nil

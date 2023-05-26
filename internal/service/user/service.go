@@ -24,10 +24,10 @@ type Service interface {
 
 // Repository is a store of user data.
 type Repository interface {
-	GetUserByID(ctx context.Context, id tidy.UUIDv4) (*User, error)
-	GetUserByEmail(ctx context.Context, email tidy.EmailAddress) (*User, error)
-	CreateUser(ctx context.Context, req RegistrationRequest) (*User, error)
-	UpdateUser(ctx context.Context, req UpdateRequest) (*User, error)
+	GetUserByID(ctx context.Context, id tidy.UUIDv4) (User, error)
+	GetUserByEmail(ctx context.Context, email tidy.EmailAddress) (User, error)
+	CreateUser(ctx context.Context, req RegistrationRequest) (User, error)
+	UpdateUser(ctx context.Context, req UpdateRequest) (User, error)
 }
 
 type service struct {
@@ -59,7 +59,7 @@ func (s *service) Register(ctx context.Context, req RegistrationRequest) (*Authe
 	}
 
 	return &AuthenticatedUser{
-		user:  user,
+		user:  &user,
 		token: jwt,
 	}, nil
 }
@@ -76,7 +76,7 @@ func (s *service) Authenticate(ctx context.Context, req AuthRequest) (*Authentic
 		return nil, fmt.Errorf("get user from %#v: %w", req, err)
 	}
 
-	if err := tryAuthenticate(user, req.PasswordCandidate()); err != nil {
+	if err := tryAuthenticate(&user, req.PasswordCandidate()); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +86,7 @@ func (s *service) Authenticate(ctx context.Context, req AuthRequest) (*Authentic
 	}
 
 	return &AuthenticatedUser{
-		user:  user,
+		user:  &user,
 		token: jwt,
 	}, nil
 }
@@ -98,7 +98,7 @@ func (s *service) GetUser(ctx context.Context, id tidy.UUIDv4) (*User, error) {
 		return nil, fmt.Errorf("get user with ID %s: %w", id, err)
 	}
 
-	return user, nil
+	return &user, nil
 }
 
 // Update updates the user with the given ID.
@@ -108,5 +108,5 @@ func (s *service) UpdateUser(ctx context.Context, req UpdateRequest) (*User, err
 		return nil, fmt.Errorf("update user with ID %s: %w", req.UserID(), err)
 	}
 
-	return user, nil
+	return &user, nil
 }
