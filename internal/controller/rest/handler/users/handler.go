@@ -148,7 +148,6 @@ func (body *updateRequestBody) toDomain(userID uuid.UUID) (*user.UpdateRequest, 
 		} else {
 			emailOpt = option.Some(email)
 		}
-
 	}
 
 	passwordOpt := option.None[user.PasswordHash]()
@@ -235,10 +234,4 @@ func newUserResponseBodyFromDomain(u *user.User, token user.JWT) *successRespons
 			ImageURL: u.ImageURL().ValueOrZero().String(),
 		},
 	}
-}
-
-func badRequest(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": "request body is not a valid JSON string",
-	})
 }

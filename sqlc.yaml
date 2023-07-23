@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - schema: "internal/repository/sqlite/migrations"
+    queries: "internal/repository/sqlite/queries"
+    engine: "sqlite"
+    gen:
+      go:
+        out: "internal/repository/sqlite/sqlc"
+    database:
+      uri: "${REALWORLD_VOLUME_MOUNT_PATH}/${REALWORLD_DB_BASENAME}"
+    rules:
+      - sqlc/db-prepare

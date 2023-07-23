@@ -25,7 +25,6 @@ linters: # https://golangci-lint.run/usage/linters/
     - "paralleltest"
     - "prealloc"
     - "reassign"
-    - "revive"
     - "rowserrcheck"
     - "sqlclosecheck"
     - "staticcheck"
@@ -36,8 +35,6 @@ linters: # https://golangci-lint.run/usage/linters/
     - "usestdlibvars"
     - "whitespace"
     - "wrapcheck"
-  disable:
-    - "typecheck"
 
 linters-settings:
   wrapcheck:
@@ -54,5 +51,6 @@ linters-settings:
       # Fiber HTTP handler-related methods
       - ".JSON("
       - ".Next("
+      - "errorHandler.Handle"
     ignoreInterfaceRegexps:
       - "Presenter"

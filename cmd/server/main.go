@@ -38,14 +38,14 @@ func run() (err error) {
 		return fmt.Errorf("migrate DB: %w", err)
 	}
 
-	jwtPrivateKey, err := cfg.AuthTokenRS256PrivateKey()
+	jwtPrivateKey, err := cfg.JWTPrivateKey()
 	if err != nil {
 		return fmt.Errorf("load JWT private key: %w", err)
 	}
 
 	userService := user.NewService(db, jwtPrivateKey, cfg.JWTTTL)
 
-	jwtPublicKey, err := cfg.AuthTokenRS256PublicKey()
+	jwtPublicKey, err := cfg.JWTPublicKey()
 	if err != nil {
 		return fmt.Errorf("load JWT public key: %w", err)
 	}

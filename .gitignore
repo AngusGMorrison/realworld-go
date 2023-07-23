@@ -3,3 +3,5 @@ notes.md
 bin/*
 .vscode
 .idea
+certs
+sqlc

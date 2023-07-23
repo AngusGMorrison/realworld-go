@@ -1,10 +1,15 @@
-.PHONY: test build docker_build docker_create_volume docker_run docker_run_it
+include .env
+
+.PHONY: test build gen_migration docker_build docker_create_volume docker_run docker_run_it
 
 test:
 	go test -race ./...
 
 build: ## Compile the application. CGO is required by the SQLite driver.
 	CGO_ENABLED=1 go build -o ./bin/server ./cmd/server
+
+gen_migration: ## Generate a new, timestamped migration file.
+	migrate create -ext sql -dir ./internal/repository/sqlite/migrations $(MIGRATION_NAME)
 
 docker_build: ## Build the Docker image.
 	docker build \
@@ -18,7 +23,7 @@ docker_create_volume: ## Create the persistence volume for the application.
 
 # Mandatory environment variables to be passed to the application via Docker.
 docker_env_flags = \
-	--env REALWORLD_JWT_RSA_PRIVATE_KEY_PEM \
+	--env REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_PATH \
 	--env REALWORLD_VOLUME_MOUNT_PATH \
 	--env REALWORLD_DB_BASENAME
 

@@ -4,6 +4,7 @@ package config
 import (
 	"crypto/rsa"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -15,13 +16,13 @@ const envVarPrefix = "REALWORLD"
 
 // Config represents the complete configuration settings for the application.
 type Config struct {
-	Addr                string        `split_words:"true" default:":8080"`
-	ReadTimeout         time.Duration `split_words:"true" default:"5s"`
-	WriteTimeout        time.Duration `split_words:"true" default:"5s"`
-	JWTRSAPrivateKeyPEM string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM" required:"true"`
-	JWTTTL              time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
-	DBBasename          string        `split_words:"true" default:"realworld.db"`
-	VolumeMountPath     string        `split_words:"true" required:"true"`
+	Addr                    string        `split_words:"true" default:":8080"`
+	ReadTimeout             time.Duration `split_words:"true" default:"5s"`
+	WriteTimeout            time.Duration `split_words:"true" default:"5s"`
+	JWTRSAPrivateKeyPEMPath string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_PATH" required:"true"`
+	JWTTTL                  time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
+	DBBasename              string        `split_words:"true" default:"realworld.db"`
+	VolumeMountPath         string        `split_words:"true" required:"true"`
 }
 
 // New attempts to parse a `Config` object from the environment.
@@ -34,20 +35,25 @@ func New() (Config, error) {
 	return cfg, nil
 }
 
-// AuthTokenRS256PrivateKey parses the RSA private key PEM loaded from the
+// JWTPrivateKey parses the RSA private key PEM loaded from the
 // environment into a private key object.
-func (c *Config) AuthTokenRS256PrivateKey() (*rsa.PrivateKey, error) {
-	key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(c.JWTRSAPrivateKeyPEM))
+func (c *Config) JWTPrivateKey() (*rsa.PrivateKey, error) {
+	pemBytes, err := os.ReadFile(c.JWTRSAPrivateKeyPEMPath)
+	if err != nil {
+		return nil, fmt.Errorf("read JWT private key PEM from %q: %w", c.JWTRSAPrivateKeyPEMPath, err)
+	}
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(pemBytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse REALWORLD_JWT_RSA_PRIVATE_KEY_PEM: %w", err)
 	}
 	return key, nil
 }
 
-// AuthTokenRS256PublicKey extracts a public counterpart of the private key
+// JWTPublicKey extracts a public counterpart of the private key
 // parsed from the environment PEM string.
-func (c *Config) AuthTokenRS256PublicKey() (*rsa.PublicKey, error) {
-	key, err := c.AuthTokenRS256PrivateKey()
+func (c *Config) JWTPublicKey() (*rsa.PublicKey, error) {
+	key, err := c.JWTPrivateKey()
 	if err != nil {
 		return nil, err
 	}
