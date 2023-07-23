@@ -40,8 +40,8 @@ func ParsePassword(candidate logfusc.Secret[string]) (PasswordHash, error) {
 	return PasswordHash{inner: logfusc.NewSecret(hashBytes)}, nil
 }
 
-// NewPasswordHash wraps a hashed password in a [passwordHash].
-func NewPasswordHash(hash logfusc.Secret[[]byte]) PasswordHash {
+// WrapHashedPassword wraps a hashed password in a [passwordHash].
+func WrapHashedPassword(hash logfusc.Secret[[]byte]) PasswordHash {
 	return PasswordHash{inner: hash}
 }
 

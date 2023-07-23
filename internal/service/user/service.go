@@ -78,7 +78,7 @@ func (s *service) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
 		return nil, fmt.Errorf("get user with ID %s: %w", id, err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 // UpdateUser updates the user with the given ID.

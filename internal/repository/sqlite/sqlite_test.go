@@ -17,7 +17,7 @@ package sqlite
 //
 //// It is essential that each package uses a distinct test database to avoid
 //// unexpected drops by parallel tests.
-//var dbPath = fmt.Sprintf("testdata/%s.db", uuid.New().String())
+//var dbPath = fmt.Sprintf("testdata/%s.innerDB", uuid.New().String())
 //
 //func TestMain(m *testing.M) {
 //	code, err := setUpAndTearDown(m)
@@ -38,13 +38,13 @@ package sqlite
 //		return 1, fmt.Errorf("create DB file at %s: %w", dbPath, err)
 //	}
 //
-//	db, err := New(dbPath)
+//	innerDB, err := New(dbPath)
 //	if err != nil {
 //		return 1, err
 //	}
-//	defer func() { _ = db.Close() }()
+//	defer func() { _ = innerDB.Close() }()
 //
-//	if err := db.Migrate(); err != nil {
+//	if err := innerDB.Migrate(); err != nil {
 //		return 1, err
 //	}
 //
@@ -73,18 +73,18 @@ package sqlite
 //func newTx(t *testing.T) (tx *sql.Tx, rollback func()) {
 //	t.Helper()
 //
-//	db, err := New(dbPath)
+//	innerDB, err := New(dbPath)
 //	require.NoError(t, err, "open DB connection")
 //
-//	tx, err = db.innerDB.Begin()
+//	tx, err = innerDB.innerDB.Begin()
 //	if err != nil {
-//		_ = db.Close()
+//		_ = innerDB.Close()
 //		require.NoError(t, err, "begin transaction")
 //	}
 //
 //	return tx, func() {
 //		_ = tx.Rollback()
-//		_ = db.Close()
+//		_ = innerDB.Close()
 //	}
 //}
 //
@@ -323,11 +323,11 @@ package sqlite
 //					ImageURL:     imageURL,
 //				}
 //
-//				db, err := New(dbPath)
+//				innerDB, err := New(dbPath)
 //				require.NoError(t, err, "open DB connection")
-//				defer func() { _ = db.Close() }()
+//				defer func() { _ = innerDB.Close() }()
 //
-//				tx, err := db.innerDB.Begin()
+//				tx, err := innerDB.innerDB.Begin()
 //				require.NoError(t, err, "begin transaction")
 //				defer func() { _ = tx.Rollback() }()
 //

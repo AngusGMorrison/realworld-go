@@ -24,7 +24,7 @@ type Service interface {
 type Repository interface {
 	// GetUserByID retrieves the [User] with `ID`.
 	// 	- MUST return [ErrUserNotFound] if no such User exists.
-	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*User, error)
 
 	// GetUserByEmail returns a user by email. MUST return [ErrUserNotFound] if
 	// no such user exists.

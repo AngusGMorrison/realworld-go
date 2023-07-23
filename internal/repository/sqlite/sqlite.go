@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/angusgmorrison/realworld/internal/repository/sqlite/sqlc"
 	"strings"
 
 	"github.com/angusgmorrison/realworld/internal/service/user"
@@ -24,6 +25,7 @@ var migrations embed.FS
 // SQLite is an SQLite3 database with an open connection.
 type SQLite struct {
 	innerDB *sql.DB
+	queries *sqlc.Queries
 }
 
 // New creates a new SQLite database, opens a connection and pings the DB.
@@ -37,7 +39,10 @@ func New(dbPath string) (*SQLite, error) {
 		return nil, fmt.Errorf("ping DB: %w", err)
 	}
 
-	return &SQLite{db}, nil
+	return &SQLite{
+		innerDB: db,
+		queries: sqlc.New(db),
+	}, nil
 }
 
 // Close closes the database connection.
@@ -99,28 +104,6 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 type executor interface {
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-}
-
-// GetUserByID returns the [user.User] with the given ID, or
-// [user.ErrUserNotFound] if no user exists with that ID.
-func (db *SQLite) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	return getUserByID(ctx, db.innerDB, id)
-}
-
-func getUserByID(ctx context.Context, ex executor, id uuid.UUID) (*user.User, error) {
-	//query := `SELECT id, email, username, bio, password_hash, image_url FROM users WHERE id = ?`
-	//row := ex.QueryRowContext(ctx, query, id)
-	//
-	//var usr user.User
-	//err := row.Scan(&usr.ID, &usr.Email, &usr.Username, &usr.Bio, &usr.PasswordHash, &usr.ImageURL)
-	//if err != nil {
-	//	if errors.Is(err, sql.ErrNoRows) {
-	//		return nil, user.ErrUserNotFound
-	//	}
-	//	return nil, fmt.Errorf("scan rows for user ID %s: %w", id, err)
-	//}
-	//return &usr, nil
-	return nil, nil
 }
 
 // GetUserByEmail returns the [user.User] with the given email, or
