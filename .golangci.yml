@@ -30,7 +30,6 @@ linters: # https://golangci-lint.run/usage/linters/
     - "sqlclosecheck"
     - "staticcheck"
     - "thelper"
-    - "typecheck"
     - "unconvert"
     - "unparam"
     - "unused"

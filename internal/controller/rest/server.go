@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld/internal/controller/rest/api/users"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/handler/users"
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/presenter"
 	"github.com/angusgmorrison/realworld/internal/service/user"
@@ -98,19 +98,19 @@ func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.P
 
 	authMW := middleware.NewRS256Auth(jwtVerificationKey)
 
-	// /api
-	api := s.fiber.Group("/api")
+	// /handler
+	api := s.fiber.Group("/handler")
 
-	// /api/users
+	// /handler/users
 	usersHandler := users.NewHandler(userService, presenter.NewFiberPresenter())
 	usersGroup := api.Group("/users")
 	usersGroup.Post("/", usersHandler.Register)
 	usersGroup.Post("/login", usersHandler.Login)
 
-	// /api/user
+	// /handler/user
 	authenticatedUserGroup := api.Group("/user", authMW)
-	authenticatedUserGroup.Get("/", usersHandler.GetCurrentUser)
-	authenticatedUserGroup.Put("/", usersHandler.UpdateCurrentUser)
+	authenticatedUserGroup.Get("/", usersHandler.GetCurrent)
+	authenticatedUserGroup.Put("/", usersHandler.UpdateCurrent)
 }
 
 func (s *Server) newLogger() *log.Logger {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/angusgmorrison/realworld/internal/controller/rest/api/testutil"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/handler/testutil"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/angusgmorrison/realworld/pkg/primitive"
 	"github.com/go-playground/validator/v10"
@@ -61,11 +61,11 @@ func Test_Handler_Login(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(service, presenter).Login)
+		server.Post("/handler/users/login", NewHandler(service, presenter).Login)
 		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q}}", "user", "email", email, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
-			"/api/users/login",
+			"/handler/users/login",
 			strings.NewReader(reqBody),
 		)
 
@@ -88,8 +88,8 @@ func Test_Handler_Login(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(nil, presenter).Login)
-		req := httptest.NewRequest(http.MethodPost, "/api/users/login", strings.NewReader(`{`))
+		server.Post("/handler/users/login", NewHandler(nil, presenter).Login)
+		req := httptest.NewRequest(http.MethodPost, "/handler/users/login", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -108,8 +108,8 @@ func Test_Handler_Login(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(nil, presenter).Login)
-		req := httptest.NewRequest(http.MethodPost, "/api/users/login", strings.NewReader(`{}`))
+		server.Post("/handler/users/login", NewHandler(nil, presenter).Login)
+		req := httptest.NewRequest(http.MethodPost, "/handler/users/login", strings.NewReader(`{}`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -138,11 +138,11 @@ func Test_Handler_Login(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users/login", NewHandler(service, presenter).Login)
+		server.Post("/handler/users/login", NewHandler(service, presenter).Login)
 		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q}}", "user", "email", email, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
-			"/api/users/login",
+			"/handler/users/login",
 			strings.NewReader(reqBody),
 		)
 		req.Header.Add("Content-Type", "application/json")
@@ -189,11 +189,11 @@ func Test_Handler_Register(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users", NewHandler(service, presenter).Register)
+		server.Post("/handler/users", NewHandler(service, presenter).Register)
 		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q,%q:%q}}", "user", "email", email, "username", username, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
-			"/api/users",
+			"/handler/users",
 			strings.NewReader(reqBody),
 		)
 		req.Header.Add("Content-Type", "application/json")
@@ -215,8 +215,8 @@ func Test_Handler_Register(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users", NewHandler(nil, presenter).Register)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", strings.NewReader(`{`))
+		server.Post("/handler/users", NewHandler(nil, presenter).Register)
+		req := httptest.NewRequest(http.MethodPost, "/handler/users", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -235,8 +235,8 @@ func Test_Handler_Register(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users", NewHandler(nil, presenter).Register)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", strings.NewReader(`{}`))
+		server.Post("/handler/users", NewHandler(nil, presenter).Register)
+		req := httptest.NewRequest(http.MethodPost, "/handler/users", strings.NewReader(`{}`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -268,11 +268,11 @@ func Test_Handler_Register(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Post("/api/users", NewHandler(service, presenter).Register)
+		server.Post("/handler/users", NewHandler(service, presenter).Register)
 		reqBody := fmt.Sprintf("{%q: {%q:%q,%q:%q,%q:%q}}", "user", "email", email, "username", username, "password", password)
 		req := httptest.NewRequest(
 			http.MethodPost,
-			"/api/users",
+			"/handler/users",
 			strings.NewReader(reqBody),
 		)
 		req.Header.Add("Content-Type", "application/json")
@@ -312,8 +312,8 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
-		server.Get("/api/users", NewHandler(service, presenter).GetCurrentUser)
-		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
+		server.Get("/handler/users", NewHandler(service, presenter).GetCurrent)
+		req := httptest.NewRequest(http.MethodGet, "/handler/users", http.NoBody)
 
 		// Make request.
 		_, err := server.Test(req)
@@ -340,8 +340,8 @@ func Test_Handler_GetCurrentUser(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Use(testutil.NewMockAuthMiddleware(t, userID, token))
-		server.Get("/api/users", NewHandler(service, presenter).GetCurrentUser)
-		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
+		server.Get("/handler/users", NewHandler(service, presenter).GetCurrent)
+		req := httptest.NewRequest(http.MethodGet, "/handler/users", http.NoBody)
 
 		// Make request.
 		_, err := server.Test(req)
@@ -385,9 +385,9 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
-		server.Put("/api/users", NewHandler(service, presenter).UpdateCurrentUser)
+		server.Put("/handler/users", NewHandler(service, presenter).UpdateCurrent)
 		reqBody := fmt.Sprintf("{%q: {%q:%q}}", "user", "email", *(expectedUpdateReq.Email))
-		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))
+		req := httptest.NewRequest(http.MethodPut, "/handler/users", strings.NewReader(reqBody))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -407,8 +407,8 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Put("/api/users", NewHandler(nil, presenter).Register)
-		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(`{`))
+		server.Put("/handler/users", NewHandler(nil, presenter).Register)
+		req := httptest.NewRequest(http.MethodPut, "/handler/users", strings.NewReader(`{`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -427,8 +427,8 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 
 		// Set up request.
 		server := testutil.NewServer(t)
-		server.Put("/api/users", NewHandler(nil, presenter).Register)
-		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(`{}`))
+		server.Put("/handler/users", NewHandler(nil, presenter).Register)
+		req := httptest.NewRequest(http.MethodPut, "/handler/users", strings.NewReader(`{}`))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.
@@ -460,9 +460,9 @@ func Test_Handler_UpdateCurrentUser(t *testing.T) {
 		// Set up request.
 		server := testutil.NewServer(t)
 		server.Use(testutil.NewMockAuthMiddleware(t, expectedUpdateReq.UserID, token))
-		server.Put("/api/users", NewHandler(service, presenter).UpdateCurrentUser)
+		server.Put("/handler/users", NewHandler(service, presenter).UpdateCurrent)
 		reqBody := fmt.Sprintf("{%q: {%q:%q}}", "user", "email", *(expectedUpdateReq.Email))
-		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))
+		req := httptest.NewRequest(http.MethodPut, "/handler/users", strings.NewReader(reqBody))
 		req.Header.Add("Content-Type", "application/json")
 
 		// Make request.

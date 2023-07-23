@@ -70,7 +70,7 @@ func Test_ParsePassword(t *testing.T) {
 			},
 			{
 				name:     "when too too long, it returns ErrPasswordTooLong",
-				password: NewPasswordCandidate(strings.Repeat("a", passwordMaxLen+1)),
+				password: NewPasswordCandidate(strings.Repeat("a", PasswordMaxLen+1)),
 				err:      ErrPasswordTooLong,
 			},
 		}

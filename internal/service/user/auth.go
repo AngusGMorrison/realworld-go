@@ -3,70 +3,33 @@ package user
 import (
 	"crypto/rsa"
 	"fmt"
+	"github.com/google/uuid"
 	"time"
 
 	"github.com/angusgmorrison/logfusc"
-	"github.com/angusgmorrison/realworld/pkg/tidy"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	passwordMinLen = 8
-	passwordMaxLen = 72
+	PasswordMinLen = 8
+	PasswordMaxLen = 72
 )
-
-// PasswordCandidate represents a password that has not yet been validated or
-// hashed.
-//
-// Embeds [logfusc.Secret], allowing it to be deserialized directly from JSON
-// and logged safely.
-type PasswordCandidate struct {
-	logfusc.Secret[string]
-}
-
-// NewPasswordCandidate wraps an unvalidated password in a [PasswordCandidate].
-func NewPasswordCandidate(password string) PasswordCandidate {
-	return PasswordCandidate{Secret: logfusc.NewSecret(password)}
-}
-
-// NonZero returns nil in all cases, since it is either the parsing of a
-// PasswordCandidate to a [PasswordHash] or the comparison of a
-// PasswordCandidate with a [PasswordHash] that determines whether the password
-// is valid.
-func (pc PasswordCandidate) NonZero() error {
-	return nil
-}
 
 // PasswordHash represents a validated and hashed password.
 type PasswordHash struct {
 	inner logfusc.Secret[[]byte]
 }
 
-// NonZero satisfies [tidy.Strict].
-func (ph PasswordHash) NonZero() error {
-	if len(ph.inner.Expose()) == 0 {
-		return &tidy.ZeroValueError{ZeroStrict: ph}
-	}
-	return nil
-}
-
-// ErrPasswordTooShort is returned when a password is too short.
-var ErrPasswordTooShort = fmt.Errorf("password must be at least %d bytes long", passwordMinLen)
-
-// ErrPasswordTooLong is returned when a password exceeds bcrypt's maximum
-// hashable length.
-var ErrPasswordTooLong = fmt.Errorf("password must be at most %d bytes long", passwordMaxLen)
-
 // ParsePassword returns a validated and hashed password from `candidate`, or
 // an error if the password is invalid or unhashable.
-func ParsePassword(candidate PasswordCandidate) (PasswordHash, error) {
+func ParsePassword(candidate logfusc.Secret[string]) (PasswordHash, error) {
 	exposedPassword := candidate.Expose()
-	if len(exposedPassword) < passwordMinLen {
-		return PasswordHash{}, ErrPasswordTooShort
+	if len(exposedPassword) < PasswordMinLen {
+		return PasswordHash{}, NewPasswordTooShortError()
 	}
-	if len(exposedPassword) > passwordMaxLen {
-		return PasswordHash{}, ErrPasswordTooLong
+	if len(exposedPassword) > PasswordMaxLen {
+		return PasswordHash{}, NewPasswordTooLongError()
 	}
 
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(exposedPassword), bcrypt.DefaultCost)
@@ -89,9 +52,9 @@ func (ph PasswordHash) Expose() []byte {
 
 // tryAuthenticate compares `password` to the [User]'s hashed password,
 // returning nil in the event of a match and [AuthError] otherwise.
-func tryAuthenticate(usr *User, password PasswordCandidate) error {
-	if err := bcrypt.CompareHashAndPassword(usr.passwordHash.Expose(), []byte(password.Expose())); err != nil {
-		return &AuthError{cause: err}
+func tryAuthenticate(hash PasswordHash, candidate logfusc.Secret[string]) error {
+	if err := bcrypt.CompareHashAndPassword(hash.Expose(), []byte(candidate.Expose())); err != nil {
+		return &AuthError{Cause: err}
 	}
 	return nil
 }
@@ -108,7 +71,7 @@ type jwtSource struct {
 	ttl        time.Duration
 }
 
-func (src *jwtSource) newWithSubject(sub tidy.UUIDv4) (JWT, error) {
+func (src *jwtSource) newWithSubject(sub uuid.UUID) (JWT, error) {
 	claims := jwt.MapClaims{
 		"sub": sub,
 		"exp": time.Now().Add(src.ttl).Unix(),
@@ -125,27 +88,27 @@ func (src *jwtSource) newWithSubject(sub tidy.UUIDv4) (JWT, error) {
 	return logfusc.NewSecret(signedToken), nil
 }
 
-func (src *jwtSource) subjectOf(token JWT) (tidy.UUIDv4, error) {
+func (src *jwtSource) subjectOf(token JWT) (uuid.UUID, error) {
 	parsedToken, err := src.parser.Parse(token.Expose(), src.keyFunc)
 	if err != nil {
-		return tidy.UUIDv4{}, fmt.Errorf("parse JWT: %w", err)
+		return uuid.UUID{}, fmt.Errorf("parse JWT: %w", err)
 	}
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return tidy.UUIDv4{}, fmt.Errorf("expected token claims to be jwt.MapClaims, got %T", parsedToken.Claims)
+		return uuid.UUID{}, fmt.Errorf("expected token claims to be jwt.MapClaims, got %T", parsedToken.Claims)
 	}
 
-	sub, ok := claims["sub"].(string)
+	rawSub, ok := claims["sub"].(string)
 	if !ok {
-		return tidy.UUIDv4{}, fmt.Errorf("expected token sub field to be string, got %T", claims["sub"])
+		return uuid.UUID{}, fmt.Errorf("expected token sub Field to be string, got %T", claims["sub"])
 	}
 
-	uuid, err := tidy.ParseUUIDv4(sub)
+	sub, err := uuid.Parse(rawSub)
 	if err != nil {
-		return tidy.UUIDv4{}, fmt.Errorf("parse token sub field into UUIDv4: %w", err)
+		return uuid.UUID{}, fmt.Errorf("parse token sub Field into UUIDv4: %w", err)
 	}
 
-	return uuid, nil
+	return sub, nil
 }
 
 func (src *jwtSource) subjectsEqual(first, second JWT) bool {

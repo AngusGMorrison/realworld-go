@@ -63,9 +63,9 @@ func DefaultRS256AuthSuccessHandler(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-// CurrentUser returns the user ID from the request context. If no user ID is
+// CurrentUserID returns the user ID from the request context. If no user ID is
 // set (e.g. because the route is not authenticated), an empty UUID is returned.
-func CurrentUser(c *fiber.Ctx) uuid.UUID {
+func CurrentUserID(c *fiber.Ctx) uuid.UUID {
 	userID, _ := c.Locals(UserIDKey).(uuid.UUID)
 	return userID
 }

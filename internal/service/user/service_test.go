@@ -180,14 +180,14 @@ package user
 
 // 		repoUserMatcher := newUserMatcher(expectedRepoUser, req.Password)
 
-// 		id := uuid.New()
+// 		ID := uuid.New()
 // 		jwtTTL := 1 * time.Hour
-// 		jwt, err := newJWT(key, jwtTTL, id.String())
+// 		jwt, err := newJWT(key, jwtTTL, ID.String())
 // 		require.NoError(t, err, "generate JWT")
 
 // 		expectedAuthUser := &AuthenticatedUser{
 // 			User: &User{
-// 				ID:           id,
+// 				ID:           ID,
 // 				Email:        email,
 // 				username:     username,
 // 				passwordHash: pwHash,
@@ -324,7 +324,7 @@ package user
 
 // 		var authErr *AuthError
 // 		require.ErrorAs(t, err, &authErr)
-// 		assert.ErrorIs(t, authErr.cause, ErrPasswordMismatch)
+// 		assert.ErrorIs(t, authErr.Cause, ErrPasswordMismatch)
 // 		assert.Nil(t, usr)
 // 	})
 
@@ -342,13 +342,13 @@ package user
 // 		pwHash, err := bcryptHash(req.Password)
 // 		require.NoError(t, err, "hash password")
 
-// 		id := uuid.New()
+// 		ID := uuid.New()
 // 		jwtTTL := 1 * time.Hour
-// 		jwt, err := newJWT(key, jwtTTL, id.String())
+// 		jwt, err := newJWT(key, jwtTTL, ID.String())
 // 		require.NoError(t, err, "generate JWT")
 // 		expectedAuthUser := &AuthenticatedUser{
 // 			User: &User{
-// 				ID:           id,
+// 				ID:           ID,
 // 				Email:        email,
 // 				username:     username,
 // 				passwordHash: pwHash,
@@ -378,13 +378,13 @@ package user
 // 	t.Run("when the repository returns an error it returns the error", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		id := uuid.New()
+// 		ID := uuid.New()
 // 		repo := &mockRepository{}
-// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), id).Return((*User)(nil), errors.New("error"))
+// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), ID).Return((*User)(nil), errors.New("error"))
 
 // 		s := NewService(repo, nil, 0)
 
-// 		usr, err := s.GetUser(context.Background(), id)
+// 		usr, err := s.GetUser(context.Background(), ID)
 
 // 		assert.Error(t, err)
 // 		assert.Nil(t, usr)
@@ -393,9 +393,9 @@ package user
 // 	t.Run("when the repository call succeeds it returns the user", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		id := uuid.New()
+// 		ID := uuid.New()
 // 		expectedUser := &User{
-// 			ID:       id,
+// 			ID:       ID,
 // 			Email:    email,
 // 			username: username,
 // 			Bio:      bio,
@@ -403,11 +403,11 @@ package user
 // 		}
 
 // 		repo := &mockRepository{}
-// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), id).Return(expectedUser, nil)
+// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), ID).Return(expectedUser, nil)
 
 // 		s := NewService(repo, nil, 0)
 
-// 		usr, err := s.GetUser(context.Background(), id)
+// 		usr, err := s.GetUser(context.Background(), ID)
 
 // 		require.NoError(t, err, "call service")
 // 		assert.Equal(t, expectedUser, usr)
@@ -489,9 +489,9 @@ package user
 // 	t.Run("when the repository returns an error it returns the error", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		id := uuid.New()
+// 		ID := uuid.New()
 // 		updateReq := &UpdateRequest{
-// 			UserID: id,
+// 			UserID: ID,
 // 		}
 // 		repo := &mockRepository{}
 // 		repo.On("UpdateUser", mock.AnythingOfType("*context.emptyCtx"), updateReq).Return((*User)(nil), errors.New("error"))
@@ -507,16 +507,16 @@ package user
 // 	t.Run("when the repository call succeeds it returns the updated user", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		id := uuid.New()
+// 		ID := uuid.New()
 // 		expectedUser := &User{
-// 			ID:       id,
+// 			ID:       ID,
 // 			Email:    email,
 // 			username: username,
 // 			Bio:      bio,
 // 			ImageURL: imageURL,
 // 		}
 // 		updateReq := &UpdateRequest{
-// 			UserID: id,
+// 			UserID: ID,
 // 		}
 // 		repo := &mockRepository{}
 // 		repo.On("UpdateUser", mock.AnythingOfType("*context.emptyCtx"), updateReq).Return(expectedUser, nil)
@@ -534,8 +534,8 @@ package user
 // 	mock.Mock
 // }
 
-// func (m *mockRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
-// 	args := m.Called(ctx, id)
+// func (m *mockRepository) GetUserByID(ctx context.Context, ID uuid.UUID) (*User, error) {
+// 	args := m.Called(ctx, ID)
 // 	return args.Get(0).(*User), args.Error(1)
 // }
 
