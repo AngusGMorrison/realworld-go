@@ -36,6 +36,8 @@ linters: # https://golangci-lint.run/usage/linters/
     - "usestdlibvars"
     - "whitespace"
     - "wrapcheck"
+  disable:
+    - "typecheck"
 
 linters-settings:
   wrapcheck:

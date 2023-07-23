@@ -2,7 +2,6 @@ package user
 
 import (
 	"fmt"
-	"github.com/angusgmorrison/realworld/pkg/tidy"
 	"github.com/google/uuid"
 )
 
@@ -90,7 +89,7 @@ func NewEmailAddressFormatError(candidate string) error {
 	}
 }
 
-func NewDuplicateEmailError(email tidy.EmailAddress) error {
+func NewDuplicateEmailError(email EmailAddress) error {
 	return &ValidationError{
 		Field:   EmailField,
 		Message: fmt.Sprintf("%q is already registered", email),

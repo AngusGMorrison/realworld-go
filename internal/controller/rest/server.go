@@ -12,7 +12,6 @@ import (
 
 	"github.com/angusgmorrison/realworld/internal/controller/rest/handler/users"
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
-	"github.com/angusgmorrison/realworld/internal/presenter"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -102,7 +101,7 @@ func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.P
 	api := s.fiber.Group("/handler")
 
 	// /handler/users
-	usersHandler := users.NewHandler(userService, presenter.NewFiberPresenter())
+	usersHandler := users.NewHandler(userService)
 	usersGroup := api.Group("/users")
 	usersGroup.Post("/", usersHandler.Register)
 	usersGroup.Post("/login", usersHandler.Login)
