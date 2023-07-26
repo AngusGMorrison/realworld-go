@@ -9,7 +9,7 @@ COPY . .
 
 RUN go mod download
 
-RUN GOOS=linux GOARCH=amd64 make build
+RUN GOOS=linux GOARCH=arm64 make build
 
 RUN adduser \
   --disabled-password \

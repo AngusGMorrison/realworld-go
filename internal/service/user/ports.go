@@ -21,24 +21,19 @@ type Service interface {
 }
 
 // Repository is a store of user data.
+//   - MUST return [ValidationError] if a database constraint is violated.
 type Repository interface {
 	// GetUserByID retrieves the [User] with `ID`.
-	// 	- MUST return [ErrUserNotFound] if no such User exists.
+	// 	- MUST return [NotFoundError] if no such User exists.
 	GetUserByID(ctx context.Context, id uuid.UUID) (*User, error)
 
-	// GetUserByEmail returns a user by email. MUST return [ErrUserNotFound] if
-	// no such user exists.
+	// GetUserByEmail returns a user by email.
+	//  - MUST return [NotFoundError] if no such user exists.
 	GetUserByEmail(ctx context.Context, email EmailAddress) (*User, error)
 
 	// CreateUser persists a new user.
-	// 	- MUST return [ErrEmailRegistered] if the email address is in use.
-	// 	- MUST return [ErrUsernameTaken] if the username is in use.
 	CreateUser(ctx context.Context, req *RegistrationRequest) (*User, error)
 
 	// UpdateUser updates an existing user.
-	// 	- MUST return [ErrEmailRegistered] on an attempt to update the email
-	//	  address to one that is already in use.
-	// 	- MUST return [ErrUsernameTaken] on an attempt to update the username to
-	//	  one that is already in use.
 	UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error)
 }

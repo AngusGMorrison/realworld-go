@@ -5,6 +5,22 @@ import (
 	"github.com/google/uuid"
 )
 
+// Field identifies the field of a user referenced in an error.
+type Field int
+
+const (
+	IDField Field = iota + 1
+	UsernameField
+	EmailField
+	PasswordField
+)
+
+var fieldNames = [4]string{"id", "username", "email", "password"}
+
+func (f Field) String() string {
+	return fieldNames[f-1]
+}
+
 // AuthError is a wrapper for authentication errors, which may include errors
 // that would otherwise be considered validation errors. This reinforces the
 // security convention that an end user should not receive the specifics of why
@@ -24,25 +40,26 @@ func (e *AuthError) Unwrap() error {
 // NotFoundError should be returned by a [Repository] when the specified user
 // does not exist.
 type NotFoundError struct {
-	ID uuid.UUID
+	IDField Field
+	ID      string
 }
 
 func (e *NotFoundError) Error() string {
-	return fmt.Sprintf("user %s not found", e.ID)
+	return fmt.Sprintf("user with %s %q not found", e.IDField, e.ID)
 }
 
-type Field int
+func NewNotFoundByIDError(id uuid.UUID) error {
+	return &NotFoundError{
+		IDField: IDField,
+		ID:      id.String(),
+	}
+}
 
-const (
-	UsernameField Field = iota + 1
-	EmailField
-	PasswordField
-)
-
-var fieldNames = [3]string{"username", "email", "password"}
-
-func (f Field) String() string {
-	return fieldNames[f-1]
+func NewNotFoundByEmailError(email EmailAddress) error {
+	return &NotFoundError{
+		IDField: EmailField,
+		ID:      email.String(),
+	}
 }
 
 type ValidationError struct {

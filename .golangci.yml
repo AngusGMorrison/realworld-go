@@ -50,7 +50,10 @@ linters-settings:
       - ".WithStack("
       # Fiber HTTP handler-related methods
       - ".JSON("
+      - ".SendStatus("
       - ".Next("
       - "errorHandler.Handle"
+      - "user.New"
+      - "user.Parse"
     ignoreInterfaceRegexps:
       - "Presenter"

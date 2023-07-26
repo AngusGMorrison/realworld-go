@@ -23,7 +23,6 @@ RETURNING *;
 -- name: UpdateUser :one
 UPDATE users SET
     email = COALESCE(sqlc.narg(email), email),
-    username = COALESCE(sqlc.narg(username), username),
     password_hash = COALESCE(sqlc.narg(password_hash), password_hash),
     bio = COALESCE(sqlc.narg(bio), bio),
     image_url = COALESCE(sqlc.narg(image_url), image_url)

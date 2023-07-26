@@ -1,22 +1,15 @@
 package sqlite
 
 import (
-	"context"
 	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
 	"github.com/angusgmorrison/realworld/internal/repository/sqlite/sqlc"
-	"strings"
-
-	"github.com/angusgmorrison/realworld/internal/service/user"
-
 	"github.com/golang-migrate/migrate/v4"
 	migratesqlite3 "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/golang-migrate/migrate/v4/source/iofs" // register the iofs source
-	"github.com/google/uuid"
-	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 //go:embed migrations/*.sql
@@ -98,133 +91,4 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	}
 
 	return m, nil
-}
-
-// executor allows us to use either a *sql.DB or *sql.Tx interchangeably.
-type executor interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-}
-
-// GetUserByEmail returns the [user.User] with the given email, or
-// [user.ErrUserNotFound] if no user exists with that email.
-func (db *SQLite) GetUserByEmail(ctx context.Context, email user.EmailAddress) (*user.User, error) {
-	return getUserByEmail(ctx, db.innerDB, email)
-}
-
-func getUserByEmail(ctx context.Context, ex executor, email user.EmailAddress) (*user.User, error) {
-	query := `SELECT id, email, username, bio, password_hash, image_url FROM users WHERE email = ?`
-	row := ex.QueryRowContext(ctx, query, email)
-	return newUserFromRow(row)
-}
-
-// CreateUser inserts a new [user.User] into the database, modifying the user
-// in-place to includes its row ID. The modified user is returned.
-//
-// Returns either [user.ErrEmailRegistered] or [user.ErrUsernameTaken] if the
-// the respective unique constraints are violated.
-func (db *SQLite) CreateUser(ctx context.Context, usr *user.User) (*user.User, error) {
-	return insertUser(ctx, db.innerDB, usr)
-}
-
-func insertUser(ctx context.Context, ex executor, usr *user.User) (*user.User, error) {
-	id := uuid.New()
-	query := `INSERT INTO users (id, email, username, password_hash, bio, image_url) VALUES (?, ?, ?, ?, ?, ?)`
-	_, err := ex.ExecContext(ctx, query, id, usr.Email, usr.Username, usr.PasswordHash, usr.Bio, usr.ImageURL)
-	if err != nil {
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			return nil, sqliteErrToDomain(sqliteErr)
-		}
-		return nil, fmt.Errorf("execute INSERT query for user %#v: %w", usr, err)
-	}
-
-	//usr.ID = id TODO: fix
-	return usr, nil
-}
-
-// UpdateUser updates the given [user.User] in the database, returning the
-// updated user.
-//
-// Returns [user.ErrEmailRegistered] if the new email is already registered.
-func (db *SQLite) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
-	return updateUser(ctx, db.innerDB, req)
-}
-
-func updateUser(ctx context.Context, ex executor, req *user.UpdateRequest) (*user.User, error) {
-	fields := make([]string, 0, 4)
-	args := make([]interface{}, 0)
-	if req.Email != nil {
-		fields = append(fields, "email = ?")
-		args = append(args, req.Email())
-	}
-	if req.Bio != nil {
-		fields = append(fields, "bio = ?")
-		args = append(args, req.Bio())
-	}
-	//if req.Password != nil {
-	//	passwordHash, err := req.HashPassword()
-	//	if err != nil {
-	//		return nil, fmt.Errorf("hash password: %w", err)
-	//	}
-	//	fields = append(fields, "password_hash = ?")
-	//	args = append(args, passwordHash)
-	//}
-	// TODO: fix
-	if req.ImageURL != nil {
-		fields = append(fields, "image_url = ?")
-		args = append(args, req.ImageURL())
-	}
-
-	var queryBuilder strings.Builder
-	queryBuilder.WriteString("UPDATE users SET ")
-	queryBuilder.WriteString(strings.Join(fields, ", "))
-	queryBuilder.WriteString(" WHERE id = ? ")
-	queryBuilder.WriteString("RETURNING id, email, username, bio, password_hash, image_url")
-
-	if len(args) == 0 {
-		return getUserByID(ctx, ex, req.UserID())
-	}
-
-	args = append(args, req.UserID)
-
-	row := ex.QueryRowContext(ctx, queryBuilder.String(), args...)
-	return newUserFromRow(row)
-}
-
-func newUserFromRow(row *sql.Row) (*user.User, error) {
-	//var usr user.User
-	//err := row.Scan(&usr.ID, &usr.Email, &usr.Username, &usr.Bio, &usr.PasswordHash, &usr.ImageURL)
-	//if err != nil {
-	//	if errors.Is(err, sql.ErrNoRows) {
-	//		return nil, user.ErrUserNotFound
-	//	}
-	//
-	//	var sqliteErr sqlite3.Error
-	//	if errors.As(err, &sqliteErr) {
-	//		return nil, sqliteErrToDomain(sqliteErr)
-	//	}
-	//	return nil, fmt.Errorf("scan row  into User: %w", err)
-	//}
-	//
-	//return &usr, nil
-	return nil, nil // TODO: fix
-}
-
-func sqliteErrToDomain(err sqlite3.Error) error {
-	//if err.ExtendedCode == sqlite3.ErrConstraintUnique {
-	//	msg := err.Error()
-	//	if strings.Contains(msg, "users.") {
-	//		if strings.Contains(msg, ".email") {
-	//			return user.ErrEmailRegistered
-	//		}
-	//		if strings.Contains(msg, ".username") {
-	//			return user.ErrUsernameTaken
-	//		}
-	//	}
-	//}
-
-	// TODO: fix
-	// Default to the original error if unhandled.
-	return err
 }
