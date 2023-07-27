@@ -22,6 +22,9 @@ RUN adduser \
 RUN mkdir $volume_mount_path && chown -R docker:docker $volume_mount_path
 RUN chmod 700 $volume_mount_path
 
+RUN chown -R docker:docker /app
+RUN chmod -R 700 /app/certs
+
 USER docker:docker
 
 EXPOSE $port

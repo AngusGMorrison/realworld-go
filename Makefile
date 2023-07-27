@@ -1,4 +1,5 @@
 include .env
+export
 
 .PHONY: test build gen_migration docker_build docker_create_volume docker_run docker_run_it
 
@@ -33,6 +34,7 @@ docker_run: docker_create_volume ## Run the application in the background in a D
 	$(docker_env_flags) \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
 	--mount source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_VOLUME_MOUNT_PATH} \
+	--rm \
 	realworld
 
 docker_run_it: docker_create_volume ## Run the application interactively in a Docker container.
