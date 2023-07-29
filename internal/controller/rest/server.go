@@ -4,13 +4,13 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/api/v0/users"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld/internal/controller/rest/handler/users"
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
@@ -97,16 +97,16 @@ func (s *Server) applyRoutes(userService user.Service, jwtVerificationKey *rsa.P
 
 	authMW := middleware.NewRS256Auth(jwtVerificationKey)
 
-	// /handler
-	api := s.fiber.Group("/handler")
+	// /api
+	api := s.fiber.Group("/api/v0")
 
-	// /handler/users
+	// /api/users
 	usersHandler := users.NewHandler(userService)
 	usersGroup := api.Group("/users")
 	usersGroup.Post("/", usersHandler.Register)
 	usersGroup.Post("/login", usersHandler.Login)
 
-	// /handler/user
+	// /api/user
 	authenticatedUserGroup := api.Group("/user", authMW)
 	authenticatedUserGroup.Get("/", usersHandler.GetCurrent)
 	authenticatedUserGroup.Put("/", usersHandler.UpdateCurrent)
@@ -134,7 +134,7 @@ func (s *Server) useGlobalMiddleware() {
 	)
 }
 
-// The top-level error handler for the server.
+// The top-level error api for the server.
 func globalErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
 

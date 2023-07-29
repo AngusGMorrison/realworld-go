@@ -93,6 +93,9 @@ func ParseURL(candidate string) (URL, error) {
 }
 
 func (u URL) String() string {
+	if u.inner == nil {
+		return ""
+	}
 	return u.inner.String()
 }
 

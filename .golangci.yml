@@ -48,7 +48,7 @@ linters-settings:
       - ".WithMessage("
       - ".WithMessagef("
       - ".WithStack("
-      # Fiber HTTP handler-related methods
+      # Fiber HTTP api-related methods
       - ".JSON("
       - ".SendStatus("
       - ".Next("

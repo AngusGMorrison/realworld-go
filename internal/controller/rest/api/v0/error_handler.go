@@ -1,4 +1,4 @@
-package handler
+package v0
 
 import "github.com/gofiber/fiber/v2"
 
@@ -16,7 +16,7 @@ type CommonErrorHandler struct{}
 var _ ErrorHandler = &CommonErrorHandler{}
 
 func (eh CommonErrorHandler) Handle(c *fiber.Ctx, errs ...error) error {
-	panic("CommonErrorHandler.Handle() is abstract and must be implemented by the handler that embeds it")
+	panic("CommonErrorHandler.Handle() is abstract and must be implemented by the api that embeds it")
 }
 
 func (eh CommonErrorHandler) BadRequest(c *fiber.Ctx) error {

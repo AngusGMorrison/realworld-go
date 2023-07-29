@@ -2,7 +2,7 @@ package users
 
 import (
 	"github.com/angusgmorrison/logfusc"
-	"github.com/angusgmorrison/realworld/internal/controller/rest/handler"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/api/v0"
 	"github.com/angusgmorrison/realworld/internal/controller/rest/middleware"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/angusgmorrison/realworld/pkg/option"
@@ -14,7 +14,7 @@ import (
 // Handler holds dependencies for users endpoints.
 type Handler struct {
 	service      user.Service
-	errorHandler handler.ErrorHandler
+	errorHandler v0.ErrorHandler
 }
 
 func NewHandler(service user.Service) *Handler {

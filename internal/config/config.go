@@ -16,7 +16,8 @@ const envVarPrefix = "REALWORLD"
 
 // Config represents the complete configuration settings for the application.
 type Config struct {
-	Addr                    string        `split_words:"true" default:":8080"`
+	Port                    string        `split_words:"true" default:"8080"`
+	Host                    string        `split_words:"true" default:"0.0.0.0"`
 	ReadTimeout             time.Duration `split_words:"true" default:"5s"`
 	WriteTimeout            time.Duration `split_words:"true" default:"5s"`
 	JWTRSAPrivateKeyPEMPath string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_PATH" required:"true"`
@@ -33,6 +34,10 @@ func New() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *Config) ServerAddress() string {
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
 
 // JWTPrivateKey parses the RSA private key PEM loaded from the

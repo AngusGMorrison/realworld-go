@@ -23,10 +23,11 @@ docker_create_volume: ## Create the persistence volume for the application.
 	docker volume create ${REALWORLD_VOLUME_NAME}
 
 # Mandatory environment variables to be passed to the application via Docker.
-docker_env_flags = \
-	--env REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_PATH \
-	--env REALWORLD_VOLUME_MOUNT_PATH \
-	--env REALWORLD_DB_BASENAME
+#docker_env_flags = \
+#	--env REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_PATH \
+#	--env REALWORLD_VOLUME_MOUNT_PATH \
+#	--env REALWORLD_DB_BASENAME \
+#	--env REALWORLD_PORT
 
 docker_run: docker_create_volume ## Run the application in the background in a Docker container.
 	docker run \

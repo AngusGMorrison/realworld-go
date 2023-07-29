@@ -28,13 +28,13 @@ func NewRS256Auth(key *rsa.PublicKey) fiber.Handler {
 	})
 }
 
-// DefaultRS256AuthFailureHandler is the default failure handler for the JWT
+// DefaultRS256AuthFailureHandler is the default failure api for the JWT
 // middleware. It is exported as a convenience for testing.
 func DefaultRS256AuthFailureHandler(_ *fiber.Ctx, _ error) error {
 	return fiber.NewError(fiber.StatusUnauthorized)
 }
 
-// DefaultRS256AuthSuccessHandler is the default success handler for the JWT
+// DefaultRS256AuthSuccessHandler is the default success api for the JWT
 // middleware. It is exported as a convenience for testing.
 func DefaultRS256AuthSuccessHandler(c *fiber.Ctx) error {
 	logger := GetLogger(c)

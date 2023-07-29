@@ -56,8 +56,8 @@ func run() (err error) {
 		&rest.ReadTimeoutOption{Timeout: cfg.ReadTimeout},
 		&rest.WriteTimeoutOption{Timeout: cfg.WriteTimeout},
 	)
-	if err := srv.Listen(cfg.Addr); err != nil {
-		return fmt.Errorf("listen on %s: %w", cfg.Addr, err)
+	if err := srv.Listen(cfg.ServerAddress()); err != nil {
+		return fmt.Errorf("listen on %s: %w", cfg.ServerAddress(), err)
 	}
 
 	return nil

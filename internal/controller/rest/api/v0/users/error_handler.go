@@ -2,16 +2,16 @@ package users
 
 import (
 	"errors"
-	"github.com/angusgmorrison/realworld/internal/controller/rest/handler"
+	"github.com/angusgmorrison/realworld/internal/controller/rest/api/v0"
 	"github.com/angusgmorrison/realworld/internal/service/user"
 	"github.com/gofiber/fiber/v2"
 )
 
 type errorHandler struct {
-	handler.CommonErrorHandler
+	v0.CommonErrorHandler
 }
 
-var _ handler.ErrorHandler = &errorHandler{}
+var _ v0.ErrorHandler = &errorHandler{}
 
 func (eh errorHandler) Handle(c *fiber.Ctx, errs ...error) error {
 	if len(errs) == 0 {
