@@ -1,0 +1,5 @@
+.PHONY: db
+
+## Generate a new migration named using the MIGRATION_NAME env var.
+db/migration:
+	migrate create -ext sql -dir ./internal/repository/sqlite/migrations $(MIGRATION_NAME)

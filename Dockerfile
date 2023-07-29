@@ -1,8 +1,10 @@
 FROM golang:1.20.3-bullseye
 
+ARG certs_dir
 ARG goarch
 ARG goos
 ARG port
+ARG user
 ARG volume_mount_path
 ARG workdir
 
@@ -20,15 +22,16 @@ RUN adduser \
   --home $workdir \
   --no-create-home \
   --uid 65532 \
-  docker
+  $user
 
-RUN mkdir $volume_mount_path && chown -R docker:docker $volume_mount_path
+RUN mkdir -p $volume_mount_path
+RUN chown -R $user:$user $volume_mount_path
 RUN chmod 700 $volume_mount_path
 
-RUN chown -R docker:docker /app
-RUN chmod -R 700 /app/certs
+RUN chown -R $user:$user $workdir
+RUN chmod -R 700 $certs_dir
 
-USER docker:docker
+USER $user:$user
 
 EXPOSE $port
 
