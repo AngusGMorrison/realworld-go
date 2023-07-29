@@ -1,7 +1,8 @@
 *.env
-notes.md
-bin/*
-.vscode
 .idea
+.vscode
+bin/*
 certs
+notes.md
 sqlc
+tmp

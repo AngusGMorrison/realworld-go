@@ -1,20 +1,23 @@
 FROM golang:1.20.3-bullseye
 
-ARG volume_mount_path
+ARG goarch
+ARG goos
 ARG port
+ARG volume_mount_path
+ARG workdir
 
-WORKDIR /app
+WORKDIR $workdir
 
 COPY . .
 
 RUN go mod download
 
-RUN GOOS=linux GOARCH=arm64 make build
+RUN GOOS=$goos GOARCH=$goarch make build
 
 RUN adduser \
   --disabled-password \
   --gecos "" \
-  --home /app \
+  --home $workdir \
   --no-create-home \
   --uid 65532 \
   docker
