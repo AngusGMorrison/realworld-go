@@ -1,38 +1,26 @@
-FROM golang:1.20.3-bullseye
+FROM golang:1.20.3-bullseye AS builder
 
-ARG certs_dir
-ARG goarch
-ARG goos
-ARG port
-ARG user
-ARG volume_mount_path
-ARG workdir
+ARG DATA_DIR
 
-WORKDIR $workdir
+WORKDIR /app
 
 COPY . .
 
+RUN mkdir -p $DATA_DIR
+
 RUN go mod download
+RUN make build
 
-RUN GOOS=$goos GOARCH=$goarch make build
+FROM gcr.io/distroless/base-debian11:nonroot AS production
 
-RUN adduser \
-  --disabled-password \
-  --gecos "" \
-  --home $workdir \
-  --no-create-home \
-  --uid 65532 \
-  $user
+ARG CERTS_DIR
+ARG DATA_DIR
+ARG PORT
 
-RUN mkdir -p $volume_mount_path
-RUN chown -R $user:$user $volume_mount_path
-RUN chmod 700 $volume_mount_path
+COPY --from=builder --chmod=700 --chown=nonroot:nonroot /app/bin/server /app/bin/server
+COPY --from=builder --chmod=700 --chown=nonroot:nonroot $CERTS_DIR $CERTS_DIR
+COPY --from=builder --chmod=700 --chown=nonroot:nonroot $DATA_DIR $DATA_DIR
 
-RUN chown -R $user:$user $workdir
-RUN chmod -R 700 $certs_dir
+EXPOSE $PORT
 
-USER $user:$user
-
-EXPOSE $port
-
-CMD /app/bin/server
+CMD ["/app/bin/server"]

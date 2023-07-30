@@ -31,4 +31,4 @@ test:
 
 ## Compile the application. CGO is required by the SQLite driver.
 build:
-	CGO_ENABLED=1 go build -o ./bin/server ./cmd/server
+	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server

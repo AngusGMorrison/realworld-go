@@ -3,42 +3,48 @@
 ## Build the production Docker image.
 docker/build:
 	docker build \
+	--no-cache \
 	--tag ${REALWORLD_IMAGE_NAME} \
-	--build-arg certs_dir=${REALWORLD_CERTS_DIR} \
-	--build-arg goarch=${REALWORLD_GOARCH} \
-	--build-arg goos=${REALWORLD_GOOS} \
-	--build-arg port=${REALWORLD_PORT} \
-	--build-arg user=${REALWORLD_USER} \
-	--build-arg volume_mount_path=${REALWORLD_VOLUME_MOUNT_PATH} \
-	--build-arg workdir=${REALWORLD_WORKDIR} \
+	--build-arg CERTS_DIR=${REALWORLD_CERTS_DIR} \
+	--build-arg PORT=${REALWORLD_PORT} \
+	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \
 	.
 
 ## Create the persistence volume for the application.
 docker/create_volume:
 	docker volume create ${REALWORLD_VOLUME_NAME}
 
-## Run the Docker image interactively.
+## Build and run the Docker image in the background.
 docker/run: docker/create_volume
+	docker run \
+	--rm \
+	--name=${REALWORLD_CONTAINER_NAME} \
+	--env-file .env \
+	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
+	--mount type=volume,source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_DATA_DIR} \
+	${REALWORLD_IMAGE_NAME}
+
+## Build and run the Docker image interactively.
+docker/run/it: docker/create_volume
 	docker run \
 	--interactive \
 	--rm \
 	--name=${REALWORLD_CONTAINER_NAME} \
 	--env-file .env \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=volume,source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_VOLUME_MOUNT_PATH} \
-	realworld
+	--mount type=volume,source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_DATA_DIR} \
+	${REALWORLD_IMAGE_NAME}
 
 ## Run the app in a container with live reloading.
 docker/live: docker/create_volume
 	docker run \
 	--interactive \
 	--rm \
-	--workdir ${REALWORLD_WORKDIR} \
-	--env air_wd=${REALWORLD_WORKDIR} \
-	--env GOFLAGS=-buildvcs=false \
+	--workdir /app \
+	--env air_wd=/app \
 	--env-file .env \
-	--mount type=bind,source=$(shell pwd),destination=${REALWORLD_WORKDIR} \
-	--mount type=volume,source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_VOLUME_MOUNT_PATH} \
+	--mount type=bind,source=$(shell pwd),destination=/app \
+	--mount type=volume,source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_DATA_DIR} \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
 	cosmtrek/air \
-	-c ${REALWORLD_WORKDIR}/.air.toml
+	-c /app/.air.toml

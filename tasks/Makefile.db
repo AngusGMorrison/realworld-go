@@ -2,4 +2,18 @@
 
 ## Generate a new migration named using the MIGRATION_NAME env var.
 db/migration:
-	migrate create -ext sql -dir ./internal/repository/sqlite/migrations $(MIGRATION_NAME)
+	migrate create -ext sql -dir internal/repository/sqlite/migrations $(MIGRATION_NAME)
+
+## Overwrite the database with an empty file.
+db/overwrite:
+	echo -n "" > ${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}
+
+## Apply any outstanding migrations.
+db/migrate:
+	migrate \
+	-path ./internal/repository/sqlite/migrations \
+	-database "sqlite3://${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}" \
+	up
+
+## Overwrite any existing database and run all migrations.
+db/new: db/overwrite db/migrate

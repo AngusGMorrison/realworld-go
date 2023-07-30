@@ -7,6 +7,6 @@ sql:
       go:
         out: "internal/repository/sqlite/sqlc"
     database:
-      uri: "${REALWORLD_VOLUME_MOUNT_PATH}/${REALWORLD_DB_BASENAME}"
+      uri: "${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}"
     rules:
       - sqlc/db-prepare

@@ -16,14 +16,15 @@ const envVarPrefix = "REALWORLD"
 
 // Config represents the complete configuration settings for the application.
 type Config struct {
-	Port                    string        `split_words:"true" default:"8080"`
-	Host                    string        `split_words:"true" default:"0.0.0.0"`
-	ReadTimeout             time.Duration `split_words:"true" default:"5s"`
-	WriteTimeout            time.Duration `split_words:"true" default:"5s"`
-	JWTRSAPrivateKeyPEMPath string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_PATH" required:"true"`
-	JWTTTL                  time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
-	DBBasename              string        `split_words:"true" default:"realworld.db"`
-	VolumeMountPath         string        `split_words:"true" required:"true"`
+	Port                        string        `split_words:"true" default:"8080"`
+	Host                        string        `split_words:"true" default:"0.0.0.0"`
+	ReadTimeout                 time.Duration `split_words:"true" default:"5s"`
+	WriteTimeout                time.Duration `split_words:"true" default:"5s"`
+	JWTTTL                      time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
+	DataDir                     string        `split_words:"true" required:"true"`
+	CertsDir                    string        `split_words:"true" required:"true"`
+	DBBasename                  string        `split_words:"true" default:"realworld.db"`
+	JWTRSAPrivateKeyPEMBasename string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_BASENAME" split_words:"true" required:"true"`
 }
 
 // New attempts to parse a `Config` object from the environment.
@@ -40,10 +41,10 @@ func (c *Config) ServerAddress() string {
 	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
 
-// JWTPrivateKey parses the RSA private key PEM loaded from the
-// environment into a private key object.
+// JWTPrivateKey parses the RSA private key PEM loaded from the environment into
+// a private key object.
 func (c *Config) JWTPrivateKey() (*rsa.PrivateKey, error) {
-	pemBytes, err := os.ReadFile(c.JWTRSAPrivateKeyPEMPath)
+	pemBytes, err := os.ReadFile(c.JWTRSAPrivateKeyPEMPath())
 	if err != nil {
 		return nil, fmt.Errorf("read JWT private key PEM from %q: %w", c.JWTRSAPrivateKeyPEMPath, err)
 	}
@@ -55,8 +56,8 @@ func (c *Config) JWTPrivateKey() (*rsa.PrivateKey, error) {
 	return key, nil
 }
 
-// JWTPublicKey extracts a public counterpart of the private key
-// parsed from the environment PEM string.
+// JWTPublicKey extracts a public counterpart of the private key parsed from the
+// environment PEM string.
 func (c *Config) JWTPublicKey() (*rsa.PublicKey, error) {
 	key, err := c.JWTPrivateKey()
 	if err != nil {
@@ -73,5 +74,11 @@ func (c *Config) JWTPublicKey() (*rsa.PublicKey, error) {
 
 // DBPath returns the absolute path to the database file.
 func (c *Config) DBPath() string {
-	return filepath.Join(c.VolumeMountPath, c.DBBasename)
+	return filepath.Join(c.DataDir, c.DBBasename)
+}
+
+// JWTRSAPrivateKeyPEMPath returns the absolute path to the JWT RSA private key
+// PEM file.
+func (c *Config) JWTRSAPrivateKeyPEMPath() string {
+	return filepath.Join(c.CertsDir, c.JWTRSAPrivateKeyPEMBasename)
 }
