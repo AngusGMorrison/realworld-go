@@ -2,7 +2,7 @@
 -include tasks/Makefile.*
 
 # Load environment variables.
--include .env
+-include env/*.env
 export
 
 .PHONY: help test build

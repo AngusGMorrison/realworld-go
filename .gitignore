@@ -3,6 +3,7 @@
 .vscode
 bin/*
 certs
+data
 notes.md
 sqlc
 tmp

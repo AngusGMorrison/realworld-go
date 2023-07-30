@@ -16,15 +16,30 @@ const envVarPrefix = "REALWORLD"
 
 // Config represents the complete configuration settings for the application.
 type Config struct {
-	Port                        string        `split_words:"true" default:"8080"`
-	Host                        string        `split_words:"true" default:"0.0.0.0"`
-	ReadTimeout                 time.Duration `split_words:"true" default:"5s"`
-	WriteTimeout                time.Duration `split_words:"true" default:"5s"`
-	JWTTTL                      time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
-	DataDir                     string        `split_words:"true" required:"true"`
-	CertsDir                    string        `split_words:"true" required:"true"`
-	DBBasename                  string        `split_words:"true" default:"realworld.db"`
-	JWTRSAPrivateKeyPEMBasename string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_BASENAME" split_words:"true" required:"true"`
+	// The port to listen on.
+	Port string `split_words:"true" default:"8080"`
+
+	// The server host.
+	Host string `split_words:"true" default:"0.0.0.0"`
+
+	// The read timeout for incoming requests to the server.
+	ReadTimeout time.Duration `split_words:"true" default:"5s"`
+
+	// The write timeout for outgoing responses from the server.
+	WriteTimeout time.Duration `split_words:"true" default:"5s"`
+
+	// The lifetime of JWTs issued by the server.
+	JwtTtl time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
+
+	// The path to the directory containing runtime data, such as the DB file
+	// and encryption keys.
+	DataDir string `split_words:"true" required:"true"`
+
+	// The name of the SQLite DB file.
+	DBBasename string `split_words:"true" default:"realworld.db"`
+
+	// The name of the RS256 private key PEM file, used to generate JWTs.
+	JWTRSAPrivateKeyPEMBasename string `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_BASENAME" split_words:"true" required:"true"`
 }
 
 // New attempts to parse a `Config` object from the environment.
@@ -46,7 +61,7 @@ func (c *Config) ServerAddress() string {
 func (c *Config) JWTPrivateKey() (*rsa.PrivateKey, error) {
 	pemBytes, err := os.ReadFile(c.JWTRSAPrivateKeyPEMPath())
 	if err != nil {
-		return nil, fmt.Errorf("read JWT private key PEM from %q: %w", c.JWTRSAPrivateKeyPEMPath, err)
+		return nil, fmt.Errorf("read JWT private key PEM from %q: %w", c.JWTRSAPrivateKeyPEMPath(), err)
 	}
 
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(pemBytes)
@@ -80,5 +95,5 @@ func (c *Config) DBPath() string {
 // JWTRSAPrivateKeyPEMPath returns the absolute path to the JWT RSA private key
 // PEM file.
 func (c *Config) JWTRSAPrivateKeyPEMPath() string {
-	return filepath.Join(c.CertsDir, c.JWTRSAPrivateKeyPEMBasename)
+	return filepath.Join(c.DataDir, c.JWTRSAPrivateKeyPEMBasename)
 }

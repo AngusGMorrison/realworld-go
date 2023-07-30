@@ -10,6 +10,8 @@ import (
 	migratesqlite3 "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/golang-migrate/migrate/v4/source/iofs" // register the iofs source
+	"os"
+	"path/filepath"
 )
 
 //go:embed migrations/*.sql
@@ -21,21 +23,37 @@ type SQLite struct {
 	queries *sqlc.Queries
 }
 
-// New creates a new SQLite database, opens a connection and pings the DB.
+// New opens or creates an SQLite database at `dbPath` and runs all migrations,
+// returning the DB instance.
 func New(dbPath string) (*SQLite, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	sanitizedPath, err := filepath.Abs(dbPath)
 	if err != nil {
-		return nil, fmt.Errorf("open DB at %s: %w", dbPath, err)
+		return nil, fmt.Errorf("sanitize path %q: %w", dbPath, err)
+	}
+
+	if err := createFileIfNotExists(sanitizedPath); err != nil {
+		return nil, fmt.Errorf("create DB: %w", err)
+	}
+
+	db, err := sql.Open("sqlite3", sanitizedPath)
+	if err != nil {
+		return nil, fmt.Errorf("open DB at %q: %w", sanitizedPath, err)
 	}
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping DB: %w", err)
 	}
 
-	return &SQLite{
+	sqlite := &SQLite{
 		innerDB: db,
 		queries: sqlc.New(db),
-	}, nil
+	}
+
+	if err := sqlite.migrate(); err != nil {
+		return nil, err
+	}
+
+	return sqlite, nil
 }
 
 // Close closes the database connection.
@@ -46,29 +64,37 @@ func (db *SQLite) Close() error {
 	return nil
 }
 
+func createFileIfNotExists(path string) error {
+	_, err := os.Stat(path)
+	if err == nil {
+		return nil
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("stat file at %q: %w", path, err)
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create file at %q: %w", path, err)
+	}
+
+	if err = file.Close(); err != nil {
+		return fmt.Errorf("close newly created file at %q: %w", path, err)
+	}
+
+	return nil
+}
+
 // Migrate runs all up migrations.
-func (db *SQLite) Migrate() error {
+func (db *SQLite) migrate() error {
 	migrator, err := newMigrator(db.innerDB)
 	if err != nil {
 		return err
 	}
 
 	if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("migrate up: %w", err)
-	}
-
-	return nil
-}
-
-// Rollback rolls back the last migration.
-func (db *SQLite) Rollback() error {
-	migrator, err := newMigrator(db.innerDB)
-	if err != nil {
-		return err
-	}
-
-	if err := migrator.Steps(-1); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("migrate one step down: %w", err)
+		return fmt.Errorf("migrate DB: %w", err)
 	}
 
 	return nil
