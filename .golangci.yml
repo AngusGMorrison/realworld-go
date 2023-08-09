@@ -14,6 +14,7 @@ issues:
 linters: # https://golangci-lint.run/usage/linters/
   enable:
     - "errcheck"
+    - "exhaustive"
     - "gocheckcompilerdirectives"
     - "gosec"
     - "gosimple"
@@ -37,6 +38,8 @@ linters: # https://golangci-lint.run/usage/linters/
     - "wrapcheck"
 
 linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true
   wrapcheck:
     ignoreSigs:
       - ".Errorf("
@@ -48,12 +51,11 @@ linters-settings:
       - ".WithMessage("
       - ".WithMessagef("
       - ".WithStack("
-      # Fiber HTTP api-related methods
-      - ".JSON("
-      - ".SendStatus("
-      - ".Next("
-      - "errorHandler.Handle"
       - "user.New"
       - "user.Parse"
     ignoreInterfaceRegexps:
       - "Presenter"
+    ignorePackageGlobs:
+      - "github.com/gofiber/fiber/*"
+      - "github.com/angusgmorrison/realworld/internal/domain/*"
+      - "github.com/angusgmorrison/realworld/internal/inbound/rest/api/*"

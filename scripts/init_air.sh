@@ -23,6 +23,10 @@ PRIVATE_KEY_PATH="${REALWORLD_DATA_DIR}/${REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_BASE
 if [[ ! -f $PRIVATE_KEY_PATH ]]; then
   echo "No RSA keypair found. Generating a new one..."
   ssh-keygen -t rsa -b 4096 -m PEM -q -N "" -f "$PRIVATE_KEY_PATH"
+  # For development purposes, it's useful to make the private key world-readable,
+  # since the key on the volume can then be used by other containers with non-root
+  # users. Otherwise, the key must be replaced when running with and without Air.
+  chmod 0644 "$PRIVATE_KEY_PATH"
   echo "RSA keypair generated."
 fi
 echo "RSA keypair found. Continuing..."

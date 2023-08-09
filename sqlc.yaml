@@ -1,11 +1,11 @@
 version: "2"
 sql:
-  - schema: "internal/repository/sqlite/migrations"
-    queries: "internal/repository/sqlite/queries"
+  - schema: "internal/outbound/sqlite/migrations"
+    queries: "internal/outbound/sqlite/queries"
     engine: "sqlite"
     gen:
       go:
-        out: "internal/repository/sqlite/sqlc"
+        out: "internal/outbound/sqlite/sqlc"
     database:
       uri: "${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}"
     rules:

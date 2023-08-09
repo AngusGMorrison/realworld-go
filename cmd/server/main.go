@@ -6,9 +6,9 @@ import (
 	"log"
 
 	"github.com/angusgmorrison/realworld/internal/config"
-	"github.com/angusgmorrison/realworld/internal/controller/rest"
-	"github.com/angusgmorrison/realworld/internal/repository/sqlite"
-	"github.com/angusgmorrison/realworld/internal/service/user"
+	"github.com/angusgmorrison/realworld/internal/domain/user"
+	"github.com/angusgmorrison/realworld/internal/inbound/rest"
+	"github.com/angusgmorrison/realworld/internal/outbound/sqlite"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -39,18 +39,14 @@ func run() (err error) {
 		return fmt.Errorf("load JWT private key: %w", err)
 	}
 
-	userService := user.NewService(db, jwtPrivateKey, cfg.JwtTtl)
-
-	jwtPublicKey, err := cfg.JWTPublicKey()
-	if err != nil {
-		return fmt.Errorf("load JWT public key: %w", err)
-	}
+	userService := user.NewService(db)
 
 	srv := rest.NewServer(
+		jwtPrivateKey,
 		userService,
-		jwtPublicKey,
 		&rest.ReadTimeoutOption{Timeout: cfg.ReadTimeout},
 		&rest.WriteTimeoutOption{Timeout: cfg.WriteTimeout},
+		&rest.JwtTtlOption{TTL: cfg.JwtTtl},
 	)
 	if err := srv.Listen(cfg.ServerAddress()); err != nil {
 		return fmt.Errorf("listen on %s: %w", cfg.ServerAddress(), err)
