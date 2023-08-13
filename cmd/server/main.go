@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/angusgmorrison/realworld/internal/config"
-	"github.com/angusgmorrison/realworld/internal/domain/user"
-	"github.com/angusgmorrison/realworld/internal/inbound/rest"
-	"github.com/angusgmorrison/realworld/internal/outbound/sqlite"
+	"github.com/angusgmorrison/realworld-go/internal/config"
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite"
 	"github.com/hashicorp/go-multierror"
 )
 

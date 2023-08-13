@@ -1,8 +1,8 @@
 package testutil
 
 import (
-	"github.com/angusgmorrison/realworld/internal/inbound/rest"
-	"github.com/angusgmorrison/realworld/internal/inbound/rest/api/v0"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"log"
 	"os"
 	"testing"
@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewMockAuthMiddleware sets the request token and current user ID, bypassing authentication.
+// NewMockAuthMiddleware sets the request token and current user IDFieldValue, bypassing authentication.
 func NewMockAuthMiddleware(t *testing.T, userID uuid.UUID, rawToken string) fiber.Handler {
 	t.Helper()
 

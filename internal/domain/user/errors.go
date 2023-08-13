@@ -43,25 +43,25 @@ func (e *AuthError) Unwrap() error {
 // NotFoundError should be returned by a [Repository] when the specified user
 // does not exist.
 type NotFoundError struct {
-	IDField FieldType
-	ID      string
+	IDFieldType  FieldType
+	IDFieldValue string
 }
 
 func (e *NotFoundError) Error() string {
-	return fmt.Sprintf("user with %s %q not found", e.IDField, e.ID)
+	return fmt.Sprintf("user with %s %q not found", e.IDFieldType, e.IDFieldValue)
 }
 
 func NewNotFoundByIDError(id uuid.UUID) error {
 	return &NotFoundError{
-		IDField: IDFieldType,
-		ID:      id.String(),
+		IDFieldType:  IDFieldType,
+		IDFieldValue: id.String(),
 	}
 }
 
 func NewNotFoundByEmailError(email EmailAddress) error {
 	return &NotFoundError{
-		IDField: EmailFieldType,
-		ID:      email.String(),
+		IDFieldType:  EmailFieldType,
+		IDFieldValue: email.String(),
 	}
 }
 
@@ -97,7 +97,7 @@ func (e ValidationErrors) Any() bool {
 
 func (e ValidationErrors) Error() string {
 	var builder strings.Builder
-	builder.WriteString("validation response:\n")
+	builder.WriteString("validation errors:\n")
 	for _, err := range e {
 		builder.WriteString(fmt.Sprintf("\t- %s\n", err.Error()))
 	}

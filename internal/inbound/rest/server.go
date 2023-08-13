@@ -5,12 +5,12 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/angusgmorrison/realworld/internal/inbound/rest/api/v0"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"log"
 	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
@@ -96,7 +96,7 @@ func initGlobalMiddleware(router fiber.Router, cfg Config) {
 		// Add a UUID to each request.
 		requestid.New(),
 		// Add a logger to the context for each request that automatically logs
-		// the request's ID.
+		// the request's IDFieldValue.
 		RequestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
 		// Log request stats.
 		RequestStatsLogging(os.Stdout),

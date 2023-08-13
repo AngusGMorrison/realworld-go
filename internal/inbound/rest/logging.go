@@ -19,7 +19,7 @@ type requestScopedLogger struct {
 	innerLogger Logger
 }
 
-// Printf prepends the request ID to the log message. The formatting is designed
+// Printf prepends the request IDFieldValue to the log message. The formatting is designed
 // to align with the request log format used by Fiber's logger middleware.
 func (l *requestScopedLogger) Printf(format string, v ...interface{}) {
 	formatWithReqFields := fmt.Sprintf("| %s |  %-7s  | %s | %s", l.reqID, l.method, l.path, format)
@@ -31,7 +31,7 @@ type loggerKeyT int
 const loggerKey loggerKeyT = 0
 
 // RequestScopedLogging is Fiber middleware that adds a request-scoped logger
-// containing the current request ID to the Fiber context.
+// containing the current request IDFieldValue to the Fiber context.
 func RequestScopedLogging(logger Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		reqID, ok := c.Locals("requestid").(string)

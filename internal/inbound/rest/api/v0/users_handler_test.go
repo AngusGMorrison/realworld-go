@@ -37,7 +37,7 @@ package v0
 //
 //		expectedUser := &user.AuthenticatedUser{
 //			User: &user.User{
-//				ID:           uuid.New(),
+//				IDFieldValue:           uuid.New(),
 //				Username:     username,
 //				Email:        email,
 //				PasswordHash: passwordHash,
@@ -164,7 +164,7 @@ package v0
 //
 //		expectedUser := &user.AuthenticatedUser{
 //			User: &user.User{
-//				ID:           uuid.New(),
+//				IDFieldValue:           uuid.New(),
 //				Username:     username,
 //				Email:        email,
 //				PasswordHash: passwordHash,
@@ -293,7 +293,7 @@ package v0
 //		t.Parallel()
 //
 //		expectedUser := &user.User{
-//			ID:           uuid.New(),
+//			IDFieldValue:           uuid.New(),
 //			Username:     username,
 //			Email:        email,
 //			PasswordHash: passwordHash,
@@ -303,7 +303,7 @@ package v0
 //
 //		// Mock domain.
 //		domain := &mockUserService{}
-//		domain.On("GetUser", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedUser.ID).Return(expectedUser, nil)
+//		domain.On("GetUser", mock.AnythingOfType("*fasthttp.RequestCtx"), expectedUser.IDFieldValue).Return(expectedUser, nil)
 //
 //		// Mock presenter.
 //		presenter := &mockPresenter{}
@@ -311,7 +311,7 @@ package v0
 //
 //		// Set up request.
 //		server := testutil.NewServer(t)
-//		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
+//		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.IDFieldValue, token))
 //		server.Get("/api/users", NewUsersHandler(domain, presenter).GetCurrent)
 //		req := httptest.NewRequest(http.MethodGet, "/api/users", http.NoBody)
 //
@@ -361,7 +361,7 @@ package v0
 //		email := primitive.EmailAddress(email)
 //
 //		expectedUser := &user.User{
-//			ID:           uuid.New(),
+//			IDFieldValue:           uuid.New(),
 //			Username:     username,
 //			Email:        email,
 //			PasswordHash: passwordHash,
@@ -370,7 +370,7 @@ package v0
 //		}
 //
 //		expectedUpdateReq := &user.UpdateRequest{
-//			UserID: expectedUser.ID,
+//			UserID: expectedUser.IDFieldValue,
 //			Email:  &email,
 //		}
 //
@@ -384,7 +384,7 @@ package v0
 //
 //		// Set up request.
 //		server := testutil.NewServer(t)
-//		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.ID, token))
+//		server.Use(testutil.NewMockAuthMiddleware(t, expectedUser.IDFieldValue, token))
 //		server.Put("/api/users", NewUsersHandler(domain, presenter).UpdateCurrent)
 //		reqBody := fmt.Sprintf("{%q: {%q:%q}}", "user", "email", *(expectedUpdateReq.Email))
 //		req := httptest.NewRequest(http.MethodPut, "/api/users", strings.NewReader(reqBody))

@@ -3,7 +3,7 @@ package user
 import (
 	"fmt"
 	"github.com/angusgmorrison/logfusc"
-	"github.com/angusgmorrison/realworld/pkg/option"
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"

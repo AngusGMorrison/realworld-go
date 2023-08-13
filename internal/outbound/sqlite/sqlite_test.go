@@ -117,8 +117,8 @@ package sqlite
 //		expectedUser, err := insertUser(context.Background(), tx, expectedUser)
 //		require.NoError(t, err, "insert user")
 //
-//		gotUser, err := getUserByID(context.Background(), tx, expectedUser.ID)
-//		require.NoError(t, err, "get user by ID")
+//		gotUser, err := getUserByID(context.Background(), tx, expectedUser.IDFieldValue)
+//		require.NoError(t, err, "get user by IDFieldValue")
 //
 //		assert.Equal(t, expectedUser, gotUser)
 //	})
@@ -195,7 +195,7 @@ package sqlite
 //		insertedUser, err := insertUser(context.Background(), tx, usr)
 //		require.NoError(t, err, "insert user")
 //
-//		gotUser, err := getUserByID(context.Background(), tx, insertedUser.ID)
+//		gotUser, err := getUserByID(context.Background(), tx, insertedUser.IDFieldValue)
 //		require.NoError(t, err, "get inserted user")
 //
 //		assert.Truef(t, insertedUser.Equals(gotUser), "expected %#v, got %#v", insertedUser, gotUser)
@@ -334,8 +334,8 @@ package sqlite
 //				insertedUser, err := insertUser(context.Background(), tx, originalUser)
 //				require.NoError(t, err, "insert test user")
 //
-//				tc.updateReq.UserID = insertedUser.ID
-//				tc.expectedUser.ID = insertedUser.ID
+//				tc.updateReq.UserID = insertedUser.IDFieldValue
+//				tc.expectedUser.IDFieldValue = insertedUser.IDFieldValue
 //
 //				updatedUser, err := updateUser(context.Background(), tx, tc.updateReq)
 //				require.NoError(t, err, "update user")
@@ -363,7 +363,7 @@ package sqlite
 //		require.NoError(t, err, "insert test user")
 //
 //		updateReq := &user.UpdateRequest{
-//			UserID: insertedUser.ID,
+//			UserID: insertedUser.IDFieldValue,
 //			OptionalValidatingPassword: user.OptionalValidatingPassword{
 //				Password: &newPassword,
 //			},
@@ -399,7 +399,7 @@ package sqlite
 //		require.NoError(t, err, "insert userWithDesiredEmail")
 //
 //		updateReq := &user.UpdateRequest{
-//			UserID: targetUser.ID,
+//			UserID: targetUser.IDFieldValue,
 //			Email:  &newEmail,
 //		}
 //

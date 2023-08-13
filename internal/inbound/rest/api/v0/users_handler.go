@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/angusgmorrison/logfusc"
-	"github.com/angusgmorrison/realworld/internal/domain/user"
-	"github.com/angusgmorrison/realworld/pkg/option"
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -66,7 +66,7 @@ func (h *UsersHandler) Login(c *fiber.Ctx) error {
 	)
 }
 
-// GetCurrent returns the user corresponding to the ID contained in the
+// GetCurrent returns the user corresponding to the IDFieldValue contained in the
 // request JWT.
 func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 	currentUser, err := h.service.GetUser(c.Context(), mustGetCurrentUserIDFromContext(c))
@@ -81,7 +81,7 @@ func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 	)
 }
 
-// UpdateCurrent updates the user corresponding to the ID contained in the
+// UpdateCurrent updates the user corresponding to the IDFieldValue contained in the
 // request JWT.
 func (h *UsersHandler) UpdateCurrent(c *fiber.Ctx) error {
 	updateReq, err := parseUpdateRequest(c)
@@ -204,7 +204,10 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 	case errors.As(err, &authErr):
 		return NewUnauthorizedError("invalid credentials")
 	case errors.As(err, &notFoundErr):
-		return NewNotFoundError("user", notFoundErr.Error())
+		return NewNotFoundError(
+			"user",
+			fmt.Sprintf("user with %s %q not found", notFoundErr.IDFieldType, notFoundErr.IDFieldValue),
+		)
 	case errors.As(err, &validationErr):
 		return handleValidationErrors(validationErr)
 	case errors.As(err, &validationErrs):

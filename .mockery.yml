@@ -1,8 +1,0 @@
-inpackage: True
-with-expecter: True
-testonly: True
-packages:
-  github.com/angusgmorrison/realworld:
-    interfaces:
-      Service:
-      Repository:

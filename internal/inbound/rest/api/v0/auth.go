@@ -36,11 +36,11 @@ const requestJWTKey = "requestJWT"
 
 type userIDKeyT int
 
-// UserIDKey is the context key under which the current user ID, is any, is stored.
+// UserIDKey is the context key under which the current user IDFieldValue, is any, is stored.
 const UserIDKey userIDKeyT = 0
 
 // NewRS256JWTAuthMiddleware wraps Fiber's JWT middleware, parsing the current
-// user ID from the JWT claims and setting it on the request context.
+// user IDFieldValue from the JWT claims and setting it on the request context.
 func NewRS256JWTAuthMiddleware(publicKey *rsa.PublicKey) fiber.Handler {
 	return jwtware.New(jwtware.Config{
 		AuthScheme:     "Token", // required by the RealWorld spec
@@ -65,15 +65,15 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 
 	userID, err := uuid.Parse(sub)
 	if err != nil {
-		return fmt.Errorf("parse user ID string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
+		return fmt.Errorf("parse user IDFieldValue string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
 	}
 
 	c.Locals(UserIDKey, userID)
-	
+
 	return c.Next()
 }
 
-// currentUserIDFromContext attempts to retrieve the current user ID from the request
+// currentUserIDFromContext attempts to retrieve the current user IDFieldValue from the request
 // context. The boolean value is true if it is set, and false otherwise.
 func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
 	userID, _ := c.Locals(UserIDKey).(uuid.UUID)
@@ -84,12 +84,12 @@ func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
 	return userID, true
 }
 
-// mustGetCurrentUserIDFromContext retrieves the current user ID from the request context,
+// mustGetCurrentUserIDFromContext retrieves the current user IDFieldValue from the request context,
 // panicking if it is not set.
 func mustGetCurrentUserIDFromContext(c *fiber.Ctx) uuid.UUID {
 	userID, ok := currentUserIDFromContext(c)
 	if !ok {
-		panic("current user ID not set on request context")
+		panic("current user IDFieldValue not set on request context")
 	}
 	return userID
 }

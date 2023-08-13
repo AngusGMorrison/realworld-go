@@ -16,7 +16,7 @@ type Service interface {
 	//	- [AuthError].
 	Authenticate(ctx context.Context, req *AuthRequest) (*User, error)
 
-	// GetUser a user by ID.
+	// GetUser a user by IDFieldValue.
 	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
 
 	// UpdateUser updates an existing user.
@@ -26,7 +26,7 @@ type Service interface {
 // Repository is a store of user data.
 //   - MUST return [ValidationError] if a database constraint is violated.
 type Repository interface {
-	// GetUserByID retrieves the [User] with `ID`.
+	// GetUserByID retrieves the [User] with `IDFieldValue`.
 	//
 	// # Errors
 	// 	- [NotFoundError] if no such User exists.

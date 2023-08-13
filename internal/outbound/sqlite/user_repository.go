@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/angusgmorrison/logfusc"
-	"github.com/angusgmorrison/realworld/internal/domain/user"
-	"github.com/angusgmorrison/realworld/internal/outbound/sqlite/sqlc"
-	"github.com/angusgmorrison/realworld/pkg/option"
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/mattn/go-sqlite3"
 	"strings"
@@ -16,7 +16,7 @@ import (
 
 var _ user.Repository = (*SQLite)(nil)
 
-// GetUserByID returns the [user.User] with the given ID, or
+// GetUserByID returns the [user.User] with the given IDFieldValue, or
 // [user.NotFoundError] if no such user exists.
 func (db *SQLite) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	return getUserById(ctx, id, db.innerDB)

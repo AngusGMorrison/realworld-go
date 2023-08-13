@@ -180,14 +180,14 @@ package user
 
 // 		repoUserMatcher := newUserMatcher(expectedRepoUser, req.Password)
 
-// 		ID := uuid.New()
+// 		IDFieldValue := uuid.New()
 // 		jwtTTL := 1 * time.Hour
-// 		jwt, err := newJWT(key, jwtTTL, ID.String())
+// 		jwt, err := newJWT(key, jwtTTL, IDFieldValue.String())
 // 		require.NoError(t, err, "generate JWT")
 
 // 		expectedAuthUser := &AuthenticatedUser{
 // 			User: &User{
-// 				ID:           ID,
+// 				IDFieldValue:           IDFieldValue,
 // 				Email:        email,
 // 				username:     username,
 // 				passwordHash: passwordHash,
@@ -311,7 +311,7 @@ package user
 // 		hashedPassword, err := bcryptHash(password)
 // 		require.NoError(t, err, "hash password")
 // 		savedUser := &User{
-// 			ID:           uuid.New(),
+// 			IDFieldValue:           uuid.New(),
 // 			Email:        email,
 // 			username:     username,
 // 			passwordHash: hashedPassword,
@@ -342,13 +342,13 @@ package user
 // 		passwordHash, err := bcryptHash(req.Password)
 // 		require.NoError(t, err, "hash password")
 
-// 		ID := uuid.New()
+// 		IDFieldValue := uuid.New()
 // 		jwtTTL := 1 * time.Hour
-// 		jwt, err := newJWT(key, jwtTTL, ID.String())
+// 		jwt, err := newJWT(key, jwtTTL, IDFieldValue.String())
 // 		require.NoError(t, err, "generate JWT")
 // 		expectedAuthUser := &AuthenticatedUser{
 // 			User: &User{
-// 				ID:           ID,
+// 				IDFieldValue:           IDFieldValue,
 // 				Email:        email,
 // 				username:     username,
 // 				passwordHash: passwordHash,
@@ -378,13 +378,13 @@ package user
 // 	t.Run("when the outbound returns an error it returns the error", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		ID := uuid.New()
+// 		IDFieldValue := uuid.New()
 // 		repo := &mockRepository{}
-// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), ID).Return((*User)(nil), response.New("error"))
+// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), IDFieldValue).Return((*User)(nil), response.New("error"))
 
 // 		s := NewService(repo, nil, 0)
 
-// 		usr, err := s.GetUser(context.Background(), ID)
+// 		usr, err := s.GetUser(context.Background(), IDFieldValue)
 
 // 		assert.Error(t, err)
 // 		assert.Nil(t, usr)
@@ -393,9 +393,9 @@ package user
 // 	t.Run("when the outbound call succeeds it returns the user", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		ID := uuid.New()
+// 		IDFieldValue := uuid.New()
 // 		expectedUser := &User{
-// 			ID:       ID,
+// 			IDFieldValue:       IDFieldValue,
 // 			Email:    email,
 // 			username: username,
 // 			Bio:      bio,
@@ -403,11 +403,11 @@ package user
 // 		}
 
 // 		repo := &mockRepository{}
-// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), ID).Return(expectedUser, nil)
+// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), IDFieldValue).Return(expectedUser, nil)
 
 // 		s := NewService(repo, nil, 0)
 
-// 		usr, err := s.GetUser(context.Background(), ID)
+// 		usr, err := s.GetUser(context.Background(), IDFieldValue)
 
 // 		require.NoError(t, err, "call domain")
 // 		assert.Equal(t, expectedUser, usr)
@@ -432,7 +432,7 @@ package user
 // 			req  *UpdateRequest
 // 		}{
 // 			{
-// 				name: "missing user ID",
+// 				name: "missing user IDFieldValue",
 // 				req:  &UpdateRequest{},
 // 			},
 // 			{
@@ -489,9 +489,9 @@ package user
 // 	t.Run("when the outbound returns an error it returns the error", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		ID := uuid.New()
+// 		IDFieldValue := uuid.New()
 // 		updateReq := &UpdateRequest{
-// 			UserID: ID,
+// 			UserID: IDFieldValue,
 // 		}
 // 		repo := &mockRepository{}
 // 		repo.On("UpdateUser", mock.AnythingOfType("*context.emptyCtx"), updateReq).Return((*User)(nil), response.New("error"))
@@ -507,16 +507,16 @@ package user
 // 	t.Run("when the outbound call succeeds it returns the updated user", func(t *testing.T) {
 // 		t.Parallel()
 
-// 		ID := uuid.New()
+// 		IDFieldValue := uuid.New()
 // 		expectedUser := &User{
-// 			ID:       ID,
+// 			IDFieldValue:       IDFieldValue,
 // 			Email:    email,
 // 			username: username,
 // 			Bio:      bio,
 // 			ImageURL: imageURL,
 // 		}
 // 		updateReq := &UpdateRequest{
-// 			UserID: ID,
+// 			UserID: IDFieldValue,
 // 		}
 // 		repo := &mockRepository{}
 // 		repo.On("UpdateUser", mock.AnythingOfType("*context.emptyCtx"), updateReq).Return(expectedUser, nil)
@@ -534,8 +534,8 @@ package user
 // 	mock.Mock
 // }
 
-// func (m *mockRepository) GetUserByID(ctx context.Context, ID uuid.UUID) (*User, error) {
-// 	args := m.Called(ctx, ID)
+// func (m *mockRepository) GetUserByID(ctx context.Context, IDFieldValue uuid.UUID) (*User, error) {
+// 	args := m.Called(ctx, IDFieldValue)
 // 	return args.Get(0).(*User), args.Error(1)
 // }
 

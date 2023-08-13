@@ -5,7 +5,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/angusgmorrison/realworld/internal/outbound/sqlite/sqlc"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
 	"github.com/golang-migrate/migrate/v4"
 	migratesqlite3 "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
