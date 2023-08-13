@@ -43,9 +43,9 @@ linters-settings:
   wrapcheck:
     ignoreSigs:
       - ".Errorf("
-      - "errors.New("
-      - "errors.Unwrap("
-      - "errors.Join("
+      - "response.New("
+      - "response.Unwrap("
+      - "response.Join("
       - ".Wrap("
       - ".Wrapf("
       - ".WithMessage("
@@ -56,6 +56,8 @@ linters-settings:
     ignoreInterfaceRegexps:
       - "Presenter"
     ignorePackageGlobs:
+      - "errors"
+      - 
       - "github.com/gofiber/fiber/*"
       - "github.com/angusgmorrison/realworld/internal/domain/*"
       - "github.com/angusgmorrison/realworld/internal/inbound/rest/api/*"

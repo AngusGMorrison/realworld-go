@@ -260,7 +260,7 @@ func NewRegistrationRequest(
 //
 // # Errors
 //   - [ValidationErrors], if one or more inputs are invalid.
-//   - Unexpected internal errors.
+//   - Unexpected internal response.
 func ParseRegistrationRequest(
 	rawUsername string,
 	rawEmail string,
@@ -392,7 +392,7 @@ func NewUpdateRequest(
 //
 // # Errors
 //   - [ValidationErrors], if one or more inputs are invalid.
-//   - Unexpected internal errors.
+//   - Unexpected internal response.
 func ParseUpdateRequest(
 	userID uuid.UUID,
 	rawEmail option.Option[string],

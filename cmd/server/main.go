@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	// Delegate to `run`, allowing us to exit the program from a single location,
+	// ensuring all deferred functions are executed.
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}
@@ -29,26 +31,28 @@ func run() (err error) {
 		return fmt.Errorf("open DB at %q: %w", cfg.DBPath(), err)
 	}
 	defer func() {
-		if dbErr := db.Close(); dbErr != nil {
-			err = multierror.Append(err, dbErr)
+		if closeErr := db.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
 		}
 	}()
 
-	jwtPrivateKey, err := cfg.JWTPrivateKey()
-	if err != nil {
-		return fmt.Errorf("load JWT private key: %w", err)
-	}
-
 	userService := user.NewService(db)
 
-	srv := rest.NewServer(
-		jwtPrivateKey,
-		userService,
-		&rest.ReadTimeoutOption{Timeout: cfg.ReadTimeout},
-		&rest.WriteTimeoutOption{Timeout: cfg.WriteTimeout},
-		&rest.JwtTtlOption{TTL: cfg.JwtTtl},
-	)
-	if err := srv.Listen(cfg.ServerAddress()); err != nil {
+	serverConfig := rest.Config{
+		AppName:          cfg.AppName,
+		ReadTimeout:      cfg.ReadTimeout,
+		WriteTimeout:     cfg.WriteTimeout,
+		EnableStackTrace: cfg.EnableStackTrace,
+		JwtCfg: rest.JWTConfig{
+			RS265PrivateKey: cfg.JWTPrivateKey(),
+			TTL:             cfg.JwtTTL,
+			Issuer:          cfg.JwtIssuer,
+		},
+	}
+
+	server := rest.NewServer(serverConfig, userService)
+
+	if err = server.Listen(cfg.ServerAddress()); err != nil {
 		return fmt.Errorf("listen on %s: %w", cfg.ServerAddress(), err)
 	}
 

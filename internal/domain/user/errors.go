@@ -18,16 +18,16 @@ const (
 	URLFieldType
 )
 
-var fieldNames = [5]string{"id", "username", "email", "password", "image URL"}
+var fieldNames = [5]string{"id", "username", "email", "password", "imageURL"}
 
 func (f FieldType) String() string {
 	return fieldNames[f-1]
 }
 
-// AuthError is a wrapper for authentication errors, which may include errors
-// that would otherwise be considered validation errors. This reinforces the
-// security convention that an end user should not receive the specifics of why
-// an authentication request failed.
+// AuthError is a wrapper for an authentication error result, which may include
+// errors that would be considered validation errors by other endpoints. This
+// reinforces the security convention that an end user should not receive the
+// specifics of why an authentication request failed.
 type AuthError struct {
 	Cause error
 }
@@ -71,7 +71,7 @@ func NewNotFoundByEmailError(email EmailAddress) error {
 type ValidationErrors []*ValidationError
 
 // PushValidationError adds a [ValidationError] to the collection. If the error
-// is not a ValidationError (including nil errors), it is returned as-is. The
+// is not a ValidationError (including nil response), it is returned as-is. The
 // supports the following pattern for successive validations:
 //
 //		var validationErrs ValidationErrors
@@ -90,14 +90,14 @@ func (e *ValidationErrors) PushValidationError(err error) error {
 	return err
 }
 
-// Any returns true if the collection contains any errors, and false otherwise.
+// Any returns true if the collection contains any response, and false otherwise.
 func (e ValidationErrors) Any() bool {
 	return len(e) > 0
 }
 
 func (e ValidationErrors) Error() string {
 	var builder strings.Builder
-	builder.WriteString("validation errors:\n")
+	builder.WriteString("validation response:\n")
 	for _, err := range e {
 		builder.WriteString(fmt.Sprintf("\t- %s\n", err.Error()))
 	}

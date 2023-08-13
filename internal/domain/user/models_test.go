@@ -2,7 +2,7 @@ package user
 
 //
 //import (
-//	"errors"
+//	"response"
 //	"github.com/angusgmorrison/realworld/pkg/tidy/option"
 //	"github.com/google/uuid"
 //	"net/url"
@@ -41,7 +41,7 @@ package user
 //			input: strings.Repeat("a", UsernameMinLen-1),
 //			want:  Username{},
 //			assertErr: func(t assert.TestingT, err error, _ ...interface{}) bool {
-//				return errors.Is(err, ErrUsernameTooShort)
+//				return response.Is(err, ErrUsernameTooShort)
 //			},
 //		},
 //		{
@@ -49,7 +49,7 @@ package user
 //			input: strings.Repeat("a", UsernameMaxLen+1),
 //			want:  Username{},
 //			assertErr: func(t assert.TestingT, err error, _ ...interface{}) bool {
-//				return errors.Is(err, ErrUsernameTooLong)
+//				return response.Is(err, ErrUsernameTooLong)
 //			},
 //		},
 //		{
@@ -57,7 +57,7 @@ package user
 //			input: "john doe",
 //			want:  Username{},
 //			assertErr: func(t assert.TestingT, err error, _ ...interface{}) bool {
-//				return errors.Is(err, ErrUsernameFormat)
+//				return response.Is(err, ErrUsernameFormat)
 //			},
 //		},
 //	}

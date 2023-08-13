@@ -1,11 +1,10 @@
-package middleware
+package rest
 
 import (
 	"fmt"
-	"io"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"io"
 )
 
 // Logger represents the minimal set of methods required to log messages.
@@ -50,9 +49,9 @@ func RequestScopedLogging(logger Logger) fiber.Handler {
 	}
 }
 
-// RequestStatsLogging wraps the standard Fiber logger middleware, specify a log
-// format that can be reused consistently across the application (e.g. between
-// the application server and test servers).
+// RequestStatsLogging wraps the standard Fiber logger middleware, specifying a
+// log format that can be reused consistently across the application (e.g.
+// between the application server and test servers).
 func RequestStatsLogging(out io.Writer) fiber.Handler {
 	return logger.New(logger.Config{
 		Output:     out,
@@ -62,9 +61,17 @@ func RequestStatsLogging(out io.Writer) fiber.Handler {
 	})
 }
 
-// GetLogger returns the request-scoped logger from the Fiber context, or nil if
-// no such logger exists.
-func GetLogger(c *fiber.Ctx) Logger {
+// LoggerFrom returns the request-scoped logger from the Fiber context, or
+// [noOpLogger] if no logger is present.
+func LoggerFrom(c *fiber.Ctx) Logger {
 	l, _ := c.Locals(loggerKey).(Logger)
+	if l == nil {
+		return noOpLogger{}
+	}
+
 	return l
 }
+
+type noOpLogger struct{}
+
+func (l noOpLogger) Printf(_ string, _ ...interface{}) {}

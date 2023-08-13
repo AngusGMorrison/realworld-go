@@ -11,13 +11,13 @@ type Option[T any] struct {
 	value T
 }
 
-func (o Option[T]) UnmarshalJSON(bytes []byte) error {
+func (o *Option[T]) UnmarshalJSON(bytes []byte) error {
 	if len(bytes) == 0 {
 		return nil
 	}
 
 	if err := json.Unmarshal(bytes, &o.value); err != nil {
-		return err
+		return err // nolint:wrapcheck
 	}
 
 	o.some = true
@@ -46,7 +46,7 @@ func (o Option[T]) Some() bool {
 
 // ErrEmptyOption is returned by [Option.Value] when attempting to retrieve a
 // value from an empty Option.
-var ErrEmptyOption = errors.New("Option value is empty")
+var ErrEmptyOption = errors.New("expected Option value was empty")
 
 // Value returns the value of the [Option], or [ErrEmptyOption] error if the
 // Option is empty.

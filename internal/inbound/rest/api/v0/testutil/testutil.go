@@ -1,12 +1,13 @@
 package testutil
 
 import (
+	"github.com/angusgmorrison/realworld/internal/inbound/rest"
+	"github.com/angusgmorrison/realworld/internal/inbound/rest/api/v0"
 	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/angusgmorrison/realworld/internal/inbound/rest/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/golang-jwt/jwt/v4"
@@ -18,7 +19,7 @@ func NewMockAuthMiddleware(t *testing.T, userID uuid.UUID, rawToken string) fibe
 	t.Helper()
 
 	return func(c *fiber.Ctx) error {
-		c.Locals(middleware.UserIDKey, userID)
+		c.Locals(v0.UserIDKey, userID)
 		c.Locals("user", &jwt.Token{Raw: rawToken})
 		return c.Next()
 	}
@@ -53,10 +54,10 @@ func NewServer(t *testing.T, cfgOverride ...ServerConfig) *fiber.App {
 	app.Use(requestid.New())
 	if cfg.PrintLogs {
 		app.Use(
-			middleware.RequestScopedLogging(
+			rest.RequestScopedLogging(
 				log.New(os.Stdout, "", log.LstdFlags),
 			),
-			middleware.RequestStatsLogging(os.Stdout),
+			rest.RequestStatsLogging(os.Stdout),
 		)
 	}
 

@@ -1,85 +1,68 @@
 package rest
 
 import (
+	"bytes"
 	"crypto/rsa"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"github.com/angusgmorrison/realworld/internal/inbound/rest/api/v0/users"
-	"io"
+	"github.com/angusgmorrison/realworld/internal/inbound/rest/api/v0"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/angusgmorrison/realworld/internal/domain/user"
-	"github.com/angusgmorrison/realworld/internal/inbound/rest/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
-type config struct {
-	appName          string
-	readTimeout      time.Duration
-	writeTimeout     time.Duration
-	logPrefix        string
-	logFlags         int
-	logOutput        io.Writer
-	enableStackTrace bool
-	jwtTTL           time.Duration
+type JWTConfig struct {
+	RS265PrivateKey *rsa.PrivateKey
+	TTL             time.Duration
+	Issuer          string
 }
 
-func (c config) applyOptions(opts ...Option) config {
-	for _, opt := range opts {
-		opt.apply(&c)
-	}
-	return c
+func (cfg JWTConfig) PublicKey() *rsa.PublicKey {
+	return &cfg.RS265PrivateKey.PublicKey
 }
 
-var defaultConfig = config{
-	appName:          "realworld-hexagonal",
-	readTimeout:      5 * time.Second,
-	writeTimeout:     10 * time.Second,
-	logPrefix:        "",
-	logFlags:         log.LstdFlags,
-	logOutput:        os.Stdout,
-	enableStackTrace: true,
-	jwtTTL:           24 * time.Hour,
+type Config struct {
+	AppName          string
+	ReadTimeout      time.Duration
+	WriteTimeout     time.Duration
+	JwtCfg           JWTConfig
+	EnableStackTrace bool
 }
 
 // Server encapsulates a Fiber app and exposes methods for starting and stopping
 // the server.
 type Server struct {
-	fiber *fiber.App
-	cfg   config
+	app *fiber.App
+	cfg Config
 }
 
 // NewServer configures an application server with the injected dependencies. Options may be
 // passed to override the server defaults.
 func NewServer(
-	jwtRS256PrivateKey *rsa.PrivateKey,
+	cfg Config,
 	userService user.Service,
-	opts ...Option,
 ) *Server {
-	cfg := defaultConfig.applyOptions(opts...)
-	server := &Server{
-		cfg: cfg,
-		fiber: fiber.New(fiber.Config{
-			AppName:      cfg.appName,
-			ReadTimeout:  cfg.readTimeout,
-			WriteTimeout: cfg.writeTimeout,
-			ErrorHandler: globalErrorHandler,
-		}),
-	}
+	app := fiber.New(fiber.Config{
+		AppName:      cfg.AppName,
+		ErrorHandler: newErrorHandler(),
+		JSONDecoder:  strictDecoder,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	})
 
-	server.applyRoutes(jwtRS256PrivateKey, userService, cfg)
+	initRouter(app, cfg, userService)
 
-	return server
+	return &Server{app: app, cfg: cfg}
 }
 
 // Listen on the given address.
 func (s *Server) Listen(addr string) error {
-	if err := s.fiber.Listen(addr); err != nil {
+	if err := s.app.Listen(addr); err != nil {
 		return fmt.Errorf("listen on %s: %w", addr, err)
 	}
 	return nil
@@ -88,64 +71,69 @@ func (s *Server) Listen(addr string) error {
 // ShutdownWithTimeout gracefully shuts down the server, closing open
 // connections at `timeout`.
 func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
-	if err := s.fiber.ShutdownWithTimeout(timeout); err != nil {
+	if err := s.app.ShutdownWithTimeout(timeout); err != nil {
 		return fmt.Errorf("shutdown with timeout %s: %w", timeout, err)
 	}
 	return nil
 }
 
-func (s *Server) applyRoutes(jwtRS256PrivateKey *rsa.PrivateKey, userService user.Service, cfg config) {
-	s.useGlobalMiddleware()
-
-	authMW := middleware.NewRS256Auth(jwtRS256PrivateKey.Public().(*rsa.PublicKey))
+func initRouter(router fiber.Router, cfg Config, userService user.Service) {
+	initGlobalMiddleware(router, cfg)
 
 	// /api
-	api := s.fiber.Group("/api/v0")
+	api := router.Group("/api")
+	api.Get("/ping", func(c *fiber.Ctx) error {
+		return c.SendString("pong")
+	})
 
-	// /api/users
-	usersHandler := users.NewHandler(userService, users.NewJWTProvider(jwtRS256PrivateKey, cfg.jwtTTL))
-	usersGroup := api.Group("/users", users.HandleErrors)
-	usersGroup.Post("/", usersHandler.Register)
-	usersGroup.Post("/login", usersHandler.Login)
-
-	// /api/user
-	authenticatedUserGroup := api.Group("/user", authMW, users.HandleErrors)
-	authenticatedUserGroup.Get("/", usersHandler.GetCurrent)
-	authenticatedUserGroup.Put("/", usersHandler.UpdateCurrent)
+	// /api/v0
+	initV0Routes(api.Group("/v0"), cfg, userService)
 }
 
-func (s *Server) newLogger() *log.Logger {
-	return log.New(s.cfg.logOutput, s.cfg.logPrefix, s.cfg.logFlags)
-}
-
-// useGlobalMiddleware applies essential middleware to all routes.
-func (s *Server) useGlobalMiddleware() {
+func initGlobalMiddleware(router fiber.Router, cfg Config) {
 	// Order of middleware is important.
-	s.fiber.Use(
+	router.Use(
 		// Add a UUID to each request.
 		requestid.New(),
 		// Add a logger to the context for each request that automatically logs
 		// the request's ID.
-		middleware.RequestScopedLogging(s.newLogger()),
+		RequestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
 		// Log request stats.
-		middleware.RequestStatsLogging(s.cfg.logOutput),
+		RequestStatsLogging(os.Stdout),
 		// Recover from panics.
 		recover.New(recover.Config{
-			EnableStackTrace: s.cfg.enableStackTrace,
+			EnableStackTrace: cfg.EnableStackTrace,
 		}),
 	)
 }
 
-// The top-level error api for the server.
-func globalErrorHandler(c *fiber.Ctx, err error) error {
-	code := fiber.StatusInternalServerError
+func initV0Routes(router fiber.Router, cfg Config, userService user.Service) {
+	handler := v0.NewUsersHandler(
+		userService,
+		v0.NewJWTProvider(
+			cfg.JwtCfg.RS265PrivateKey,
+			cfg.JwtCfg.TTL,
+			cfg.JwtCfg.Issuer,
+		),
+	)
 
-	var e *fiber.Error
-	if ok := errors.As(err, &e); ok {
-		code = e.Code
-	}
+	// /api/v0/users
+	usersGroup := router.Group("/users", v0.UsersErrorHandler)
+	usersGroup.Post("/", handler.Register)
+	usersGroup.Post("/login", handler.Login)
 
-	return c.Status(code).JSON(fiber.Map{
-		"error": http.StatusText(code),
-	})
+	// /api/v0/user
+	authenticatedUserGroup := router.Group(
+		"/user",
+		v0.NewRS256JWTAuthMiddleware(cfg.JwtCfg.PublicKey()),
+		v0.UsersErrorHandler,
+	)
+	authenticatedUserGroup.Get("/", handler.GetCurrent)
+	authenticatedUserGroup.Put("/", handler.UpdateCurrent)
+}
+
+func strictDecoder(b []byte, v any) error {
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(v)
 }

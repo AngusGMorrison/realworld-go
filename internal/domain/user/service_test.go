@@ -4,7 +4,7 @@ package user
 // 	"context"
 // 	"crypto/rand"
 // 	"crypto/rsa"
-// 	"errors"
+// 	"response"
 // 	"strings"
 // 	"testing"
 // 	"time"
@@ -28,7 +28,7 @@ package user
 // func Test_service_Register(t *testing.T) {
 // 	t.Parallel()
 
-// 	t.Run("when request validation fails it returns validation errors", func(t *testing.T) {
+// 	t.Run("when request validation fails it returns validation response", func(t *testing.T) {
 // 		t.Parallel()
 
 // 		testCases := []struct {
@@ -146,7 +146,7 @@ package user
 // 		}
 
 // 		userMatcher := newUserMatcher(expectedUser, req.Password)
-// 		repo.On("CreateUser", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(userMatcher)).Return((*User)(nil), errors.New("error"))
+// 		repo.On("CreateUser", mock.AnythingOfType("*context.emptyCtx"), mock.MatchedBy(userMatcher)).Return((*User)(nil), response.New("error"))
 // 		s := NewService(repo, nil, 0)
 
 // 		usr, err := s.Register(context.Background(), req)
@@ -214,7 +214,7 @@ package user
 // func Test_service_Authenticate(t *testing.T) {
 // 	t.Parallel()
 
-// 	t.Run("when request validation fails it returns validation errors", func(t *testing.T) {
+// 	t.Run("when request validation fails it returns validation response", func(t *testing.T) {
 // 		t.Parallel()
 
 // 		testCases := []struct {
@@ -274,7 +274,7 @@ package user
 // 			},
 // 			{
 // 				name: "when the error is not ErrUserNotFound it returns the error",
-// 				err:  errors.New("error"),
+// 				err:  response.New("error"),
 // 			},
 // 		}
 
@@ -380,7 +380,7 @@ package user
 
 // 		ID := uuid.New()
 // 		repo := &mockRepository{}
-// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), ID).Return((*User)(nil), errors.New("error"))
+// 		repo.On("GetUserByID", mock.AnythingOfType("*context.emptyCtx"), ID).Return((*User)(nil), response.New("error"))
 
 // 		s := NewService(repo, nil, 0)
 
@@ -417,7 +417,7 @@ package user
 // func Test_service_UpdateUser(t *testing.T) {
 // 	t.Parallel()
 
-// 	t.Run("when request validation fails it returns validation errors", func(t *testing.T) {
+// 	t.Run("when request validation fails it returns validation response", func(t *testing.T) {
 // 		t.Parallel()
 
 // 		var (
@@ -494,7 +494,7 @@ package user
 // 			UserID: ID,
 // 		}
 // 		repo := &mockRepository{}
-// 		repo.On("UpdateUser", mock.AnythingOfType("*context.emptyCtx"), updateReq).Return((*User)(nil), errors.New("error"))
+// 		repo.On("UpdateUser", mock.AnythingOfType("*context.emptyCtx"), updateReq).Return((*User)(nil), response.New("error"))
 
 // 		s := NewService(repo, nil, 0)
 
