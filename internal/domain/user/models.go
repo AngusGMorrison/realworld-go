@@ -17,8 +17,8 @@ type EmailAddress struct {
 	raw string
 }
 
-// ParseEmailAddress returns a new email address from `candidate`, validating that
-// the email address conforms to RFC5332 standards (with the minor
+// ParseEmailAddress returns a new email address from `candidate`, validating
+// that the email address conforms to RFC5332 standards (with the minor
 // divergences introduce by the Go standard library, documented in [net/mail]).
 //
 // The formats that constitute a valid email address may surprise you. For
@@ -43,11 +43,12 @@ const (
 	// UsernameMaxLen is the maximum length of a username.
 	UsernameMaxLen = 16
 
-	UsernamePattern = `^[a-zA-Z0-9_]+$`
+	UsernamePatternTemplate = "^[a-zA-Z0-9_]{%d,%d}$"
 )
 
 var (
-	usernameRegex = regexp.MustCompile(UsernamePattern)
+	usernamePattern = fmt.Sprintf(UsernamePatternTemplate, UsernameMinLen, UsernameMaxLen)
+	usernameRegex   = regexp.MustCompile(fmt.Sprintf(UsernamePatternTemplate, UsernameMinLen, UsernameMaxLen))
 )
 
 // Username represents a valid Username.
@@ -123,7 +124,7 @@ func (ph PasswordHash) Expose() []byte {
 // that the inner password hash is not printed. The fmt package uses reflection to
 // print unexported fields without invoking their String or GoString methods.
 func (ph PasswordHash) GoString() string {
-	return fmt.Sprintf("PasswordHash{inner:%q}", ph.inner)
+	return fmt.Sprintf("PasswordHash{inner:%s}", ph.inner)
 }
 
 func (ph PasswordHash) String() string {
@@ -216,22 +217,11 @@ func (u *User) ImageURL() option.Option[URL] {
 	return u.imageURL
 }
 
-// Equals returns true if two users are equal in all fields but their password
-// hash, since direct comparison of bcrypt hashes without the input password is
-// impossible by design.
-func (u *User) Equals(other *User) bool {
-	return u.id == other.id &&
-		u.username == other.username &&
-		u.email == other.email &&
-		u.bio == other.bio &&
-		u.imageURL == other.imageURL
-}
-
 // GoString satisfies [fmt.GoStringer]. Must be implemented manually to ensure
 // that User's password hash is not printed. The fmt package uses reflection to
 // print unexported fields without invoking their String or GoString methods.
 func (u User) GoString() string {
-	return fmt.Sprintf("User{id:%q, username:%q, email:%q, passwordHash:%q, bio:%q, imageURL:%q}",
+	return fmt.Sprintf("User{id:%v, username:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
 		u.id, u.username, u.email, u.passwordHash, u.bio.ValueOrZero(), u.imageURL.ValueOrZero())
 }
 
@@ -262,22 +252,22 @@ func NewRegistrationRequest(
 //   - [ValidationErrors], if one or more inputs are invalid.
 //   - Unexpected internal response.
 func ParseRegistrationRequest(
-	rawUsername string,
-	rawEmail string,
-	rawPassword logfusc.Secret[string],
+	usernameCandidate string,
+	emailCandidate string,
+	passwordCandidate logfusc.Secret[string],
 ) (*RegistrationRequest, error) {
 	var validationErrs ValidationErrors
-	username, err := ParseUsername(rawUsername)
+	username, err := ParseUsername(usernameCandidate)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
 
-	email, err := ParseEmailAddress(rawEmail)
+	email, err := ParseEmailAddress(emailCandidate)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
 
-	passwordHash, err := ParsePassword(rawPassword)
+	passwordHash, err := ParsePassword(passwordCandidate)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
@@ -306,7 +296,7 @@ func (r *RegistrationRequest) PasswordHash() PasswordHash {
 // uses reflection to print unexported fields without invoking their String or
 // GoString methods.
 func (r RegistrationRequest) GoString() string {
-	return fmt.Sprintf("RegistrationRequest{username:%q, email:%q, passwordHash:%q}",
+	return fmt.Sprintf("RegistrationRequest{username:%q, email:%q, passwordHash:%s}",
 		r.username, r.email, r.passwordHash)
 }
 
@@ -330,7 +320,7 @@ func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]
 // ParseAuthRequest returns a new [AuthRequest] from raw inputs.
 //
 // # Errors
-//   - [ValidationError], if `rawEmail` is invalid.
+//   - [ValidationError], if `emailCandidate` is invalid.
 func ParseAuthRequest(rawEmail string, passwordCandidate logfusc.Secret[string]) (*AuthRequest, error) {
 	email, err := ParseEmailAddress(rawEmail)
 	if err != nil {
@@ -353,7 +343,7 @@ func (ar *AuthRequest) PasswordCandidate() logfusc.Secret[string] {
 // uses reflection to print unexported fields without invoking their String or
 // GoString methods.
 func (ar AuthRequest) GoString() string {
-	return fmt.Sprintf("AuthRequest{email:%q, passwordCandidate:%q}",
+	return fmt.Sprintf("AuthRequest{email:%q, passwordCandidate:%s}",
 		ar.email, ar.passwordCandidate)
 }
 

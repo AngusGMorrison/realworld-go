@@ -132,7 +132,7 @@ func NewUsernameTooLongError() error {
 func NewUsernameFormatError() error {
 	return &ValidationError{
 		FieldType: UsernameFieldType,
-		Message:   fmt.Sprintf("must match %q", UsernamePattern),
+		Message:   fmt.Sprintf("must match %q", usernamePattern),
 	}
 }
 

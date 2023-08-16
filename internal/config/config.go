@@ -83,7 +83,7 @@ func (c *Config) JWTPrivateKey() *rsa.PrivateKey {
 }
 
 func parseRSAPrivateKeyPEM(path string) (*rsa.PrivateKey, error) {
-	pemBytes, err := os.ReadFile(path)
+	pemBytes, err := os.ReadFile(path) // nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("read RSA private key PEM from %q: %w", path, err)
 	}

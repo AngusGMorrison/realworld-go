@@ -5,6 +5,10 @@ github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHG
 github.com/angusgmorrison/logfusc v0.1.0 h1:AEVvnsFcNL1ETM9ckIE5FBZ4ZxYrtDW3d5KiADyndpc=
 github.com/angusgmorrison/logfusc v0.1.0/go.mod h1:ZXQoBqNPG0WxtFl0ksJgjCqB013N7YWu+ZA7L94dHWY=
 github.com/benbjohnson/clock v1.3.4 h1:wj3BFPrTw8yYgA1OlMqvUk95nc8OMv3cvBSF5erT2W4=
+github.com/brianvoe/gofakeit v3.18.0+incompatible h1:wDOmHc9DLG4nRjUVVaxA+CEglKOW72Y5+4WNxUIkjM8=
+github.com/brianvoe/gofakeit v3.18.0+incompatible/go.mod h1:kfwdRA90vvNhPutZWfH7WPaDzUjz+CZFqG+rPkOjGOc=
+github.com/brianvoe/gofakeit/v6 v6.23.1 h1:k2gX0hQpJStvixDbbw8oJOvPBg0XmHJWbSOF5JkiUHw=
+github.com/brianvoe/gofakeit/v6 v6.23.1/go.mod h1:Ow6qC71xtwm79anlwKRlWZW6zVq9D2XHE4QSSMP/rU8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gofiber/contrib/jwt v1.0.4 h1:ahIBc/ezuSvcvY2JSbSk0AmaVJFQfO07r7taMhAqt6Q=

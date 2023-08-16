@@ -74,7 +74,7 @@ func createFileIfNotExists(path string) error {
 		return fmt.Errorf("stat file at %q: %w", path, err)
 	}
 
-	file, err := os.Create(path)
+	file, err := os.Create(path) // nolint:gosec
 	if err != nil {
 		return fmt.Errorf("create file at %q: %w", path, err)
 	}

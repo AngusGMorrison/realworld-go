@@ -135,5 +135,5 @@ func initV0Routes(router fiber.Router, cfg Config, userService user.Service) {
 func strictDecoder(b []byte, v any) error {
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	decoder.DisallowUnknownFields()
-	return decoder.Decode(v)
+	return decoder.Decode(v) // nolint:wrapcheck
 }
