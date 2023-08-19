@@ -2,9 +2,10 @@ package rest
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"io"
 )
 
 // Logger represents the minimal set of methods required to log messages.

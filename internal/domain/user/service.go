@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -42,7 +43,7 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*User, er
 		return nil, fmt.Errorf("get user from %#v: %w", req, err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword(user.passwordHash.Expose(), []byte(req.passwordCandidate.Expose())); err != nil {
+	if err := bcrypt.CompareHashAndPassword(user.passwordHash.Expose(), req.passwordCandidate.Expose()); err != nil {
 		return nil, &AuthError{Cause: err}
 	}
 

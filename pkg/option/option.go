@@ -3,12 +3,24 @@ package option
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 // Option represents an optional type.
 type Option[T any] struct {
 	some  bool
 	value T
+}
+
+func (o Option[T]) GoString() string {
+	return fmt.Sprintf("Option[%[1]T]{some: %[2]t, value: %#[1]v}", o.value, o.some)
+}
+
+func (o Option[T]) String() string {
+	if o.some {
+		return fmt.Sprintf("Some(%v)", o.value)
+	}
+	return "None"
 }
 
 func (o *Option[T]) UnmarshalJSON(bytes []byte) error {
@@ -63,17 +75,20 @@ func (o Option[T]) ValueOrZero() T {
 	return o.value
 }
 
-// Map transforms an Option[T] into an Option[U] by applying the given transform function.
+// Conversion is a function that converts a T into a U.
+type Conversion[T any, U any] func(T) (U, error)
+
+// Map transforms an Option[T] into an Option[U] by applying the given conversion to T.
 // None[T] is returned as None[U].
 //
 // # Errors
-//   - Any error returned by the transform function.
-func Map[T any, U any](opt Option[T], transform func(T) (U, error)) (Option[U], error) {
+//   - Any error returned by the conversion.
+func Map[T any, U any](opt Option[T], convert Conversion[T, U]) (Option[U], error) {
 	if !opt.Some() {
 		return None[U](), nil
 	}
 
-	u, err := transform(opt.ValueOrZero())
+	u, err := convert(opt.ValueOrZero())
 	if err != nil {
 		return None[U](), err
 	}

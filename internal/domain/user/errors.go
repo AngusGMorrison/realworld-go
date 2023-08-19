@@ -3,8 +3,9 @@ package user
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // FieldType identifies the type of field implicated in an error.

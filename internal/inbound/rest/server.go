@@ -5,15 +5,17 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"log"
 	"os"
 	"time"
 
-	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 )
 
 type JWTConfig struct {

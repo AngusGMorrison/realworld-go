@@ -1,11 +1,16 @@
+// nolint:gosec
+// See https://github.com/golangci/golangci-lint/issues/4012
 package user
 
 import (
+	"math/rand"
+	"testing"
+
 	"github.com/angusgmorrison/logfusc"
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
+
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 )
 
 func RandomEmailAddressCandidate() string {
@@ -16,21 +21,25 @@ func RandomUsernameCandidate() string {
 	return gofakeit.Regex(usernamePattern)
 }
 
-func RandomPasswordCandidate() logfusc.Secret[string] {
+func RandomPasswordCandidate() logfusc.Secret[[]byte] {
 	length := rand.Intn(PasswordMaxLen-PasswordMinLen) + PasswordMinLen
 	raw := gofakeit.Password(true, true, true, true, true, length)
-	return logfusc.NewSecret(raw)
+	return logfusc.NewSecret([]byte(raw))
 }
 
-func RandomBioCandidate() string {
+func RandomBio() Bio {
 	paragraphs := rand.Intn(4) + 1
 	sentences := rand.Intn(2) + 1
 	words := rand.Intn(10) + 1
-	return gofakeit.LoremIpsumParagraph(paragraphs, sentences, words, " ")
+	loremIpsum := gofakeit.LoremIpsumParagraph(paragraphs, sentences, words, " ")
+	return Bio(loremIpsum)
 }
 
 func RandomURLCandidate() string {
-	return gofakeit.URL()
+	if rand.Intn(2) == 0 {
+		return gofakeit.URL()
+	}
+	return ""
 }
 
 func RandomEmailAddress(t *testing.T) EmailAddress {
@@ -70,8 +79,35 @@ func RandomURL(t *testing.T) URL {
 	return url
 }
 
-func RandomBio(t *testing.T) Bio {
+func RandomOption[T any](t *testing.T) option.Option[T] {
 	t.Helper()
 
-	return Bio(RandomBioCandidate())
+	if rand.Intn(2) == 0 {
+		switch any(*new(T)).(type) {
+		case EmailAddress:
+			email := any(RandomEmailAddress(t)).(T)
+			return option.Some(email)
+		case Username:
+			username := any(RandomUsername(t)).(T)
+			return option.Some(username)
+		case PasswordHash:
+			password := any(RandomPasswordHash(t)).(T)
+			return option.Some(password)
+		case URL:
+			url := any(RandomURL(t)).(T)
+			return option.Some(url)
+		case Bio:
+			bio := any(RandomBio()).(T)
+			return option.Some(bio)
+		default:
+			require.FailNow(
+				t,
+				"Unsupported type passed to RandomOption",
+				"RandomOption does not support type %T",
+				any(*new(T)),
+			)
+		}
+	}
+
+	return option.None[T]()
 }

@@ -32,7 +32,7 @@ package user
 // 		t.Parallel()
 
 // 		testCases := []struct {
-// 			name string
+// 			name usernameCandidate
 // 			req  *RegistrationRequest
 // 		}{
 // 			{
@@ -218,7 +218,7 @@ package user
 // 		t.Parallel()
 
 // 		testCases := []struct {
-// 			name string
+// 			name usernameCandidate
 // 			req  *AuthRequest
 // 		}{
 // 			{
@@ -265,7 +265,7 @@ package user
 // 		t.Parallel()
 
 // 		testCases := []struct {
-// 			name string
+// 			name usernameCandidate
 // 			err  error
 // 		}{
 // 			{
@@ -428,7 +428,7 @@ package user
 // 		)
 
 // 		testCases := []struct {
-// 			name string
+// 			name usernameCandidate
 // 			req  *UpdateRequest
 // 		}{
 // 			{

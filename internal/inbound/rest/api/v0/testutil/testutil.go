@@ -1,12 +1,13 @@
 package testutil
 
 import (
-	"github.com/angusgmorrison/realworld-go/internal/inbound/rest"
-	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"

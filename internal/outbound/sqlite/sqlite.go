@@ -5,13 +5,15 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
+	"os"
+	"path/filepath"
+
 	"github.com/golang-migrate/migrate/v4"
 	migratesqlite3 "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/golang-migrate/migrate/v4/source/iofs" // register the iofs source
-	"os"
-	"path/filepath"
+
+	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
 )
 
 //go:embed migrations/*.sql

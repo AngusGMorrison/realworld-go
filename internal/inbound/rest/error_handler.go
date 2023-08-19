@@ -2,9 +2,11 @@ package rest
 
 import (
 	"errors"
-	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/hashicorp/go-multierror"
+
+	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 )
 
 // newErrorHandler composes the global error handler for the server.

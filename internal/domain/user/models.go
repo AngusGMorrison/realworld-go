@@ -2,16 +2,18 @@ package user
 
 import (
 	"fmt"
-	"github.com/angusgmorrison/logfusc"
-	"github.com/angusgmorrison/realworld-go/pkg/option"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	neturl "net/url"
 	"regexp"
+
+	"github.com/angusgmorrison/logfusc"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 )
 
-// EmailAddress is a dedicated string type for valid email addresses. New
+// EmailAddress is a dedicated usernameCandidate type for valid email addresses. New
 // instances are validated for RFC5332 compliance.
 type EmailAddress struct {
 	raw string
@@ -58,18 +60,18 @@ type Username struct {
 
 // ParseUsername returns either a valid [Username] or an error indicating why
 // the raw username was invalid.
-func ParseUsername(raw string) (Username, error) {
-	if len(raw) < UsernameMinLen {
+func ParseUsername(candidate string) (Username, error) {
+	if len(candidate) < UsernameMinLen {
 		return Username{}, NewUsernameTooShortError()
 	}
-	if len(raw) > UsernameMaxLen {
+	if len(candidate) > UsernameMaxLen {
 		return Username{}, NewUsernameTooLongError()
 	}
-	if !usernameRegex.MatchString(raw) {
+	if !usernameRegex.MatchString(candidate) {
 		return Username{}, NewUsernameFormatError()
 	}
 
-	return Username{raw: raw}, nil
+	return Username{raw: candidate}, nil
 }
 
 func (u Username) String() string {
@@ -86,12 +88,12 @@ type PasswordHash struct {
 	inner logfusc.Secret[[]byte]
 }
 
-func ParsePassword(candidate logfusc.Secret[string]) (PasswordHash, error) {
+func ParsePassword(candidate logfusc.Secret[[]byte]) (PasswordHash, error) {
 	if err := validatePasswordCandidate(candidate); err != nil {
 		return PasswordHash{}, err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(candidate.Expose()), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(candidate.Expose(), bcrypt.DefaultCost)
 	if err != nil {
 		return PasswordHash{}, fmt.Errorf("hash password: %w", err)
 	}
@@ -99,7 +101,7 @@ func ParsePassword(candidate logfusc.Secret[string]) (PasswordHash, error) {
 	return PasswordHash{inner: logfusc.NewSecret(hash)}, nil
 }
 
-func validatePasswordCandidate(candidate logfusc.Secret[string]) error {
+func validatePasswordCandidate(candidate logfusc.Secret[[]byte]) error {
 	exposedPassword := candidate.Expose()
 	if len(exposedPassword) < PasswordMinLen {
 		return NewPasswordTooShortError()
@@ -134,11 +136,7 @@ func (ph PasswordHash) String() string {
 // Bio represents a user's bio.
 type Bio string
 
-// ParseBio is a helper function compatible with [option.Map].
-// It performs a simple type conversion from string to [Bio].
-//
-// # Errors
-//   - nil
+// ParseBio is a convenience function for use with option.Map.
 func ParseBio(raw string) (Bio, error) {
 	return Bio(raw), nil
 }
@@ -252,12 +250,12 @@ func NewRegistrationRequest(
 //   - [ValidationErrors], if one or more inputs are invalid.
 //   - Unexpected internal response.
 func ParseRegistrationRequest(
-	usernameCandidate string,
+	string string,
 	emailCandidate string,
-	passwordCandidate logfusc.Secret[string],
+	passwordCandidate logfusc.Secret[[]byte],
 ) (*RegistrationRequest, error) {
 	var validationErrs ValidationErrors
-	username, err := ParseUsername(usernameCandidate)
+	username, err := ParseUsername(string)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
@@ -307,10 +305,10 @@ func (r RegistrationRequest) String() string {
 // AuthRequest describes the data required to authenticate a user.
 type AuthRequest struct {
 	email             EmailAddress
-	passwordCandidate logfusc.Secret[string]
+	passwordCandidate logfusc.Secret[[]byte]
 }
 
-func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]) *AuthRequest {
+func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[[]byte]) *AuthRequest {
 	return &AuthRequest{
 		email:             email,
 		passwordCandidate: passwordCandidate,
@@ -321,8 +319,8 @@ func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]
 //
 // # Errors
 //   - [ValidationError], if `emailCandidate` is invalid.
-func ParseAuthRequest(rawEmail string, passwordCandidate logfusc.Secret[string]) (*AuthRequest, error) {
-	email, err := ParseEmailAddress(rawEmail)
+func ParseAuthRequest(emailCandidate string, passwordCandidate logfusc.Secret[[]byte]) (*AuthRequest, error) {
+	email, err := ParseEmailAddress(emailCandidate)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +332,7 @@ func (ar *AuthRequest) Email() EmailAddress {
 	return ar.email
 }
 
-func (ar *AuthRequest) PasswordCandidate() logfusc.Secret[string] {
+func (ar *AuthRequest) PasswordCandidate() logfusc.Secret[[]byte] {
 	return ar.passwordCandidate
 }
 
@@ -385,17 +383,17 @@ func NewUpdateRequest(
 //   - Unexpected internal response.
 func ParseUpdateRequest(
 	userID uuid.UUID,
-	rawEmail option.Option[string],
-	rawPassword option.Option[logfusc.Secret[string]],
+	emailCandidate option.Option[string],
+	passwordCandidate option.Option[logfusc.Secret[[]byte]],
 	rawBio option.Option[string],
-	rawImageURL option.Option[string],
+	imageURLCandidate option.Option[string],
 ) (*UpdateRequest, error) {
 	var validationErrs ValidationErrors
-	email, err := option.Map(rawEmail, ParseEmailAddress)
+	email, err := option.Map(emailCandidate, ParseEmailAddress)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
-	passwordHash, err := option.Map(rawPassword, ParsePassword)
+	passwordHash, err := option.Map(passwordCandidate, ParsePassword)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
@@ -403,7 +401,7 @@ func ParseUpdateRequest(
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
-	imageURL, err := option.Map(rawImageURL, ParseURL)
+	imageURL, err := option.Map(imageURLCandidate, ParseURL)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
@@ -440,8 +438,8 @@ func (ur *UpdateRequest) PasswordHash() option.Option[PasswordHash] {
 // reflection to print unexported fields without invoking their String or
 // GoString methods.
 func (ur UpdateRequest) GoString() string {
-	return fmt.Sprintf("UpdateRequest{userID:%q, email:%q, passwordHash:%q, imageURL:%q, bio:%q}",
-		ur.userID, ur.email.ValueOrZero(), ur.passwordHash.ValueOrZero(), ur.bio.ValueOrZero(), ur.imageURL.ValueOrZero())
+	return fmt.Sprintf("UpdateRequest{userID:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
+		ur.userID, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
 }
 
 func (ur UpdateRequest) String() string {

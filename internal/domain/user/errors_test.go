@@ -3,10 +3,11 @@ package user
 import (
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_AuthError_Error(t *testing.T) {

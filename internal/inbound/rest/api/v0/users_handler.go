@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/angusgmorrison/logfusc"
+
+	"github.com/gofiber/fiber/v2"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
-	"github.com/gofiber/fiber/v2"
 )
 
 // UsersHandler holds dependencies for users endpoints.
@@ -106,7 +108,7 @@ type registrationRequestBody struct {
 type registrationRequestBodyUser struct {
 	Username string                 `json:"username"`
 	Email    string                 `json:"email"`
-	Password logfusc.Secret[string] `json:"password"`
+	Password logfusc.Secret[[]byte] `json:"password"`
 }
 
 func parseRegistrationRequest(c *fiber.Ctx) (*user.RegistrationRequest, error) {
@@ -124,7 +126,7 @@ type loginRequestBody struct {
 
 type loginRequestBodyUser struct {
 	Email    string                 `json:"email"`
-	Password logfusc.Secret[string] `json:"password"`
+	Password logfusc.Secret[[]byte] `json:"password"`
 }
 
 func parseAuthRequest(c *fiber.Ctx) (*user.AuthRequest, error) {
@@ -142,7 +144,7 @@ type updateRequestBody struct {
 
 type updateRequestBodyUser struct {
 	Email    option.Option[string]                 `json:"email"`
-	Password option.Option[logfusc.Secret[string]] `json:"password"`
+	Password option.Option[logfusc.Secret[[]byte]] `json:"password"`
 	Bio      option.Option[string]                 `json:"bio"`
 	ImageURL option.Option[string]                 `json:"image"`
 }

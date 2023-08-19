@@ -2,8 +2,9 @@ package v0
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
 	"net/http"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 // UserFacingError is an error that will be rendered in responses to the client.

@@ -5,13 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/angusgmorrison/logfusc"
+	"github.com/google/uuid"
+	"github.com/mattn/go-sqlite3"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
-	"github.com/google/uuid"
-	"github.com/mattn/go-sqlite3"
-	"strings"
 )
 
 var _ user.Repository = (*SQLite)(nil)
