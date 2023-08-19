@@ -89,16 +89,20 @@ type PasswordHash struct {
 }
 
 func ParsePassword(candidate logfusc.Secret[[]byte]) (PasswordHash, error) {
+	return parsePassword(candidate, bcryptHasher)
+}
+
+func parsePassword(candidate logfusc.Secret[[]byte], hasher passwordHasher) (PasswordHash, error) {
 	if err := validatePasswordCandidate(candidate); err != nil {
 		return PasswordHash{}, err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword(candidate.Expose(), bcrypt.DefaultCost)
+	hash, err := hasher(candidate)
 	if err != nil {
-		return PasswordHash{}, fmt.Errorf("hash password: %w", err)
+		return PasswordHash{}, err
 	}
 
-	return PasswordHash{inner: logfusc.NewSecret(hash)}, nil
+	return hash, nil
 }
 
 func validatePasswordCandidate(candidate logfusc.Secret[[]byte]) error {
@@ -131,6 +135,25 @@ func (ph PasswordHash) GoString() string {
 
 func (ph PasswordHash) String() string {
 	return ph.GoString()
+}
+
+type passwordHasher func(candidate logfusc.Secret[[]byte]) (PasswordHash, error)
+
+func bcryptHasher(candidate logfusc.Secret[[]byte]) (PasswordHash, error) {
+	hash, err := bcrypt.GenerateFromPassword(candidate.Expose(), bcrypt.DefaultCost)
+	if err != nil {
+		return PasswordHash{}, fmt.Errorf("hash password: %w", err)
+	}
+	return NewPasswordHashFromTrustedSource(logfusc.NewSecret(hash)), nil
+}
+
+type passwordComparator func(hash PasswordHash, candidate logfusc.Secret[[]byte]) *AuthError
+
+func bcryptComparator(hash PasswordHash, candidate logfusc.Secret[[]byte]) *AuthError {
+	if err := bcrypt.CompareHashAndPassword(hash.Expose(), candidate.Expose()); err != nil {
+		return &AuthError{Cause: err}
+	}
+	return nil
 }
 
 // Bio represents a user's bio.

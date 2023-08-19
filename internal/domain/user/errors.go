@@ -112,6 +112,15 @@ type ValidationError struct {
 	Message   string
 }
 
+func (e *ValidationError) Is(target error) bool {
+	var otherValidationErr *ValidationError
+	if !errors.As(target, &otherValidationErr) {
+		return false
+	}
+
+	return e.FieldType == otherValidationErr.FieldType && e.Message == otherValidationErr.Message
+}
+
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("%s: %s", e.FieldType, e.Message)
 }

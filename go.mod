@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/angusgmorrison/logfusc v0.1.0
+	github.com/brianvoe/gofakeit/v6 v6.23.1
 	github.com/gofiber/contrib/jwt v1.0.4
 	github.com/gofiber/fiber/v2 v2.48.0
 	github.com/golang-jwt/jwt/v4 v4.4.2
@@ -13,13 +14,13 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.17
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.12.0
 )
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/brianvoe/gofakeit/v6 v6.23.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
@@ -28,7 +29,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
+	github.com/stretchr/objx v0.5.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.48.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect

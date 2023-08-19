@@ -6,17 +6,18 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // service satisfies the inbound Service interface.
 type service struct {
-	repo Repository
+	repo               Repository
+	passwordComparator passwordComparator
 }
 
 func NewService(repo Repository) Service {
 	return &service{
-		repo: repo,
+		repo:               repo,
+		passwordComparator: bcryptComparator,
 	}
 }
 
@@ -43,8 +44,8 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*User, er
 		return nil, fmt.Errorf("get user from %#v: %w", req, err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword(user.passwordHash.Expose(), req.passwordCandidate.Expose()); err != nil {
-		return nil, &AuthError{Cause: err}
+	if err := s.passwordComparator(user.passwordHash, req.passwordCandidate); err != nil {
+		return nil, err
 	}
 
 	return user, nil

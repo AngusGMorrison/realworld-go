@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -121,18 +122,27 @@ func Test_Username_String(t *testing.T) {
 	assert.Equal(t, username.raw, username.String())
 }
 
-func Test_ParsePassword(t *testing.T) {
+func Test_parsePassword(t *testing.T) {
 	t.Parallel()
+
+	anyError := errors.New("any error")
+
+	assertEmptyPasswordHash := func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte]) {
+		t.Helper()
+		assert.Empty(t, hash.Expose())
+	}
 
 	testCases := []struct {
 		name               string
 		candidate          logfusc.Secret[[]byte]
+		hasher             passwordHasher
 		assertPasswordHash func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte])
 		wantErr            error
 	}{
 		{
 			name:      "valid password",
 			candidate: RandomPasswordCandidate(),
+			hasher:    bcryptHasher,
 			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte]) {
 				t.Helper()
 				assert.NoError(t, bcrypt.CompareHashAndPassword(hash.Expose(), candidate.Expose()))
@@ -140,22 +150,27 @@ func Test_ParsePassword(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:      "password too short",
-			candidate: logfusc.NewSecret([]byte(strings.Repeat("a", PasswordMinLen-1))),
-			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte]) {
-				t.Helper()
-				assert.Empty(t, hash.Expose())
-			},
-			wantErr: NewPasswordTooShortError(),
+			name:               "password too short",
+			candidate:          logfusc.NewSecret([]byte(strings.Repeat("a", PasswordMinLen-1))),
+			hasher:             bcryptHasher,
+			assertPasswordHash: assertEmptyPasswordHash,
+			wantErr:            NewPasswordTooShortError(),
 		},
 		{
-			name:      "password too long",
-			candidate: logfusc.NewSecret([]byte(strings.Repeat("a", PasswordMaxLen+1))),
-			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte]) {
-				t.Helper()
-				assert.Empty(t, hash.Expose())
+			name:               "password too long",
+			candidate:          logfusc.NewSecret([]byte(strings.Repeat("a", PasswordMaxLen+1))),
+			hasher:             bcryptHasher,
+			assertPasswordHash: assertEmptyPasswordHash,
+			wantErr:            NewPasswordTooLongError(),
+		},
+		{
+			name:      "hasher returns any error",
+			candidate: RandomPasswordCandidate(),
+			hasher: func(secret logfusc.Secret[[]byte]) (PasswordHash, error) {
+				return PasswordHash{}, anyError
 			},
-			wantErr: NewPasswordTooLongError(),
+			assertPasswordHash: assertEmptyPasswordHash,
+			wantErr:            anyError,
 		},
 	}
 
@@ -165,10 +180,10 @@ func Test_ParsePassword(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotPasswordHash, gotErr := ParsePassword(tc.candidate)
+			gotPasswordHash, gotErr := parsePassword(tc.candidate, tc.hasher)
 
 			tc.assertPasswordHash(t, gotPasswordHash, tc.candidate)
-			assert.Equal(t, tc.wantErr, gotErr)
+			assert.ErrorIs(t, gotErr, tc.wantErr)
 		})
 	}
 }

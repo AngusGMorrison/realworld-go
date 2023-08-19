@@ -3,6 +3,7 @@
 package user
 
 import (
+	"github.com/google/uuid"
 	"math/rand"
 	"testing"
 
@@ -110,4 +111,32 @@ func RandomOption[T any](t *testing.T) option.Option[T] {
 	}
 
 	return option.None[T]()
+}
+
+func RandomRegistrationRequest(t *testing.T) *RegistrationRequest {
+	t.Helper()
+
+	username := RandomUsername(t)
+	email := RandomEmailAddress(t)
+	password := RandomPasswordHash(t)
+	return NewRegistrationRequest(username, email, password)
+}
+
+func RandomAuthRequest(t *testing.T) *AuthRequest {
+	t.Helper()
+
+	email := RandomEmailAddress(t)
+	passwordCandidate := RandomPasswordCandidate()
+	return NewAuthRequest(email, passwordCandidate)
+}
+
+func RandomUpdateRequest(t *testing.T) *UpdateRequest {
+	t.Helper()
+
+	id := uuid.New()
+	email := RandomOption[EmailAddress](t)
+	password := RandomOption[PasswordHash](t)
+	bio := RandomOption[Bio](t)
+	image := RandomOption[URL](t)
+	return NewUpdateRequest(id, email, password, bio, image)
 }
