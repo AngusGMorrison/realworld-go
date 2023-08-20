@@ -6,3 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
      bio TEXT,
      image_url TEXT
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx
+ON users (email);

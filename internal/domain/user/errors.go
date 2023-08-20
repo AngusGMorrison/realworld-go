@@ -52,6 +52,15 @@ func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("user with %s %q not found", e.IDFieldType, e.IDFieldValue)
 }
 
+func (e *NotFoundError) Is(target error) bool {
+	var otherNotFoundError *NotFoundError
+	if !errors.As(target, &otherNotFoundError) {
+		return false
+	}
+
+	return e.IDFieldType == otherNotFoundError.IDFieldType && e.IDFieldValue == otherNotFoundError.IDFieldValue
+}
+
 func NewNotFoundByIDError(id uuid.UUID) error {
 	return &NotFoundError{
 		IDFieldType:  IDFieldType,

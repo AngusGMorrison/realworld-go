@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
@@ -19,13 +20,23 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+// queries describes all the queries that can be run against the database. It
+// mirrors the generated sqlc code, allowing database errors to be mocked.
+type queries interface {
+	CreateUser(ctx context.Context, params sqlc.CreateUserParams) (sqlc.User, error)
+	DeleteUser(ctx context.Context, id string) error
+	GetUserByEmail(ctx context.Context, email string) (sqlc.GetUserByEmailRow, error)
+	GetUserById(ctx context.Context, id string) (sqlc.GetUserByIdRow, error)
+	UpdateUser(ctx context.Context, params sqlc.UpdateUserParams) (sqlc.User, error)
+}
+
 // SQLite is an SQLite3 database with an open connection.
 type SQLite struct {
 	innerDB *sql.DB
-	queries *sqlc.Queries
+	queries queries
 }
 
-// New opens or creates an SQLite database at `dbPath` and runs all migrations,
+// New opens or creates an SQLite database at `testDBPath` and runs all migrations,
 // returning the DB instance.
 func New(dbPath string) (*SQLite, error) {
 	sanitizedPath, err := filepath.Abs(dbPath)

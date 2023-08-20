@@ -358,7 +358,7 @@ package v0
 //	t.Run("when the request is valid it invokes the corresponding presenter method", func(t *testing.T) {
 //		t.Parallel()
 //
-//		email := primitive.EmailAddress(email)
+//		email := primitive.Email(email)
 //
 //		expectedUser := &user.User{
 //			IDFieldValue:           uuid.New(),
@@ -441,7 +441,7 @@ package v0
 //	t.Run("when the user domain returns an error it invokes the corresponding presenter method", func(t *testing.T) {
 //		t.Parallel()
 //
-//		email := primitive.EmailAddress(email)
+//		email := primitive.Email(email)
 //
 //		expectedUpdateReq := &user.UpdateRequest{
 //			UserID: uuid.New(),

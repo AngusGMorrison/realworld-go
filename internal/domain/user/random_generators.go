@@ -1,5 +1,4 @@
 // nolint:gosec
-// See https://github.com/golangci/golangci-lint/issues/4012
 package user
 
 import (
@@ -139,4 +138,16 @@ func RandomUpdateRequest(t *testing.T) *UpdateRequest {
 	bio := RandomOption[Bio](t)
 	image := RandomOption[URL](t)
 	return NewUpdateRequest(id, email, password, bio, image)
+}
+
+func RandomUser(t *testing.T) *User {
+	t.Helper()
+
+	id := uuid.New()
+	username := RandomUsername(t)
+	email := RandomEmailAddress(t)
+	password := RandomPasswordHash(t)
+	bio := RandomOption[Bio](t)
+	image := RandomOption[URL](t)
+	return NewUser(id, username, email, password, bio, image)
 }

@@ -273,12 +273,12 @@ func NewRegistrationRequest(
 //   - [ValidationErrors], if one or more inputs are invalid.
 //   - Unexpected internal response.
 func ParseRegistrationRequest(
-	string string,
+	usernameCandidate string,
 	emailCandidate string,
 	passwordCandidate logfusc.Secret[[]byte],
 ) (*RegistrationRequest, error) {
 	var validationErrs ValidationErrors
-	username, err := ParseUsername(string)
+	username, err := ParseUsername(usernameCandidate)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
 		return nil, pushErr
 	}
@@ -304,7 +304,7 @@ func (r *RegistrationRequest) Username() Username {
 	return r.username
 }
 
-func (r *RegistrationRequest) EmailAddress() EmailAddress {
+func (r *RegistrationRequest) Email() EmailAddress {
 	return r.email
 }
 

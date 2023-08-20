@@ -21,37 +21,37 @@ var _ user.Repository = (*SQLite)(nil)
 // GetUserByID returns the [user.User] with the given IDFieldValue, or
 // [user.NotFoundError] if no such user exists.
 func (db *SQLite) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	return getUserById(ctx, id, db.innerDB)
+	return getUserById(ctx, db.queries, id)
 }
 
-func getUserById(ctx context.Context, id uuid.UUID, tx sqlc.DBTX) (*user.User, error) {
-	queries := sqlc.New(tx)
-	row, err := queries.GetUserById(ctx, id.String())
+func getUserById(ctx context.Context, q queries, id uuid.UUID) (*user.User, error) {
+	row, err := q.GetUserById(ctx, id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.NewNotFoundByIDError(id)
 		}
+		return nil, fmt.Errorf("SQLite error: %w", err)
 	}
 
-	return parseUser(row.ID, row.Email, row.Username, row.Bio, row.PasswordHash, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
 }
 
 // GetUserByEmail returns the [user.User] with the given email, or
 // [user.NotFoundError] if no user exists with that email.
 func (db *SQLite) GetUserByEmail(ctx context.Context, email user.EmailAddress) (*user.User, error) {
-	return getUserByEmail(ctx, email, db.innerDB)
+	return getUserByEmail(ctx, db.queries, email)
 }
 
-func getUserByEmail(ctx context.Context, email user.EmailAddress, tx sqlc.DBTX) (*user.User, error) {
-	queries := sqlc.New(tx)
-	row, err := queries.GetUserByEmail(ctx, email.String())
+func getUserByEmail(ctx context.Context, q queries, email user.EmailAddress) (*user.User, error) {
+	row, err := q.GetUserByEmail(ctx, email.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.NewNotFoundByEmailError(email)
 		}
+		return nil, fmt.Errorf("SQLite error: %w", err)
 	}
 
-	return parseUser(row.ID, row.Email, row.Username, row.Bio, row.PasswordHash, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
 }
 
 // CreateUser creates a new user record from the given
@@ -59,12 +59,11 @@ func getUserByEmail(ctx context.Context, email user.EmailAddress, tx sqlc.DBTX) 
 //
 // Returns [user.ValidationError] if database constraints are violated.
 func (db *SQLite) CreateUser(ctx context.Context, req *user.RegistrationRequest) (*user.User, error) {
-	return createUser(ctx, req, db.innerDB)
+	return createUser(ctx, db.queries, req)
 }
 
-func createUser(ctx context.Context, req *user.RegistrationRequest, tx sqlc.DBTX) (*user.User, error) {
-	queries := sqlc.New(tx)
-	row, err := queries.CreateUser(ctx, newCreateUserParamsFromDomain(req))
+func createUser(ctx context.Context, q queries, req *user.RegistrationRequest) (*user.User, error) {
+	row, err := q.CreateUser(ctx, newCreateUserParamsFromRegistrationRequest(req))
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) {
@@ -73,13 +72,13 @@ func createUser(ctx context.Context, req *user.RegistrationRequest, tx sqlc.DBTX
 		return nil, fmt.Errorf("create user record from request %#v: %w", req, err)
 	}
 
-	return parseUser(row.ID, row.Email, row.Username, row.Bio, row.PasswordHash, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
 }
 
-func newCreateUserParamsFromDomain(req *user.RegistrationRequest) sqlc.CreateUserParams {
+func newCreateUserParamsFromRegistrationRequest(req *user.RegistrationRequest) sqlc.CreateUserParams {
 	return sqlc.CreateUserParams{
 		ID:           uuid.New().String(),
-		Email:        req.EmailAddress().String(),
+		Email:        req.Email().String(),
 		Username:     req.Username().String(),
 		PasswordHash: string(req.PasswordHash().Expose()),
 	}
@@ -90,7 +89,7 @@ func createUserErrToDomain(err sqlite3.Error, req *user.RegistrationRequest) err
 		msg := err.Error()
 		if strings.Contains(msg, "users.") {
 			if strings.Contains(msg, ".email") {
-				return user.NewDuplicateEmailError(req.EmailAddress())
+				return user.NewDuplicateEmailError(req.Email())
 			}
 			if strings.Contains(msg, ".username") {
 				return user.NewDuplicateUsernameError(req.Username())
@@ -107,21 +106,16 @@ func createUserErrToDomain(err sqlite3.Error, req *user.RegistrationRequest) err
 //
 // Returns [user.ValidationError] if database constraints are violated.
 func (db *SQLite) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
-	return updateUser(ctx, req, db.innerDB)
+	return updateUser(ctx, db.queries, req)
 }
 
-func updateUser(ctx context.Context, req *user.UpdateRequest, tx sqlc.DBTX) (*user.User, error) {
-	queries := sqlc.New(tx)
-	row, err := queries.UpdateUser(ctx, newUpdateUserParamsFromDomain(req))
+func updateUser(ctx context.Context, q queries, req *user.UpdateRequest) (*user.User, error) {
+	row, err := q.UpdateUser(ctx, newUpdateUserParamsFromDomain(req))
 	if err != nil {
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			return nil, updateUserErrToDomain(sqliteErr, req)
-		}
-		return nil, fmt.Errorf("update user record from request %#v: %w", req, err)
+		return nil, updateUserErrorToDomain(err, req)
 	}
 
-	return parseUser(row.ID, row.Email, row.Username, row.Bio, row.PasswordHash, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
 }
 
 func newUpdateUserParamsFromDomain(req *user.UpdateRequest) sqlc.UpdateUserParams {
@@ -151,26 +145,28 @@ func newUpdateUserParamsFromDomain(req *user.UpdateRequest) sqlc.UpdateUserParam
 	}
 }
 
-func updateUserErrToDomain(err sqlite3.Error, req *user.UpdateRequest) error {
-	if err.ExtendedCode == sqlite3.ErrConstraintUnique {
+func updateUserErrorToDomain(err error, req *user.UpdateRequest) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return user.NewNotFoundByIDError(req.UserID())
+	}
+
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 		msg := err.Error()
-		if strings.Contains(msg, "users.") {
-			if strings.Contains(msg, ".email") {
-				return user.NewDuplicateEmailError(req.Email().ValueOrZero())
-			}
+		if strings.Contains(msg, "users.email") {
+			return user.NewDuplicateEmailError(req.Email().ValueOrZero())
 		}
 	}
 
-	// Default to the original error if unhandled.
-	return err
+	return fmt.Errorf("database error: %w", err)
 }
 
 func parseUser(
 	id string,
-	email string,
 	username string,
-	bio sql.NullString,
+	email string,
 	passwordHash string,
+	bio sql.NullString,
 	imageURL sql.NullString,
 ) (*user.User, error) {
 	parsedID := uuid.MustParse(id)
