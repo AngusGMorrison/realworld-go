@@ -2,6 +2,7 @@ package rest
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,7 +24,7 @@ type requestScopedLogger struct {
 // Printf prepends the request IDFieldValue to the log message. The formatting is designed
 // to align with the request log format used by Fiber's logger middleware.
 func (l *requestScopedLogger) Printf(format string, v ...interface{}) {
-	formatWithReqFields := fmt.Sprintf("| %s |  %-7s  | %s | %s", l.reqID, l.method, l.path, format)
+	formatWithReqFields := fmt.Sprintf("| %s |  %7s  | %s | %s", l.reqID, l.method, l.path, format)
 	l.innerLogger.Printf(formatWithReqFields, v...)
 }
 
@@ -37,7 +38,7 @@ func RequestScopedLogging(logger Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		reqID, ok := c.Locals("requestid").(string)
 		if !ok {
-			reqID = "missing reqID"
+			reqID = uuid.Nil.String()
 		}
 		reqLogger := &requestScopedLogger{
 			reqID:       reqID,
