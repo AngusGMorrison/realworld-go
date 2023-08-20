@@ -254,8 +254,8 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 				imageURL:     option.Some(user.RandomURL(t)),
 				assertUpdate: func(t *testing.T, req *user.UpdateRequest, originalUser, updatedUser *user.User) {
 					t.Helper()
-					assert.Equal(t, req.Email().ValueOrZero(), updatedUser.Email())
-					assert.Equal(t, req.PasswordHash().ValueOrZero(), updatedUser.PasswordHash())
+					assert.Equal(t, req.Email().UnwrapOrZero(), updatedUser.Email())
+					assert.Equal(t, req.PasswordHash().UnwrapOrZero(), updatedUser.PasswordHash())
 					assert.Equal(t, req.Bio(), updatedUser.Bio())
 					assert.Equal(t, req.ImageURL(), updatedUser.ImageURL())
 				},
@@ -268,7 +268,7 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 				imageURL:     option.None[user.URL](),
 				assertUpdate: func(t *testing.T, req *user.UpdateRequest, originalUser, updatedUser *user.User) {
 					t.Helper()
-					assert.Equal(t, req.Email().ValueOrZero(), updatedUser.Email())
+					assert.Equal(t, req.Email().UnwrapOrZero(), updatedUser.Email())
 					assert.Equal(t, originalUser.PasswordHash(), updatedUser.PasswordHash())
 					assert.Equal(t, originalUser.Bio(), updatedUser.Bio())
 					assert.Equal(t, originalUser.ImageURL(), updatedUser.ImageURL())
@@ -283,7 +283,7 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 				assertUpdate: func(t *testing.T, req *user.UpdateRequest, originalUser, updatedUser *user.User) {
 					t.Helper()
 					assert.Equal(t, originalUser.Email(), originalUser.Email())
-					assert.Equal(t, req.PasswordHash().ValueOrZero(), updatedUser.PasswordHash())
+					assert.Equal(t, req.PasswordHash().UnwrapOrZero(), updatedUser.PasswordHash())
 					assert.Equal(t, originalUser.Bio(), updatedUser.Bio())
 					assert.Equal(t, originalUser.ImageURL(), updatedUser.ImageURL())
 				},
@@ -417,12 +417,12 @@ func newCreateUserParamsFromUser(usr *user.User) sqlc.CreateUserParams {
 		Email:        usr.Email().String(),
 		PasswordHash: usr.PasswordHash().String(),
 		Bio: sql.NullString{
-			String: string(usr.Bio().ValueOrZero()),
-			Valid:  usr.Bio().Some(),
+			String: string(usr.Bio().UnwrapOrZero()),
+			Valid:  usr.Bio().IsSome(),
 		},
 		ImageUrl: sql.NullString{
-			String: usr.ImageURL().ValueOrZero().String(),
-			Valid:  usr.ImageURL().Some(),
+			String: usr.ImageURL().UnwrapOrZero().String(),
+			Valid:  usr.ImageURL().IsSome(),
 		},
 	}
 }

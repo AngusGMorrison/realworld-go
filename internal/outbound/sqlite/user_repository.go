@@ -120,20 +120,20 @@ func updateUser(ctx context.Context, q queries, req *user.UpdateRequest) (*user.
 
 func newUpdateUserParamsFromDomain(req *user.UpdateRequest) sqlc.UpdateUserParams {
 	email := sql.NullString{
-		String: req.Email().ValueOrZero().String(),
-		Valid:  req.Email().Some(),
+		String: req.Email().UnwrapOrZero().String(),
+		Valid:  req.Email().IsSome(),
 	}
 	bio := sql.NullString{
-		String: string(req.Bio().ValueOrZero()),
-		Valid:  req.Bio().Some(),
+		String: string(req.Bio().UnwrapOrZero()),
+		Valid:  req.Bio().IsSome(),
 	}
 	imageURL := sql.NullString{
-		String: req.ImageURL().ValueOrZero().String(),
-		Valid:  req.ImageURL().Some(),
+		String: req.ImageURL().UnwrapOrZero().String(),
+		Valid:  req.ImageURL().IsSome(),
 	}
 	passwordHash := sql.NullString{
-		String: string(req.PasswordHash().ValueOrZero().Expose()),
-		Valid:  req.PasswordHash().Some(),
+		String: string(req.PasswordHash().UnwrapOrZero().Expose()),
+		Valid:  req.PasswordHash().IsSome(),
 	}
 
 	return sqlc.UpdateUserParams{
@@ -154,7 +154,7 @@ func updateUserErrorToDomain(err error, req *user.UpdateRequest) error {
 	if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 		msg := err.Error()
 		if strings.Contains(msg, "users.email") {
-			return user.NewDuplicateEmailError(req.Email().ValueOrZero())
+			return user.NewDuplicateEmailError(req.Email().UnwrapOrZero())
 		}
 	}
 

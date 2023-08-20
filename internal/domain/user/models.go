@@ -243,7 +243,7 @@ func (u *User) ImageURL() option.Option[URL] {
 // print unexported fields without invoking their String or GoString methods.
 func (u User) GoString() string {
 	return fmt.Sprintf("User{id:%v, username:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
-		u.id, u.username, u.email, u.passwordHash, u.bio.ValueOrZero(), u.imageURL.ValueOrZero())
+		u.id, u.username, u.email, u.passwordHash, u.bio.UnwrapOrZero(), u.imageURL.UnwrapOrZero())
 }
 
 func (u User) String() string {

@@ -299,7 +299,7 @@ func Test_User_StringMethods(t *testing.T) {
 	imageURL := RandomOption[URL](t)
 	user := NewUser(id, username, email, passwordHash, bio, imageURL)
 	want := fmt.Sprintf("User{id:%v, username:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
-		id, username, email, passwordHash, bio.ValueOrZero(), imageURL.ValueOrZero())
+		id, username, email, passwordHash, bio.UnwrapOrZero(), imageURL.UnwrapOrZero())
 
 	assert.Equal(t, want, user.GoString())
 	assert.Equal(t, want, user.String())
@@ -559,15 +559,15 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		assert.Equal(t, want.bio, got.bio)
 		assert.Equal(t, want.imageURL, got.imageURL)
 
-		if !want.passwordHash.Some() {
+		if !want.passwordHash.IsSome() {
 			assert.True(t,
-				!got.passwordHash.Some(),
+				!got.passwordHash.IsSome(),
 				"passwordHash should be an empty Option, but value %v was found",
-				got.passwordHash.ValueOrZero(),
+				got.passwordHash.UnwrapOrZero(),
 			)
 		} else {
 			err := bcrypt.CompareHashAndPassword(
-				got.passwordHash.ValueOrZero().Expose(),
+				got.passwordHash.UnwrapOrZero().Expose(),
 				validPasswordCandidate.Expose(),
 			)
 			assert.NoError(t, err)

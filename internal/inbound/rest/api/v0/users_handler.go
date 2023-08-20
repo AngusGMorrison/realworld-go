@@ -182,8 +182,8 @@ func newUserResponseBody(u *user.User, token JWT) *successResponseBody {
 			Token:    token,
 			Email:    u.Email().String(),
 			Username: u.Username().String(),
-			Bio:      string(u.Bio().ValueOrZero()),
-			ImageURL: u.ImageURL().ValueOrZero().String(),
+			Bio:      string(u.Bio().UnwrapOrZero()),
+			ImageURL: u.ImageURL().UnwrapOrZero().String(),
 		},
 	}
 }
