@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest"
 	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite"
-	"github.com/hashicorp/go-multierror"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func run() (err error) {
 	}
 	defer func() {
 		if closeErr := db.Close(); closeErr != nil {
-			err = multierror.Append(err, closeErr)
+			err = errors.Join(err, closeErr)
 		}
 	}()
 

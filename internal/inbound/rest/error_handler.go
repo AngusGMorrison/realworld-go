@@ -3,10 +3,8 @@ package rest
 import (
 	"errors"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/hashicorp/go-multierror"
-
 	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
+	"github.com/gofiber/fiber/v2"
 )
 
 // newErrorHandler composes the global error handler for the server.
@@ -47,7 +45,7 @@ func responseWritingErrorHandler(c *fiber.Ctx, err error) error {
 	var userFacingErr *v0.UserFacingError
 	if ok := errors.As(err, &userFacingErr); ok {
 		if writeRespErr := c.Status(userFacingErr.StatusCode).JSON(userFacingErr.Body()); writeRespErr != nil {
-			return multierror.Append(err, writeRespErr)
+			return errors.Join(err, writeRespErr)
 		}
 		if cause := userFacingErr.Cause(); cause != nil {
 			return cause
@@ -57,7 +55,7 @@ func responseWritingErrorHandler(c *fiber.Ctx, err error) error {
 
 	c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
 	if writeRespErr := c.SendStatus(fiber.StatusInternalServerError); writeRespErr != nil {
-		return multierror.Append(err, writeRespErr)
+		return errors.Join(err, writeRespErr)
 	}
 
 	return err

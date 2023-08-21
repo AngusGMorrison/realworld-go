@@ -65,7 +65,7 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 
 	userID, err := uuid.Parse(sub)
 	if err != nil {
-		return fmt.Errorf("parse user IDFieldValue string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
+		return fmt.Errorf("parse user ID string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
 	}
 
 	c.Locals(UserIDKey, userID)
