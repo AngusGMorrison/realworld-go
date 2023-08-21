@@ -12,11 +12,11 @@ import (
 // `body` must contain only information that is safe to expose to
 // users.
 //
-// `cause` may contain supplementary information about the cause of the
+// `Cause` may contain supplementary information about the Cause of the
 // error that is not safe to expose to users (e.g. for instrumentation).
 type UserFacingError struct {
 	StatusCode int
-	cause      error
+	Cause      error
 	body       fiber.Map
 }
 
@@ -30,13 +30,14 @@ func (e *UserFacingError) Body() fiber.Map {
 	}
 }
 
-func (e *UserFacingError) Cause() error {
-	return e.cause
+func (e *UserFacingError) Unwrap() error {
+	return e.Cause
 }
 
-func NewBadRequestError() error {
+func NewBadRequestError(cause error) error {
 	return &UserFacingError{
 		StatusCode: http.StatusBadRequest,
+		Cause:      cause,
 		body: fiber.Map{
 			"bad_request": []string{"request body was invalid JSON or contained unknown fields"},
 		},
@@ -52,9 +53,10 @@ func NewNotFoundError(resourceName string, detail string) error {
 	}
 }
 
-func NewUnauthorizedError(detail string) error {
+func NewUnauthorizedError(detail string, cause error) error {
 	return &UserFacingError{
 		StatusCode: http.StatusUnauthorized,
+		Cause:      cause,
 		body: fiber.Map{
 			"unauthorized": []string{detail},
 		},

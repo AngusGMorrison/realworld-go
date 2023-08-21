@@ -114,7 +114,7 @@ type registrationRequestBodyUser struct {
 func parseRegistrationRequest(c *fiber.Ctx) (*user.RegistrationRequest, error) {
 	var body registrationRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		return nil, NewBadRequestError()
+		return nil, NewBadRequestError(err)
 	}
 
 	return user.ParseRegistrationRequest(body.User.Username, body.User.Email, body.User.Password)
@@ -132,7 +132,7 @@ type loginRequestBodyUser struct {
 func parseAuthRequest(c *fiber.Ctx) (*user.AuthRequest, error) {
 	var body loginRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		return nil, NewBadRequestError()
+		return nil, NewBadRequestError(err)
 	}
 
 	return user.ParseAuthRequest(body.User.Email, body.User.Password)
@@ -152,7 +152,7 @@ type updateRequestBodyUser struct {
 func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
 	var body updateRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		return nil, NewBadRequestError()
+		return nil, NewBadRequestError(err)
 	}
 
 	return user.ParseUpdateRequest(
@@ -204,7 +204,7 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 
 	switch {
 	case errors.As(err, &authErr):
-		return NewUnauthorizedError("invalid credentials")
+		return NewUnauthorizedError("invalid credentials", authErr.Cause)
 	case errors.As(err, &notFoundErr):
 		return NewNotFoundError(
 			"user",

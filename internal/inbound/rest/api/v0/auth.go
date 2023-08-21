@@ -51,8 +51,8 @@ func NewRS256JWTAuthMiddleware(publicKey *rsa.PublicKey) fiber.Handler {
 	})
 }
 
-func handleError(_ *fiber.Ctx, _ error) error {
-	return NewUnauthorizedError("Invalid or missing authentication token")
+func handleError(_ *fiber.Ctx, err error) error {
+	return NewUnauthorizedError("Invalid or missing authentication token", err)
 }
 
 func setSubjectOnContext(c *fiber.Ctx) error {

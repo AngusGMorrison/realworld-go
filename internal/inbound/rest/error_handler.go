@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"net/http"
 
 	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"github.com/gofiber/fiber/v2"
@@ -31,7 +32,8 @@ func newLoggingErrorHandler(next fiber.ErrorHandler) fiber.ErrorHandler {
 	return func(c *fiber.Ctx, err error) error {
 		handledErr := next(c, err)
 		if handledErr != nil {
-			LoggerFrom(c).Printf("%v\n", handledErr)
+			status := c.Response().StatusCode()
+			LoggerFrom(c).Printf("%d %s caused by %v\n", status, http.StatusText(status), err)
 		}
 		return handledErr
 	}
@@ -40,22 +42,18 @@ func newLoggingErrorHandler(next fiber.ErrorHandler) fiber.ErrorHandler {
 // responseWritingErrorHandler writes the response to a client in the event of
 // an error. UserFacingError responses should not be written from any other location.
 //
-// The underlying causes of errors are propagated to instrumenting error handlers.
+// Errors are propagated to instrumenting error handlers.
 func responseWritingErrorHandler(c *fiber.Ctx, err error) error {
 	var userFacingErr *v0.UserFacingError
 	if ok := errors.As(err, &userFacingErr); ok {
 		if writeRespErr := c.Status(userFacingErr.StatusCode).JSON(userFacingErr.Body()); writeRespErr != nil {
 			return errors.Join(err, writeRespErr)
 		}
-		if cause := userFacingErr.Cause(); cause != nil {
-			return cause
+	} else {
+		c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
+		if writeRespErr := c.SendStatus(fiber.StatusInternalServerError); writeRespErr != nil {
+			return errors.Join(err, writeRespErr)
 		}
-		return nil
-	}
-
-	c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
-	if writeRespErr := c.SendStatus(fiber.StatusInternalServerError); writeRespErr != nil {
-		return errors.Join(err, writeRespErr)
 	}
 
 	return err
