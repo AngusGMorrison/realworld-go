@@ -37,8 +37,8 @@ const requestJWTKey = "requestJWT"
 
 type userIDKeyT int
 
-// UserIDKey is the context key under which the current user IDFieldValue, is any, is stored.
-const UserIDKey userIDKeyT = 0
+// userIDKey is the context key under which the current user IDFieldValue, is any, is stored.
+const userIDKey userIDKeyT = 0
 
 // NewRS256JWTAuthMiddleware wraps Fiber's JWT middleware, parsing the current
 // user IDFieldValue from the JWT claims and setting it on the request context.
@@ -69,7 +69,7 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 		return fmt.Errorf("parse user ID string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
 	}
 
-	c.Locals(UserIDKey, userID)
+	c.Locals(userIDKey, userID)
 
 	return c.Next()
 }
@@ -77,7 +77,7 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 // currentUserIDFromContext attempts to retrieve the current user IDFieldValue from the request
 // context. The boolean value is true if it is set, and false otherwise.
 func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
-	userID, _ := c.Locals(UserIDKey).(uuid.UUID)
+	userID, _ := c.Locals(userIDKey).(uuid.UUID)
 	if userID == uuid.Nil {
 		return uuid.Nil, false
 	}
