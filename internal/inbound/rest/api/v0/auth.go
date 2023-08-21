@@ -3,6 +3,7 @@ package v0
 import (
 	"crypto/rsa"
 	"fmt"
+	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"time"
 
 	jwtware "github.com/gofiber/contrib/jwt"
@@ -128,6 +129,7 @@ type jwtProvider struct {
 	privateKey *rsa.PrivateKey
 	ttl        time.Duration
 	issuer     string
+	timeSource testutil.TimeSource
 }
 
 // NewJWTProvider returns the default JWT provider.
@@ -136,6 +138,7 @@ func NewJWTProvider(privateKey *rsa.PrivateKey, ttl time.Duration, issuer string
 		privateKey: privateKey,
 		ttl:        ttl,
 		issuer:     issuer,
+		timeSource: testutil.StdTimeSource{},
 	}
 }
 
@@ -143,10 +146,10 @@ func NewJWTProvider(privateKey *rsa.PrivateKey, ttl time.Duration, issuer string
 func (jp *jwtProvider) TokenFor(subject uuid.UUID) (JWT, error) {
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(jp.ttl)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jp.exp(),
+			IssuedAt:  jp.iat(),
 			Issuer:    jp.issuer,
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			NotBefore: jp.nbf(),
 			Subject:   subject.String(),
 		},
 	}
@@ -158,4 +161,16 @@ func (jp *jwtProvider) TokenFor(subject uuid.UUID) (JWT, error) {
 	}
 
 	return JWT(signedToken), nil
+}
+
+func (jp *jwtProvider) exp() *jwt.NumericDate {
+	return jwt.NewNumericDate(jp.timeSource.Now().Add(jp.ttl))
+}
+
+func (jp *jwtProvider) iat() *jwt.NumericDate {
+	return jwt.NewNumericDate(jp.timeSource.Now())
+}
+
+func (jp *jwtProvider) nbf() *jwt.NumericDate {
+	return jwt.NewNumericDate(jp.timeSource.Now())
 }
