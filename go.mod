@@ -1,6 +1,6 @@
 module github.com/angusgmorrison/realworld-go
 
-go 1.20
+go 1.21
 
 require (
 	github.com/angusgmorrison/logfusc v0.1.0

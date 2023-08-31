@@ -62,3 +62,4 @@ linters-settings:
       - "github.com/gofiber/fiber/*"
       - "github.com/angusgmorrison/realworld-go/internal/domain/**"
       - "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/**"
+      - "github.com/angusgmorrison/realworld-go/internal/testutil/*"

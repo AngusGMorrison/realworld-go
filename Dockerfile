@@ -1,4 +1,4 @@
-FROM golang:1.20.3-bullseye AS builder
+FROM golang:1.21-bullseye AS builder
 
 # The container-side mount point of the data volume.
 ARG DATA_DIR

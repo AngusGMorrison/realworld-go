@@ -88,11 +88,11 @@ type PasswordHash struct {
 	inner logfusc.Secret[[]byte]
 }
 
-func ParsePassword(candidate logfusc.Secret[[]byte]) (PasswordHash, error) {
+func ParsePassword(candidate logfusc.Secret[string]) (PasswordHash, error) {
 	return parsePassword(candidate, bcryptHasher)
 }
 
-func parsePassword(candidate logfusc.Secret[[]byte], hasher passwordHasher) (PasswordHash, error) {
+func parsePassword(candidate logfusc.Secret[string], hasher passwordHasher) (PasswordHash, error) {
 	if err := validatePasswordCandidate(candidate); err != nil {
 		return PasswordHash{}, err
 	}
@@ -105,7 +105,7 @@ func parsePassword(candidate logfusc.Secret[[]byte], hasher passwordHasher) (Pas
 	return hash, nil
 }
 
-func validatePasswordCandidate(candidate logfusc.Secret[[]byte]) error {
+func validatePasswordCandidate(candidate logfusc.Secret[string]) error {
 	exposedPassword := candidate.Expose()
 	if len(exposedPassword) < PasswordMinLen {
 		return NewPasswordTooShortError()
@@ -137,20 +137,31 @@ func (ph PasswordHash) String() string {
 	return ph.GoString()
 }
 
-type passwordHasher func(candidate logfusc.Secret[[]byte]) (PasswordHash, error)
+type passwordHasher func(candidate logfusc.Secret[string]) (PasswordHash, error)
 
-func bcryptHasher(candidate logfusc.Secret[[]byte]) (PasswordHash, error) {
-	hash, err := bcrypt.GenerateFromPassword(candidate.Expose(), bcrypt.DefaultCost)
+func bcryptHasher(candidate logfusc.Secret[string]) (PasswordHash, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(candidate.Expose()), bcrypt.DefaultCost)
 	if err != nil {
 		return PasswordHash{}, fmt.Errorf("hash password: %w", err)
 	}
 	return NewPasswordHashFromTrustedSource(logfusc.NewSecret(hash)), nil
 }
 
-type passwordComparator func(hash PasswordHash, candidate logfusc.Secret[[]byte]) *AuthError
+type passwordComparator func(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError
 
-func bcryptComparator(hash PasswordHash, candidate logfusc.Secret[[]byte]) *AuthError {
-	if err := bcrypt.CompareHashAndPassword(hash.Expose(), candidate.Expose()); err != nil {
+// CompareHashAndPassword compares a hashed password with its possible plaintext
+// equivalent. Returns nil on success, or an [AuthError] on failure.
+//
+// This function is exposed as a test utility, since it is often necessary to
+// compare two domain models, but direct comparison of password hashes is
+// impossible. CompareHashAndPassword allows dependent packages to remain
+// ignorant of the hashing algorithm.
+func CompareHashAndPassword(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
+	return bcryptComparator(hash, candidate)
+}
+
+func bcryptComparator(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
+	if err := bcrypt.CompareHashAndPassword(hash.Expose(), []byte(candidate.Expose())); err != nil {
 		return &AuthError{Cause: err}
 	}
 	return nil
@@ -275,7 +286,7 @@ func NewRegistrationRequest(
 func ParseRegistrationRequest(
 	usernameCandidate string,
 	emailCandidate string,
-	passwordCandidate logfusc.Secret[[]byte],
+	passwordCandidate logfusc.Secret[string],
 ) (*RegistrationRequest, error) {
 	var validationErrs ValidationErrors
 	username, err := ParseUsername(usernameCandidate)
@@ -328,10 +339,10 @@ func (r RegistrationRequest) String() string {
 // AuthRequest describes the data required to authenticate a user.
 type AuthRequest struct {
 	email             EmailAddress
-	passwordCandidate logfusc.Secret[[]byte]
+	passwordCandidate logfusc.Secret[string]
 }
 
-func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[[]byte]) *AuthRequest {
+func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]) *AuthRequest {
 	return &AuthRequest{
 		email:             email,
 		passwordCandidate: passwordCandidate,
@@ -342,7 +353,7 @@ func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[[]byte]
 //
 // # Errors
 //   - [ValidationError], if `emailCandidate` is invalid.
-func ParseAuthRequest(emailCandidate string, passwordCandidate logfusc.Secret[[]byte]) (*AuthRequest, error) {
+func ParseAuthRequest(emailCandidate string, passwordCandidate logfusc.Secret[string]) (*AuthRequest, error) {
 	email, err := ParseEmailAddress(emailCandidate)
 	if err != nil {
 		return nil, err
@@ -355,7 +366,7 @@ func (ar *AuthRequest) Email() EmailAddress {
 	return ar.email
 }
 
-func (ar *AuthRequest) PasswordCandidate() logfusc.Secret[[]byte] {
+func (ar *AuthRequest) PasswordCandidate() logfusc.Secret[string] {
 	return ar.passwordCandidate
 }
 
@@ -407,7 +418,7 @@ func NewUpdateRequest(
 func ParseUpdateRequest(
 	userID uuid.UUID,
 	emailCandidate option.Option[string],
-	passwordCandidate option.Option[logfusc.Secret[[]byte]],
+	passwordCandidate option.Option[logfusc.Secret[string]],
 	rawBio option.Option[string],
 	imageURLCandidate option.Option[string],
 ) (*UpdateRequest, error) {

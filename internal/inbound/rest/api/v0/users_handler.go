@@ -1,6 +1,7 @@
 package v0
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/angusgmorrison/logfusc"
@@ -108,13 +109,14 @@ type registrationRequestBody struct {
 type registrationRequestBodyUser struct {
 	Username string                 `json:"username"`
 	Email    string                 `json:"email"`
-	Password logfusc.Secret[[]byte] `json:"password"`
+	Password logfusc.Secret[string] `json:"password"`
 }
 
 func parseRegistrationRequest(c *fiber.Ctx) (*user.RegistrationRequest, error) {
 	var body registrationRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		return nil, NewBadRequestError(err)
+		fmt.Println(err)
+		return nil, fmt.Errorf("parse request body: %w", err)
 	}
 
 	return user.ParseRegistrationRequest(body.User.Username, body.User.Email, body.User.Password)
@@ -126,13 +128,13 @@ type loginRequestBody struct {
 
 type loginRequestBodyUser struct {
 	Email    string                 `json:"email"`
-	Password logfusc.Secret[[]byte] `json:"password"`
+	Password logfusc.Secret[string] `json:"password"`
 }
 
 func parseAuthRequest(c *fiber.Ctx) (*user.AuthRequest, error) {
 	var body loginRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		return nil, NewBadRequestError(err)
+		return nil, fmt.Errorf("parse request body: %w", err)
 	}
 
 	return user.ParseAuthRequest(body.User.Email, body.User.Password)
@@ -144,7 +146,7 @@ type updateRequestBody struct {
 
 type updateRequestBodyUser struct {
 	Email    option.Option[string]                 `json:"email"`
-	Password option.Option[logfusc.Secret[[]byte]] `json:"password"`
+	Password option.Option[logfusc.Secret[string]] `json:"password"`
 	Bio      option.Option[string]                 `json:"bio"`
 	ImageURL option.Option[string]                 `json:"image"`
 }
@@ -152,7 +154,7 @@ type updateRequestBodyUser struct {
 func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
 	var body updateRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		return nil, NewBadRequestError(err)
+		return nil, fmt.Errorf("parse request body: %w", err)
 	}
 
 	return user.ParseUpdateRequest(
@@ -196,6 +198,7 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 	}
 
 	var (
+		syntaxErr      *json.SyntaxError
 		authErr        *user.AuthError
 		notFoundErr    *user.NotFoundError
 		validationErr  *user.ValidationError
@@ -203,6 +206,8 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 	)
 
 	switch {
+	case errors.As(err, &syntaxErr):
+		return NewBadRequestError(syntaxErr)
 	case errors.As(err, &authErr):
 		return NewUnauthorizedError("invalid credentials", authErr.Cause)
 	case errors.As(err, &notFoundErr):

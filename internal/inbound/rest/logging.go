@@ -24,7 +24,7 @@ type requestScopedLogger struct {
 // Printf prepends the request IDFieldValue to the log message. The formatting is designed
 // to align with the request log format used by Fiber's logger middleware.
 func (l *requestScopedLogger) Printf(format string, v ...interface{}) {
-	formatWithReqFields := fmt.Sprintf("| %s |  %7s  | %s | %s", l.reqID, l.method, l.path, format)
+	formatWithReqFields := fmt.Sprintf("| %s |  %-7s  | %s | %s", l.reqID, l.method, l.path, format)
 	l.innerLogger.Printf(formatWithReqFields, v...)
 }
 
@@ -32,9 +32,9 @@ type loggerKeyT int
 
 const loggerKey loggerKeyT = 0
 
-// RequestScopedLogging is Fiber middleware that adds a request-scoped logger
+// requestScopedLogging is Fiber middleware that adds a request-scoped logger
 // containing the current request IDFieldValue to the Fiber context.
-func RequestScopedLogging(logger Logger) fiber.Handler {
+func requestScopedLogging(logger Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		reqID, ok := c.Locals("requestid").(string)
 		if !ok {
@@ -51,10 +51,10 @@ func RequestScopedLogging(logger Logger) fiber.Handler {
 	}
 }
 
-// RequestStatsLogging wraps the standard Fiber logger middleware, specifying a
+// requestStatsLogging wraps the standard Fiber logger middleware, specifying a
 // log format that can be reused consistently across the application (e.g.
 // between the application server and test servers).
-func RequestStatsLogging(out io.Writer) fiber.Handler {
+func requestStatsLogging(out io.Writer) fiber.Handler {
 	return logger.New(logger.Config{
 		Output:     out,
 		Format:     "${time} | ${locals:requestid} | ${method} | ${path} | ${status} | ${latency}\n",

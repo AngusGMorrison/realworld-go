@@ -24,7 +24,7 @@ func Test_requestScopedLogger_Printf(t *testing.T) {
 		innerLogger: innerLogger,
 	}
 	logger.Printf("%d %s", 1, "two")
-	want := "| reqID |      GET  | path | 1 two"
+	want := "| reqID |  GET      | path | 1 two"
 
 	gotLogBytes, gotErr := io.ReadAll(innerLogger.buf)
 	assert.NoError(t, gotErr)
@@ -38,10 +38,10 @@ func Test_RequestScopedLogging(t *testing.T) {
 	method := http.MethodGet
 	path := "/"
 	message := "test"
-	wantLogs := fmt.Sprintf("| %s |      %s  | %s | %s", uuid.Nil.String(), method, path, message)
+	wantLogs := fmt.Sprintf("| %s |  %-7s  | %s | %s", uuid.Nil.String(), method, path, message)
 
 	app := fiber.New()
-	app.Get(path, RequestScopedLogging(logger), func(c *fiber.Ctx) error {
+	app.Get(path, requestScopedLogging(logger), func(c *fiber.Ctx) error {
 		l := LoggerFrom(c)
 		assert.IsType(t, &requestScopedLogger{}, l)
 

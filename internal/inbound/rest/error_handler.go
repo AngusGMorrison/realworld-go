@@ -26,14 +26,13 @@ func newTerminatingErrorHandler(next fiber.ErrorHandler) fiber.ErrorHandler {
 	}
 }
 
-// newLoggingErrorHandler logs errors propagated from inner error handlers
-// before returning them to outer error handlers.
+// newLoggingErrorHandler logs the causes of internal service errors and propagates
+// them to the outer error handler.
 func newLoggingErrorHandler(next fiber.ErrorHandler) fiber.ErrorHandler {
 	return func(c *fiber.Ctx, err error) error {
 		handledErr := next(c, err)
-		if handledErr != nil {
-			status := c.Response().StatusCode()
-			LoggerFrom(c).Printf("%d %s caused by %v\n", status, http.StatusText(status), err)
+		if handledErr != nil && c.Response().StatusCode() == http.StatusInternalServerError {
+			LoggerFrom(c).Printf("%v\n", err)
 		}
 		return handledErr
 	}

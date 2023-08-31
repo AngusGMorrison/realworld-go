@@ -28,7 +28,7 @@ func Test_newErrorHandler(t *testing.T) {
 			ErrorHandler: newErrorHandler(),
 		})
 		app.Use(
-			RequestScopedLogging(logger),
+			requestScopedLogging(logger),
 		)
 		app.Get("/", func(c *fiber.Ctx) error {
 			return handlerErr
@@ -56,7 +56,7 @@ func Test_newErrorHandler(t *testing.T) {
 	})
 
 	t.Run(
-		"user-facing errors map to the appropriate status code and the error is logged",
+		"user-facing errors map to the appropriate status code and the error is not logged",
 		func(t *testing.T) {
 			t.Parallel()
 
@@ -67,7 +67,7 @@ func Test_newErrorHandler(t *testing.T) {
 				ErrorHandler: newErrorHandler(),
 			})
 			app.Use(
-				RequestScopedLogging(logger),
+				requestScopedLogging(logger),
 			)
 			app.Get("/", func(c *fiber.Ctx) error {
 				return handlerErr
@@ -91,7 +91,7 @@ func Test_newErrorHandler(t *testing.T) {
 			// Assert error is logged.
 			logEntry, err := io.ReadAll(logger.buf)
 			require.NoError(t, err)
-			assert.Contains(t, string(logEntry), handlerErr.Error())
+			assert.Empty(t, logEntry)
 		},
 	)
 }

@@ -1,8 +1,11 @@
 package v0
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,6 +35,17 @@ func (e *UserFacingError) Body() fiber.Map {
 
 func (e *UserFacingError) Unwrap() error {
 	return e.Cause
+}
+
+func (e *UserFacingError) Is(target error) bool {
+	other, ok := target.(*UserFacingError)
+	if !ok {
+		return false
+	}
+
+	return e.StatusCode == other.StatusCode &&
+		errors.Is(e.Cause, other.Cause) &&
+		reflect.DeepEqual(e.body, other.body)
 }
 
 func NewBadRequestError(cause error) error {
@@ -77,5 +91,16 @@ func NewUnprocessableEntityError(messages userFacingValidationErrorMessages) err
 	return &UserFacingError{
 		StatusCode: http.StatusUnprocessableEntity,
 		body:       messages.toFiberMap(),
+	}
+}
+
+func NewUnsupportedMediaTypeError(mediaType string, supportedMediaTypes []string) error {
+	message := fmt.Sprintf("Media type %q is not supported. Suported media types are: %s.",
+		mediaType, strings.Join(supportedMediaTypes, ", "))
+	return &UserFacingError{
+		StatusCode: http.StatusUnsupportedMediaType,
+		body: fiber.Map{
+			"unsupported_media_type": []string{message},
+		},
 	}
 }

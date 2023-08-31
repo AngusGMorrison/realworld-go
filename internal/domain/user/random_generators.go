@@ -21,10 +21,10 @@ func RandomUsernameCandidate() string {
 	return gofakeit.Regex(usernamePattern)
 }
 
-func RandomPasswordCandidate() logfusc.Secret[[]byte] {
+func RandomPasswordCandidate() logfusc.Secret[string] {
 	length := rand.Intn(PasswordMaxLen-PasswordMinLen) + PasswordMinLen
 	raw := gofakeit.Password(true, true, true, true, true, length)
-	return logfusc.NewSecret([]byte(raw))
+	return logfusc.NewSecret(raw)
 }
 
 func RandomBio() Bio {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
@@ -99,13 +100,15 @@ func initGlobalMiddleware(router fiber.Router, cfg Config) {
 		requestid.New(),
 		// Add a logger to the context for each request that automatically logs
 		// the request's IDFieldValue.
-		RequestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
+		requestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
 		// Log request stats.
-		RequestStatsLogging(os.Stdout),
+		requestStatsLogging(os.Stdout),
 		// Recover from panics.
 		recover.New(recover.Config{
 			EnableStackTrace: cfg.EnableStackTrace,
 		}),
+		// Validate content type.
+		validateContentType,
 	)
 }
 
@@ -138,4 +141,14 @@ func strictDecoder(b []byte, v any) error {
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(v) // nolint:wrapcheck
+}
+
+var supportedMediaTypes = []string{fiber.MIMEApplicationJSON}
+
+func validateContentType(c *fiber.Ctx) error {
+	mediaType := c.Get(fiber.HeaderContentType)
+	if !slices.Contains(supportedMediaTypes, mediaType) {
+		return v0.NewUnsupportedMediaTypeError(mediaType, supportedMediaTypes)
+	}
+	return c.Next()
 }
