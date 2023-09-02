@@ -9,6 +9,7 @@ import (
 	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -39,7 +40,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 	validEmailCandidate := user.RandomEmailAddressCandidate()
 	validPasswordCandidate := user.RandomPasswordCandidate()
 
-	t.Run("failure", func(t *testing.T) {
+	t.Run("errors", func(t *testing.T) {
 		t.Parallel()
 
 		testCases := []struct {
@@ -261,7 +262,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 	validEmailCandidate := user.RandomEmailAddressCandidate()
 	validPasswordCandidate := user.RandomPasswordCandidate()
 
-	t.Run("failure", func(t *testing.T) {
+	t.Run("errors", func(t *testing.T) {
 		t.Parallel()
 
 		testCases := []struct {
@@ -459,6 +460,181 @@ func Test_UsersHandlerLogin(t *testing.T) {
 		assert.JSONEq(t, wantBody, string(gotBody))
 		service.AssertExpectations(t)
 		jwtProvider.AssertExpectations(t)
+	})
+}
+
+func Test_UsersHandler_GetCurrent(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+
+	t.Run("panics", func(t *testing.T) {
+		t.Parallel()
+
+		testCases := []struct {
+			name         string
+			setupContext func(c *fiber.Ctx) error
+			setupMocks   func(service *testutil.MockUserService)
+		}{
+			{
+				name: "current user ID missing from context",
+				setupContext: func(c *fiber.Ctx) error {
+					return c.Next()
+				},
+				setupMocks: func(service *testutil.MockUserService) {},
+			},
+			{
+				name: "current JWT missing from context",
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					return c.Next()
+				},
+				setupMocks: func(service *testutil.MockUserService) {
+					service.On(
+						"GetUser",
+						mock.AnythingOfType("*fasthttp.RequestCtx"),
+						userID,
+					).Return(user.RandomUser(t), nil)
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			tc := tc
+
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				service := &testutil.MockUserService{}
+				handler := &UsersHandler{
+					service: service,
+				}
+				app := fiber.New()
+				assertPanics := func(c *fiber.Ctx) error {
+					assert.Panics(t, func() {
+						_ = c.Next()
+					})
+					return nil
+				}
+				app.Get("/", tc.setupContext, assertPanics, handler.GetCurrent)
+
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+				require.NoError(t, err)
+
+				tc.setupMocks(service)
+
+				_, _ = app.Test(req)
+
+				service.AssertExpectations(t)
+			})
+		}
+	})
+
+	t.Run("errors", func(t *testing.T) {
+		t.Parallel()
+
+		testCases := []struct {
+			name        string
+			setupMocks  func(service *testutil.MockUserService)
+			assertError func(t *testing.T, err error)
+			assertMocks func(t *testing.T, service *testutil.MockUserService)
+		}{
+			{
+				name: "service error",
+				setupMocks: func(service *testutil.MockUserService) {
+					service.On(
+						"GetUser",
+						mock.AnythingOfType("*fasthttp.RequestCtx"),
+						userID,
+					).Return((*user.User)(nil), assert.AnError)
+				},
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					assert.ErrorIs(t, err, assert.AnError)
+				},
+				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.AssertExpectations(t)
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			tc := tc
+
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				service := &testutil.MockUserService{}
+				handler := &UsersHandler{
+					service: service,
+				}
+
+				app := fiber.New(fiber.Config{
+					ErrorHandler: func(ctx *fiber.Ctx, err error) error {
+						tc.assertError(t, err)
+						return nil
+					},
+				})
+				setUserIDOnContext := func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					return c.Next()
+				}
+				app.Get("/", setUserIDOnContext, handler.GetCurrent)
+
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+				require.NoError(t, err)
+
+				tc.setupMocks(service)
+
+				_, err = app.Test(req)
+				require.NoError(t, err)
+
+				tc.assertMocks(t, service)
+			})
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		service := &testutil.MockUserService{}
+		handler := &UsersHandler{
+			service: service,
+		}
+		requestJWT := &jwt.Token{Raw: "abc"}
+
+		app := fiber.New()
+		setUserIDAndJWTOnContext := func(c *fiber.Ctx) error {
+			c.Locals(userIDKey, userID)
+			c.Locals(requestJWTKey, requestJWT)
+			return c.Next()
+		}
+		app.Get("/", setUserIDAndJWTOnContext, handler.GetCurrent)
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+		require.NoError(t, err)
+
+		wantUser := user.RandomUser(t)
+		wantStatusCode := fiber.StatusOK
+		wantResponseBody := fmt.Sprintf(`{"user": {"token": %q, "email": %q, "username": %q, "bio": %q, "image": %q}}`,
+			requestJWT.Raw, wantUser.Email(), wantUser.Username(), wantUser.Bio().UnwrapOrZero(), wantUser.ImageURL().UnwrapOrZero())
+
+		service.On(
+			"GetUser",
+			mock.AnythingOfType("*fasthttp.RequestCtx"),
+			userID,
+		).Return(wantUser, nil)
+
+		res, err := app.Test(req)
+		require.NoError(t, err)
+		assert.Equal(t, res.StatusCode, wantStatusCode)
+
+		gotResponseBodyBytes, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, wantResponseBody, string(gotResponseBodyBytes))
+
+		service.AssertExpectations(t)
 	})
 }
 
