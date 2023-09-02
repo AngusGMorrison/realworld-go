@@ -8,12 +8,10 @@ import (
 	"testing"
 
 	"github.com/angusgmorrison/logfusc"
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/bcrypt"
-
-	"github.com/angusgmorrison/realworld-go/pkg/option"
 )
 
 func Test_ParseEmailAddress(t *testing.T) {
@@ -127,38 +125,38 @@ func Test_parsePassword(t *testing.T) {
 
 	anyError := errors.New("any error")
 
-	assertEmptyPasswordHash := func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte]) {
+	assertEmptyPasswordHash := func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[string]) {
 		t.Helper()
 		assert.Empty(t, hash.Expose())
 	}
 
 	testCases := []struct {
 		name               string
-		candidate          logfusc.Secret[[]byte]
+		candidate          logfusc.Secret[string]
 		hasher             passwordHasher
-		assertPasswordHash func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte])
+		assertPasswordHash func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[string])
 		wantErr            error
 	}{
 		{
 			name:      "valid password",
 			candidate: RandomPasswordCandidate(),
 			hasher:    bcryptHasher,
-			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[[]byte]) {
+			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[string]) {
 				t.Helper()
-				assert.NoError(t, bcrypt.CompareHashAndPassword(hash.Expose(), candidate.Expose()))
+				assert.NoError(t, CompareHashAndPassword(hash, candidate))
 			},
 			wantErr: nil,
 		},
 		{
 			name:               "password too short",
-			candidate:          logfusc.NewSecret([]byte(strings.Repeat("a", PasswordMinLen-1))),
+			candidate:          logfusc.NewSecret(strings.Repeat("a", PasswordMinLen-1)),
 			hasher:             bcryptHasher,
 			assertPasswordHash: assertEmptyPasswordHash,
 			wantErr:            NewPasswordTooShortError(),
 		},
 		{
 			name:               "password too long",
-			candidate:          logfusc.NewSecret([]byte(strings.Repeat("a", PasswordMaxLen+1))),
+			candidate:          logfusc.NewSecret(strings.Repeat("a", PasswordMaxLen+1)),
 			hasher:             bcryptHasher,
 			assertPasswordHash: assertEmptyPasswordHash,
 			wantErr:            NewPasswordTooLongError(),
@@ -166,7 +164,7 @@ func Test_parsePassword(t *testing.T) {
 		{
 			name:      "hasher returns any error",
 			candidate: RandomPasswordCandidate(),
-			hasher: func(secret logfusc.Secret[[]byte]) (PasswordHash, error) {
+			hasher: func(secret logfusc.Secret[string]) (PasswordHash, error) {
 				return PasswordHash{}, anyError
 			},
 			assertPasswordHash: assertEmptyPasswordHash,
@@ -333,7 +331,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 		name                      string
 		usernameCandidate         string
 		emailCandidate            string
-		passwordCandidate         logfusc.Secret[[]byte]
+		passwordCandidate         logfusc.Secret[string]
 		assertRegistrationRequest assert.ValueAssertionFunc
 		wantErr                   error
 	}{
@@ -349,16 +347,16 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 				got := v.(*RegistrationRequest)
 
 				if pass := assert.Equal(t, wantUsername, got.username); !pass {
-					return pass
+					return false
 				}
 
 				if pass := assert.Equal(t, wantEmail, got.email); !pass {
-					return pass
+					return false
 				}
 
-				gotPasswordComparisonErr := bcrypt.CompareHashAndPassword(got.passwordHash.Expose(), validPasswordCandidate.Expose())
+				gotPasswordComparisonErr := CompareHashAndPassword(got.PasswordHash(), validPasswordCandidate)
 				if pass := assert.NoError(t, gotPasswordComparisonErr); !pass {
-					return pass
+					return false
 				}
 
 				return true
@@ -389,7 +387,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 			name:                      "invalid password",
 			usernameCandidate:         validUsernameCandidate,
 			emailCandidate:            validEmailCandidate,
-			passwordCandidate:         logfusc.NewSecret([]byte{}),
+			passwordCandidate:         logfusc.NewSecret(""),
 			assertRegistrationRequest: assert.Nil,
 			wantErr: ValidationErrors{
 				NewPasswordTooShortError().(*ValidationError),
@@ -399,7 +397,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 			name:                      "multiple invalid inputs",
 			usernameCandidate:         "",
 			emailCandidate:            "",
-			passwordCandidate:         logfusc.NewSecret([]byte{}),
+			passwordCandidate:         logfusc.NewSecret(""),
 			assertRegistrationRequest: assert.Nil,
 			wantErr: ValidationErrors{
 				NewUsernameTooShortError().(*ValidationError),
@@ -431,8 +429,7 @@ func Test_RegistrationRequest_StringMethods(t *testing.T) {
 	passwordHash := RandomPasswordHash(t)
 	registrationRequest := NewRegistrationRequest(username, email, passwordHash)
 	want := fmt.Sprintf("RegistrationRequest{username:%q, email:%q, passwordHash:%s}",
-		username, email, passwordHash,
-	)
+		username, email, passwordHash)
 
 	assert.Equal(t, want, registrationRequest.GoString())
 	assert.Equal(t, want, registrationRequest.String())
@@ -462,7 +459,7 @@ func Test_ParseAuthRequest(t *testing.T) {
 	testCases := []struct {
 		name              string
 		emailCandidate    string
-		passwordCandidate logfusc.Secret[[]byte]
+		passwordCandidate logfusc.Secret[string]
 		wantAuthRequest   *AuthRequest
 		wantErr           error
 	}{
@@ -481,7 +478,7 @@ func Test_ParseAuthRequest(t *testing.T) {
 			emailCandidate:    "",
 			passwordCandidate: validPasswordCandidate,
 			wantAuthRequest:   nil,
-			wantErr:           NewEmailAddressFormatError(""),
+			wantErr:           ValidationErrors{NewEmailAddressFormatError("").(*ValidationError)},
 		},
 	}
 
@@ -566,10 +563,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 				got.passwordHash.UnwrapOrZero(),
 			)
 		} else {
-			err := bcrypt.CompareHashAndPassword(
-				got.passwordHash.UnwrapOrZero().Expose(),
-				validPasswordCandidate.Expose(),
-			)
+			err := CompareHashAndPassword(got.PasswordHash().UnwrapOrZero(), validPasswordCandidate)
 			assert.NoError(t, err)
 		}
 	}
@@ -578,7 +572,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		name              string
 		userID            uuid.UUID
 		emailCandidate    option.Option[string]
-		passwordCandidate option.Option[logfusc.Secret[[]byte]]
+		passwordCandidate option.Option[logfusc.Secret[string]]
 		bio               option.Option[string]
 		urlCandidate      option.Option[string]
 		wantUpdateRequest *UpdateRequest
@@ -604,7 +598,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			name:              "valid inputs, optional inputs absent",
 			userID:            userID,
 			emailCandidate:    option.None[string](),
-			passwordCandidate: option.None[logfusc.Secret[[]byte]](),
+			passwordCandidate: option.None[logfusc.Secret[string]](),
 			bio:               option.None[string](),
 			urlCandidate:      option.None[string](),
 			wantUpdateRequest: &UpdateRequest{
@@ -632,7 +626,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			name:              "invalid password",
 			userID:            uuid.New(),
 			emailCandidate:    option.Some(validEmailCandidate),
-			passwordCandidate: option.Some(logfusc.NewSecret([]byte{})),
+			passwordCandidate: option.Some(logfusc.NewSecret("")),
 			bio:               option.Some(string(bio)),
 			urlCandidate:      option.Some(validURLCandidate),
 			wantUpdateRequest: nil,

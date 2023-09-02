@@ -70,7 +70,7 @@ func Test_service_Authenticate(t *testing.T) {
 			name:     "success",
 			repoUser: &User{},
 			repoErr:  nil,
-			passwordComparator: func(hash PasswordHash, candidate logfusc.Secret[[]byte]) *AuthError {
+			passwordComparator: func(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
 				return nil
 			},
 			wantUser: &User{},
@@ -98,7 +98,7 @@ func Test_service_Authenticate(t *testing.T) {
 			name:     "passwordComparator returns an error",
 			repoUser: &User{},
 			repoErr:  nil,
-			passwordComparator: func(hash PasswordHash, candidate logfusc.Secret[[]byte]) *AuthError {
+			passwordComparator: func(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
 				return &AuthError{}
 			},
 			wantUser: nil,

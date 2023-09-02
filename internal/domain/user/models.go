@@ -156,8 +156,13 @@ type passwordComparator func(hash PasswordHash, candidate logfusc.Secret[string]
 // compare two domain models, but direct comparison of password hashes is
 // impossible. CompareHashAndPassword allows dependent packages to remain
 // ignorant of the hashing algorithm.
-func CompareHashAndPassword(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
-	return bcryptComparator(hash, candidate)
+func CompareHashAndPassword(hash PasswordHash, candidate logfusc.Secret[string]) error {
+	// An explicit nil check is required to return a nil error interface, as opposed
+	// to non-nil error containing nil *AuthError.
+	if authErr := bcryptComparator(hash, candidate); authErr != nil {
+		return authErr
+	}
+	return nil
 }
 
 func bcryptComparator(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
@@ -352,11 +357,16 @@ func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]
 // ParseAuthRequest returns a new [AuthRequest] from raw inputs.
 //
 // # Errors
-//   - [ValidationError], if `emailCandidate` is invalid.
+//   - [ValidationErrors], if `emailCandidate` is invalid.
 func ParseAuthRequest(emailCandidate string, passwordCandidate logfusc.Secret[string]) (*AuthRequest, error) {
+	var validationErrs ValidationErrors
 	email, err := ParseEmailAddress(emailCandidate)
-	if err != nil {
-		return nil, err
+	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
+		return nil, pushErr
+	}
+
+	if validationErrs.Any() {
+		return nil, validationErrs
 	}
 
 	return NewAuthRequest(email, passwordCandidate), nil

@@ -1,19 +1,29 @@
 package testutil
 
 import (
-	"fmt"
 	"github.com/angusgmorrison/logfusc"
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func NewRegistrationRequestMatcher(want *user.RegistrationRequest, wantPassword logfusc.Secret[string]) func(*user.RegistrationRequest) bool {
+func NewRegistrationRequestMatcher(t *testing.T, want *user.RegistrationRequest, wantPassword logfusc.Secret[string]) func(*user.RegistrationRequest) bool {
 	return func(got *user.RegistrationRequest) bool {
-		if err := user.CompareHashAndPassword(got.PasswordHash(), wantPassword); err != nil {
-			fmt.Println(err)
+		t.Helper()
+
+		err := user.CompareHashAndPassword(got.PasswordHash(), wantPassword)
+		if pass := assert.NoError(t, err); !pass {
 			return false
 		}
 
-		return got.Username() == want.Username() &&
-			got.Email() == want.Email()
+		if pass := assert.Equal(t, want.Username(), got.Username()); !pass {
+			return false
+		}
+
+		if pass := assert.Equal(t, want.Email(), got.Email()); !pass {
+			return false
+		}
+
+		return true
 	}
 }

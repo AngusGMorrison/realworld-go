@@ -115,7 +115,6 @@ type registrationRequestBodyUser struct {
 func parseRegistrationRequest(c *fiber.Ctx) (*user.RegistrationRequest, error) {
 	var body registrationRequestBody
 	if err := c.BodyParser(&body); err != nil {
-		fmt.Println(err)
 		return nil, fmt.Errorf("parse request body: %w", err)
 	}
 
