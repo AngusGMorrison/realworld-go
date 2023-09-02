@@ -4,11 +4,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/server"
 	"log"
 
 	"github.com/angusgmorrison/realworld-go/internal/config"
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
-	"github.com/angusgmorrison/realworld-go/internal/inbound/rest"
 	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite"
 )
 
@@ -38,19 +38,19 @@ func run() (err error) {
 
 	userService := user.NewService(db)
 
-	serverConfig := rest.Config{
+	serverConfig := server.Config{
 		AppName:          cfg.AppName,
 		ReadTimeout:      cfg.ReadTimeout,
 		WriteTimeout:     cfg.WriteTimeout,
 		EnableStackTrace: cfg.EnableStackTrace,
-		JwtCfg: rest.JWTConfig{
+		JwtCfg: server.JWTConfig{
 			RS265PrivateKey: cfg.JWTPrivateKey(),
 			TTL:             cfg.JwtTTL,
 			Issuer:          cfg.JwtIssuer,
 		},
 	}
 
-	server := rest.NewServer(serverConfig, userService)
+	server := server.New(serverConfig, userService)
 
 	if err = server.Listen(cfg.ServerAddress()); err != nil {
 		return fmt.Errorf("listen on %s: %w", cfg.ServerAddress(), err)

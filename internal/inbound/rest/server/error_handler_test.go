@@ -1,10 +1,9 @@
-package rest
+package server
 
 import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
@@ -22,8 +21,7 @@ func Test_newErrorHandler(t *testing.T) {
 
 		logger := &mockLogger{buf: &bytes.Buffer{}}
 		handlerErr := errors.New("unhandled")
-		expectedLogEntry := fmt.Sprintf("%d %s caused by %v",
-			http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError), handlerErr.Error())
+		expectedLogEntry := handlerErr.Error()
 		app := fiber.New(fiber.Config{
 			ErrorHandler: newErrorHandler(),
 		})

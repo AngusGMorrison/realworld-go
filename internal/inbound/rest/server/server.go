@@ -1,4 +1,6 @@
-package rest
+// Package server provides the application's HTTP server, wired with routes
+// according to the structure of the api package.
+package server
 
 import (
 	"bytes"
@@ -44,9 +46,9 @@ type Server struct {
 	cfg Config
 }
 
-// NewServer configures an application server with the injected dependencies. Options may be
-// passed to override the server defaults.
-func NewServer(
+// New configures an application server with the injected configuration and
+// dependencies.
+func New(
 	cfg Config,
 	userService user.Service,
 ) *Server {
