@@ -26,7 +26,7 @@ help:
 		@printf "\n"
 
 ## Run tests locally.
-test:
+test: db/sqlc
 	go test -race ./...
 
 ## Compile the application. CGO is required by the SQLite driver.
