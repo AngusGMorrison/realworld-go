@@ -12,7 +12,7 @@ import (
 type FieldType int
 
 const (
-	IDFieldType FieldType = iota + 1
+	UUIDFieldType FieldType = iota + 1
 	UsernameFieldType
 	EmailFieldType
 	PasswordFieldType
@@ -44,12 +44,12 @@ func (e *AuthError) Unwrap() error {
 // NotFoundError should be returned by a [Repository] when the specified user
 // does not exist.
 type NotFoundError struct {
-	IDFieldType  FieldType
-	IDFieldValue string
+	IDType  FieldType
+	IDValue string
 }
 
 func (e *NotFoundError) Error() string {
-	return fmt.Sprintf("user with %s %q not found", e.IDFieldType, e.IDFieldValue)
+	return fmt.Sprintf("user with %s %q not found", e.IDType, e.IDValue)
 }
 
 func (e *NotFoundError) Is(target error) bool {
@@ -58,20 +58,20 @@ func (e *NotFoundError) Is(target error) bool {
 		return false
 	}
 
-	return e.IDFieldType == otherNotFoundError.IDFieldType && e.IDFieldValue == otherNotFoundError.IDFieldValue
+	return e.IDType == otherNotFoundError.IDType && e.IDValue == otherNotFoundError.IDValue
 }
 
 func NewNotFoundByIDError(id uuid.UUID) error {
 	return &NotFoundError{
-		IDFieldType:  IDFieldType,
-		IDFieldValue: id.String(),
+		IDType:  UUIDFieldType,
+		IDValue: id.String(),
 	}
 }
 
 func NewNotFoundByEmailError(email EmailAddress) error {
 	return &NotFoundError{
-		IDFieldType:  EmailFieldType,
-		IDFieldValue: email.String(),
+		IDType:  EmailFieldType,
+		IDValue: email.String(),
 	}
 }
 

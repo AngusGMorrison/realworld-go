@@ -84,7 +84,7 @@ func Test_NotFoundError_Error(t *testing.T) {
 		{
 			name:      "id field",
 			id:        "id",
-			fieldType: IDFieldType,
+			fieldType: UUIDFieldType,
 			want:      "user with id \"id\" not found",
 		},
 		{
@@ -102,8 +102,8 @@ func Test_NotFoundError_Error(t *testing.T) {
 			t.Parallel()
 
 			err := &NotFoundError{
-				IDFieldValue: tc.id,
-				IDFieldType:  tc.fieldType,
+				IDValue: tc.id,
+				IDType:  tc.fieldType,
 			}
 
 			assert.Equal(t, tc.want, err.Error())
@@ -116,8 +116,8 @@ func Test_NewNotFoundByIDError(t *testing.T) {
 
 	id := uuid.New()
 	want := &NotFoundError{
-		IDFieldValue: id.String(),
-		IDFieldType:  IDFieldType,
+		IDValue: id.String(),
+		IDType:  UUIDFieldType,
 	}
 
 	got := NewNotFoundByIDError(id)
@@ -132,8 +132,8 @@ func Test_NewNotFoundByEmailError(t *testing.T) {
 	require.NoError(t, err)
 
 	want := &NotFoundError{
-		IDFieldValue: email.String(),
-		IDFieldType:  EmailFieldType,
+		IDValue: email.String(),
+		IDType:  EmailFieldType,
 	}
 
 	got := NewNotFoundByEmailError(email)
@@ -145,7 +145,7 @@ func Test_ValidationErrors_PushValidationError(t *testing.T) {
 	t.Parallel()
 
 	validationErr := &ValidationError{
-		FieldType: IDFieldType,
+		FieldType: UUIDFieldType,
 		Message:   "reason",
 	}
 	nonValidationErr := errors.New("error")
@@ -235,7 +235,7 @@ func Test_ValidationErrors_Error(t *testing.T) {
 	t.Parallel()
 
 	validationErr := &ValidationError{
-		FieldType: IDFieldType,
+		FieldType: UUIDFieldType,
 		Message:   "reason",
 	}
 
@@ -286,7 +286,7 @@ func Test_ValidationError_Error(t *testing.T) {
 	t.Parallel()
 
 	err := &ValidationError{
-		FieldType: IDFieldType,
+		FieldType: UUIDFieldType,
 		Message:   "reason",
 	}
 	want := "id: reason"

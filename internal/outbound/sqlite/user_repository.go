@@ -18,7 +18,7 @@ import (
 
 var _ user.Repository = (*SQLite)(nil)
 
-// GetUserByID returns the [user.User] with the given IDFieldValue, or
+// GetUserByID returns the [user.User] with the given ID, or
 // [user.NotFoundError] if no such user exists.
 func (db *SQLite) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	return getUserById(ctx, db.queries, id)

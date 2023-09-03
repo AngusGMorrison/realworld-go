@@ -69,7 +69,7 @@ func (h *UsersHandler) Login(c *fiber.Ctx) error {
 	)
 }
 
-// GetCurrent returns the user corresponding to the IDFieldValue contained in the
+// GetCurrent returns the user corresponding to the ID contained in the
 // request JWT.
 func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 	currentUser, err := h.service.GetUser(c.Context(), mustGetCurrentUserIDFromContext(c))
@@ -84,7 +84,7 @@ func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 	)
 }
 
-// UpdateCurrent updates the user corresponding to the IDFieldValue contained in the
+// UpdateCurrent updates the user corresponding to the ID contained in the
 // request JWT.
 func (h *UsersHandler) UpdateCurrent(c *fiber.Ctx) error {
 	updateReq, err := parseUpdateRequest(c)
@@ -200,7 +200,6 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 		syntaxErr      *json.SyntaxError
 		authErr        *user.AuthError
 		notFoundErr    *user.NotFoundError
-		validationErr  *user.ValidationError
 		validationErrs user.ValidationErrors
 	)
 
@@ -212,10 +211,8 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 	case errors.As(err, &notFoundErr):
 		return NewNotFoundError(
 			"user",
-			fmt.Sprintf("user with %s %q not found", notFoundErr.IDFieldType, notFoundErr.IDFieldValue),
+			fmt.Sprintf("user with %s %q not found", notFoundErr.IDType, notFoundErr.IDValue),
 		)
-	case errors.As(err, &validationErr):
-		return handleValidationErrors(validationErr)
 	case errors.As(err, &validationErrs):
 		return handleValidationErrors(validationErrs...)
 	default:

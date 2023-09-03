@@ -37,11 +37,11 @@ const requestJWTKey = "requestJWT"
 
 type userIDKeyT int
 
-// userIDKey is the context key under which the current user IDFieldValue, is any, is stored.
+// userIDKey is the context key under which the current user ID, is any, is stored.
 const userIDKey userIDKeyT = 0
 
 // NewRS256JWTAuthMiddleware wraps Fiber's JWT middleware, parsing the current
-// user IDFieldValue from the JWT claims and setting it on the request context.
+// user ID from the JWT claims and setting it on the request context.
 func NewRS256JWTAuthMiddleware(publicKey *rsa.PublicKey) fiber.Handler {
 	return jwtware.New(jwtware.Config{
 		AuthScheme:     "Token", // required by the RealWorld spec
@@ -74,7 +74,7 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-// currentUserIDFromContext attempts to retrieve the current user IDFieldValue from the request
+// currentUserIDFromContext attempts to retrieve the current user ID from the request
 // context. The boolean value is true if it is set, and false otherwise.
 func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
 	userID, _ := c.Locals(userIDKey).(uuid.UUID)
@@ -85,12 +85,12 @@ func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
 	return userID, true
 }
 
-// mustGetCurrentUserIDFromContext retrieves the current user IDFieldValue from the request context,
+// mustGetCurrentUserIDFromContext retrieves the current user ID from the request context,
 // panicking if it is not set.
 func mustGetCurrentUserIDFromContext(c *fiber.Ctx) uuid.UUID {
 	userID, ok := currentUserIDFromContext(c)
 	if !ok {
-		panic("current user IDFieldValue not set on request context")
+		panic("current user ID not set on request context")
 	}
 	return userID
 }

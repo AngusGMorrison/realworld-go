@@ -1,6 +1,7 @@
 package option
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"strconv"
@@ -234,19 +235,33 @@ func Test_Option_String(t *testing.T) {
 func Test_Option_UnmarshalJSON(t *testing.T) {
 	t.Parallel()
 
+	type target struct {
+		Opt Option[string] `json:"opt"`
+	}
+
 	testCases := []struct {
 		name    string
 		bytes   []byte
 		wantOpt Option[string]
 	}{
 		{
-			name:    "IsSome",
-			bytes:   []byte(`"value"`),
+			name:    "Some",
+			bytes:   []byte(`{"opt": "value"}`),
 			wantOpt: Some("value"),
 		},
 		{
+			name:    "Some empty",
+			bytes:   []byte(`{"opt": ""}`),
+			wantOpt: Some[string](""),
+		},
+		{
+			name:    "Some null",
+			bytes:   []byte(`{"opt": null}`),
+			wantOpt: Some[string](""),
+		},
+		{
 			name:    "None",
-			bytes:   nil,
+			bytes:   []byte(`{}`),
 			wantOpt: None[string](),
 		},
 	}
@@ -257,10 +272,10 @@ func Test_Option_UnmarshalJSON(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var gotOpt Option[string]
-			err := gotOpt.UnmarshalJSON(tc.bytes)
+			var got target
+			err := json.Unmarshal(tc.bytes, &got)
 			assert.NoError(t, err)
-			assert.Equal(t, tc.wantOpt, gotOpt)
+			assert.Equal(t, tc.wantOpt, got.Opt)
 		})
 	}
 }

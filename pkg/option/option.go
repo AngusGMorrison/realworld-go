@@ -83,15 +83,18 @@ func (o Option[T]) String() string {
 }
 
 func (o *Option[T]) UnmarshalJSON(bytes []byte) error {
+	// By the fact that UnmarshalJSON has been called, we know that the Option is
+	// Some. None corresponds to omitted fields, which do not trigger UnmarshalJSON.
+	o.some = true
+
 	if len(bytes) == 0 {
+		o.value = *new(T)
 		return nil
 	}
 
 	if err := json.Unmarshal(bytes, &o.value); err != nil {
 		return err // nolint:wrapcheck
 	}
-
-	o.some = true
 
 	return nil
 }

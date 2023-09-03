@@ -112,6 +112,14 @@ func RandomOption[T any](t *testing.T) option.Option[T] {
 	return option.None[T]()
 }
 
+func RandomOptionFromInstance[T any](instance T) option.Option[T] {
+	if rand.Intn(2) == 0 {
+		return option.Some(instance)
+	}
+
+	return option.None[T]()
+}
+
 func RandomRegistrationRequest(t *testing.T) *RegistrationRequest {
 	t.Helper()
 

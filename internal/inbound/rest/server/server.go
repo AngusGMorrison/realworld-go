@@ -101,7 +101,7 @@ func initGlobalMiddleware(router fiber.Router, cfg Config) {
 		// Add a UUID to each request.
 		requestid.New(),
 		// Add a logger to the context for each request that automatically logs
-		// the request's IDFieldValue.
+		// the request's ID.
 		requestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
 		// Log request stats.
 		requestStatsLogging(os.Stdout),
