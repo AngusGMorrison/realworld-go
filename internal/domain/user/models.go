@@ -39,10 +39,10 @@ func (ea EmailAddress) String() string {
 }
 
 const (
-	// UsernameMinLen is the minimum length of a username.
-	UsernameMinLen = 1
+	// UsernameMinLen is the minimum length of a username in bytes.
+	UsernameMinLen = 3
 
-	// UsernameMaxLen is the maximum length of a username.
+	// UsernameMaxLen is the maximum length of a username in bytes.
 	UsernameMaxLen = 16
 
 	UsernamePatternTemplate = "^[a-zA-Z0-9_]{%d,%d}$"

@@ -41,6 +41,7 @@ jobs:
       REALWORLD_PORT: ${{ vars.REALWORLD_PORT }}
       REALWORLD_DATA_DIR: ${{ vars.REALWORLD_DATA_DIR }}
       REALWORLD_VOLUME_NAME: ${{ vars.REALWORLD_VOLUME_NAME }}
+      REALWORLD_USER: ${{ vars.REALWORLD_USER }}
     steps:
       - uses: "actions/checkout@v3"
 

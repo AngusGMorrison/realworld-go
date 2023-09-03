@@ -180,7 +180,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 
 				tc.setupMocks(service, jwtProvider)
 
-				_, err = app.Test(req)
+				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
 
 				tc.assertMocks(t, service, jwtProvider)
@@ -246,7 +246,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 
 		jwtProvider.On("TokenFor", wantUser.ID()).Return(wantToken, nil)
 
-		res, err := app.Test(req)
+		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
 		require.NoError(t, err)
 
 		gotBody, err := io.ReadAll(res.Body)
@@ -391,7 +391,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 
 				tc.setupMocks(service, jwtProvider)
 
-				_, err = app.Test(req)
+				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
 
 				tc.assertMocks(t, service, jwtProvider)
@@ -453,7 +453,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 
 		jwtProvider.On("TokenFor", wantUser.ID()).Return(wantToken, nil)
 
-		res, err := app.Test(req)
+		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
 		require.NoError(t, err)
 
 		gotBody, err := io.ReadAll(res.Body)
@@ -525,7 +525,7 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 
 				tc.setupMocks(service)
 
-				_, _ = app.Test(req)
+				_, _ = app.Test(req, testutil.FiberTestTimeoutMillis)
 
 				service.AssertExpectations(t)
 			})
@@ -589,7 +589,7 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 
 				tc.setupMocks(service)
 
-				_, err = app.Test(req)
+				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
 
 				tc.assertMocks(t, service)
@@ -628,7 +628,7 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 			userID,
 		).Return(wantUser, nil)
 
-		res, err := app.Test(req)
+		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
 		require.NoError(t, err)
 		assert.Equal(t, res.StatusCode, wantStatusCode)
 
@@ -729,7 +729,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 
 				tc.setupMocks(service)
 
-				_, err = app.Test(req)
+				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
 
 				tc.assertMocks(t, service)
@@ -845,7 +845,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 
 				tc.setupMocks(service)
 
-				_, err = app.Test(req)
+				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
 
 				tc.assertMocks(t, service)
@@ -899,7 +899,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateRequest, passwordOption)),
 		).Return(wantUser, nil)
 
-		res, err := app.Test(req)
+		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
 		require.NoError(t, err)
 		assert.Equal(t, res.StatusCode, wantStatusCode)
 
@@ -982,7 +982,7 @@ func Test_UsersErrorHandler(t *testing.T) {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 			require.NoError(t, err)
 
-			_, err = app.Test(req)
+			_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 			require.NoError(t, err)
 		})
 	}
