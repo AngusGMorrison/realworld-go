@@ -9,6 +9,10 @@ issues:
       linters:
         - "wrapcheck"
         - "gosec"
+    - path: /
+      linters:
+        # Causes false positives for standard library slices package functions introduced in go 1.21.
+        - "typecheck"
   max-issues-per-linter: 0
   max-same-issues: 0
 
