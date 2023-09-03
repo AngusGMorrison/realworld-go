@@ -1,7 +1,7 @@
 .PHONY: docker
 
 ## Build the production Docker image.
-docker/build: docker/volume/create
+docker/build: docker/volume/create db/sqlc
 	docker build \
 	--no-cache \
 	--tag ${REALWORLD_IMAGE_NAME} \
@@ -14,7 +14,7 @@ docker/volume/create:
 
 
 ## Build and run the Docker image in the background.
-docker/run: docker/volume/create
+docker/run: docker/volume/create db/sqlc
 	docker run \
 	--rm \
 	--name=${REALWORLD_CONTAINER_NAME} \
@@ -26,7 +26,7 @@ docker/run: docker/volume/create
 	${REALWORLD_IMAGE_NAME}
 
 ## Build and run the Docker image interactively.
-docker/run/it: docker/volume/create
+docker/run/it: docker/volume/create db/sqlc
 	docker run \
 	--interactive \
 	--tty \
@@ -40,7 +40,7 @@ docker/run/it: docker/volume/create
 	${REALWORLD_IMAGE_NAME}
 
 ## Run the app in a container with live reloading.
-docker/dev: docker/volume/create
+docker/dev: docker/volume/create db/sqlc
 	docker run \
 	--interactive \
 	--tty \
