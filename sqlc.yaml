@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - schema: "internal/outbound/sqlite/migrations"
+    queries: "internal/outbound/sqlite/queries"
+    engine: "sqlite"
+    gen:
+      go:
+        out: "internal/outbound/sqlite/sqlc"
+    database:
+      uri: "${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}"
+    rules:
+      - sqlc/db-prepare

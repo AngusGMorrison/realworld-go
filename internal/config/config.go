@@ -4,6 +4,7 @@ package config
 import (
 	"crypto/rsa"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -15,52 +16,87 @@ const envVarPrefix = "REALWORLD"
 
 // Config represents the complete configuration settings for the application.
 type Config struct {
-	Addr                string        `split_words:"true" default:":8080"`
-	ReadTimeout         time.Duration `split_words:"true" default:"5s"`
-	WriteTimeout        time.Duration `split_words:"true" default:"5s"`
-	JWTRSAPrivateKeyPEM string        `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM" required:"true"`
-	JWTTTL              time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
-	DBBasename          string        `split_words:"true" default:"realworld.db"`
-	VolumeMountPath     string        `split_words:"true" required:"true"`
+	// The name of the application.
+	AppName string `split_words:"true" default:"realworld"`
+
+	// The path to the directory containing runtime data, such as the DB file
+	// and encryption keys.
+	DataDir string `split_words:"true" required:"true"`
+
+	// The name of the SQLite DB file.
+	DBBasename string `split_words:"true" default:"realworld.db"`
+
+	// Enables stack tracing by panic recovery middleware.
+	EnableStackTrace bool `split_words:"true" default:"false"`
+
+	// The server host.
+	Host string `split_words:"true" default:"0.0.0.0"`
+
+	// The port to listen on.
+	Port string `split_words:"true" default:"8080"`
+
+	// The URL to be used as the issuer of JWTs signed by the server.
+	JwtIssuer string `split_words:"true" required:"true"`
+
+	// The name of the RSA private key PEM file used to generate JWTs.
+	JwtRSAPrivateKeyPEMBasename string `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_BASENAME" split_words:"true" required:"true"`
+
+	// The lifetime of JWTs issued by the server.
+	JwtTTL time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
+
+	// The read timeout for incoming requests to the server.
+	ReadTimeout time.Duration `split_words:"true" default:"5s"`
+
+	// The write timeout for outgoing responses from the server.
+	WriteTimeout time.Duration `split_words:"true" default:"5s"`
+
+	jwtRSAPrivateKey *rsa.PrivateKey
 }
 
 // New attempts to parse a `Config` object from the environment.
 func New() (Config, error) {
 	var cfg Config
 	if err := envconfig.Process(envVarPrefix, &cfg); err != nil {
-		return cfg, fmt.Errorf("read config variables with prefix %q from the environment: %w", envVarPrefix, err)
+		return Config{}, fmt.Errorf("read config variables with prefix %q from the environment: %w", envVarPrefix, err)
 	}
+
+	privateKeyPath := filepath.Join(cfg.DataDir, cfg.JwtRSAPrivateKeyPEMBasename)
+	privateKey, err := parseRSAPrivateKeyPEM(privateKeyPath)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg.jwtRSAPrivateKey = privateKey
 
 	return cfg, nil
 }
 
-// AuthTokenRS256PrivateKey parses the RSA private key PEM loaded from the
-// environment into a private key object.
-func (c *Config) AuthTokenRS256PrivateKey() (*rsa.PrivateKey, error) {
-	key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(c.JWTRSAPrivateKeyPEM))
+// DBPath returns the absolute path to the database file.
+func (c *Config) DBPath() string {
+	return filepath.Join(c.DataDir, c.DBBasename)
+}
+
+// JWTPrivateKey parses the RSA private key PEM loaded from the environment into
+// a private key object.
+func (c *Config) JWTPrivateKey() *rsa.PrivateKey {
+	return c.jwtRSAPrivateKey
+}
+
+func parseRSAPrivateKeyPEM(path string) (*rsa.PrivateKey, error) {
+	pemBytes, err := os.ReadFile(path) // nolint:gosec
 	if err != nil {
-		return nil, fmt.Errorf("parse REALWORLD_JWT_RSA_PRIVATE_KEY_PEM: %w", err)
+		return nil, fmt.Errorf("read RSA private key PEM from %q: %w", path, err)
 	}
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(pemBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse RSA private key PEM: %w", err)
+	}
+
 	return key, nil
 }
 
-// AuthTokenRS256PublicKey extracts a public counterpart of the private key
-// parsed from the environment PEM string.
-func (c *Config) AuthTokenRS256PublicKey() (*rsa.PublicKey, error) {
-	key, err := c.AuthTokenRS256PrivateKey()
-	if err != nil {
-		return nil, err
-	}
-
-	publicKey, ok := key.Public().(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("expected RSA public key but got %T", key.Public())
-	}
-
-	return publicKey, nil
-}
-
-// DBPath returns the absolute path to the database file.
-func (c *Config) DBPath() string {
-	return filepath.Join(c.VolumeMountPath, c.DBBasename)
+// ServerAddress returns the address the server should listen on.
+func (c *Config) ServerAddress() string {
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }

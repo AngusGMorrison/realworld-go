@@ -2,17 +2,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/server"
 	"log"
 
-	"github.com/angusgmorrison/realworld/internal/config"
-	"github.com/angusgmorrison/realworld/internal/controller/rest"
-	"github.com/angusgmorrison/realworld/internal/repository/sqlite"
-	"github.com/angusgmorrison/realworld/internal/service/user"
-	"github.com/hashicorp/go-multierror"
+	"github.com/angusgmorrison/realworld-go/internal/config"
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite"
 )
 
 func main() {
+	// Delegate to `run`, allowing us to exit the program from a single location,
+	// ensuring all deferred functions are executed.
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}
@@ -29,35 +31,29 @@ func run() (err error) {
 		return fmt.Errorf("open DB at %q: %w", cfg.DBPath(), err)
 	}
 	defer func() {
-		if dbErr := db.Close(); dbErr != nil {
-			err = multierror.Append(err, dbErr)
+		if closeErr := db.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
 		}
 	}()
 
-	if err := db.Migrate(); err != nil {
-		return fmt.Errorf("migrate DB: %w", err)
+	userService := user.NewService(db)
+
+	serverConfig := server.Config{
+		AppName:          cfg.AppName,
+		ReadTimeout:      cfg.ReadTimeout,
+		WriteTimeout:     cfg.WriteTimeout,
+		EnableStackTrace: cfg.EnableStackTrace,
+		JwtCfg: server.JWTConfig{
+			RS265PrivateKey: cfg.JWTPrivateKey(),
+			TTL:             cfg.JwtTTL,
+			Issuer:          cfg.JwtIssuer,
+		},
 	}
 
-	jwtPrivateKey, err := cfg.AuthTokenRS256PrivateKey()
-	if err != nil {
-		return fmt.Errorf("load JWT private key: %w", err)
-	}
+	server := server.New(serverConfig, userService)
 
-	userService := user.NewService(db, jwtPrivateKey, cfg.JWTTTL)
-
-	jwtPublicKey, err := cfg.AuthTokenRS256PublicKey()
-	if err != nil {
-		return fmt.Errorf("load JWT public key: %w", err)
-	}
-
-	srv := rest.NewServer(
-		userService,
-		jwtPublicKey,
-		&rest.ReadTimeoutOption{Timeout: cfg.ReadTimeout},
-		&rest.WriteTimeoutOption{Timeout: cfg.WriteTimeout},
-	)
-	if err := srv.Listen(cfg.Addr); err != nil {
-		return fmt.Errorf("listen on %s: %w", cfg.Addr, err)
+	if err = server.Listen(cfg.ServerAddress()); err != nil {
+		return fmt.Errorf("listen on %s: %w", cfg.ServerAddress(), err)
 	}
 
 	return nil

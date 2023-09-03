@@ -13,6 +13,9 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - name: "Install sqlc"
+        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
+
       - name: "Test"
         run: "make test"
 
@@ -39,8 +42,9 @@ jobs:
       REALWORLD_CONTAINER_NAME: ${{ vars.REALWORLD_CONTAINER_NAME }}
       REALWORLD_IMAGE_NAME: ${{ vars.REALWORLD_IMAGE_NAME }}
       REALWORLD_PORT: ${{ vars.REALWORLD_PORT }}
-      REALWORLD_VOLUME_MOUNT_PATH: ${{ vars.REALWORLD_VOLUME_MOUNT_PATH }}
+      REALWORLD_DATA_DIR: ${{ vars.REALWORLD_DATA_DIR }}
       REALWORLD_VOLUME_NAME: ${{ vars.REALWORLD_VOLUME_NAME }}
+      REALWORLD_USER: ${{ vars.REALWORLD_USER }}
     steps:
       - uses: "actions/checkout@v3"
 
@@ -48,8 +52,11 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - name: "Install sqlc"
+        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
+
       - name: "Docker build"
-        run: "make docker_build"
+        run: "make docker/build"
 
   audit:
     runs-on: "ubuntu-latest"
@@ -59,6 +66,12 @@ jobs:
       - uses: "actions/setup-go@v4"
         with:
           go-version-file: "go.mod"
+
+      - name: "Install sqlc"
+        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
+
+      - name: "Run sqlc"
+        run: "make db/sqlc"
 
       - name: "Install govulncheck"
         run: "go install golang.org/x/vuln/cmd/govulncheck@latest"

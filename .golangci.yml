@@ -5,15 +5,21 @@ run:
 issues:
   exclude-use-default: false
   exclude-rules:
-    - path: '(.+)_test\.go'
+    - path: '_test\.go'
       linters:
         - "wrapcheck"
+        - "gosec"
+    - path: /
+      linters:
+        # Causes false positives for standard library slices package functions introduced in go 1.21.
+        - "typecheck"
   max-issues-per-linter: 0
   max-same-issues: 0
 
 linters: # https://golangci-lint.run/usage/linters/
   enable:
     - "errcheck"
+    - "exhaustive"
     - "gocheckcompilerdirectives"
     - "gosec"
     - "gosimple"
@@ -25,12 +31,10 @@ linters: # https://golangci-lint.run/usage/linters/
     - "paralleltest"
     - "prealloc"
     - "reassign"
-    - "revive"
     - "rowserrcheck"
     - "sqlclosecheck"
     - "staticcheck"
     - "thelper"
-    - "typecheck"
     - "unconvert"
     - "unparam"
     - "unused"
@@ -39,19 +43,27 @@ linters: # https://golangci-lint.run/usage/linters/
     - "wrapcheck"
 
 linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true
+
   wrapcheck:
     ignoreSigs:
       - ".Errorf("
-      - "errors.New("
-      - "errors.Unwrap("
-      - "errors.Join("
+      - "response.New("
+      - "response.Unwrap("
+      - "response.Join("
       - ".Wrap("
       - ".Wrapf("
       - ".WithMessage("
       - ".WithMessagef("
       - ".WithStack("
-      # Fiber HTTP handler-related methods
-      - ".JSON("
-      - ".Next("
+      - "user.New"
+      - "user.Parse"
     ignoreInterfaceRegexps:
       - "Presenter"
+    ignorePackageGlobs:
+      - "errors"
+      - "github.com/gofiber/fiber/*"
+      - "github.com/stretchr/testify/**"
+      - "github.com/angusgmorrison/realworld-go/internal/domain/**"
+      - "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/**"

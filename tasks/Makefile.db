@@ -1,0 +1,32 @@
+.PHONY: db
+
+## Generate a new migration named using the MIGRATION_NAME env var.
+db/migration:
+	migrate create -ext sql -dir internal/repository/sqlite/migrations $(MIGRATION_NAME)
+
+## Create a new database file, overwriting any existing database.
+db/new:
+	echo -n "" > ${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}
+
+## Apply any outstanding migrations.
+db/migrate:
+	migrate \
+	-path ./internal/repository/sqlite/migrations \
+	-database "sqlite3://${REALWORLD_DATA_DIR}/${REALWORLD_DB_BASENAME}" \
+	up
+
+## Open the database in the the SQLite CLI.
+db/inspect: docker/volume/create
+	docker run \
+	--interactive \
+	--tty \
+	--rm \
+	--workdir ${REALWORLD_DATA_DIR} \
+	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
+	--user ${REALWORLD_USER}:${REALWORLD_USER} \
+	keinos/sqlite3 \
+	sqlite3 ${REALWORLD_DB_BASENAME}
+
+## Generate sqlc data models.
+db/sqlc:
+	sqlc generate

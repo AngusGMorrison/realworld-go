@@ -1,42 +1,34 @@
-.PHONY: test build docker_build docker_create_volume docker_run docker_run_it
+# Load tasks.
+-include tasks/Makefile.*
 
-test:
+# Load environment variables.
+-include env/*.env
+export
+
+.PHONY: help test build
+
+default: help
+
+## Display this help message.
+help:
+	@printf "Available targets:\n\n"
+		@awk '/^[a-zA-Z\-\_0-9%:\\]+/ { \
+			helpMessage = match(lastLine, /^## (.*)/); \
+			if (helpMessage) { \
+				helpCommand = $$1; \
+				helpMessage = substr(lastLine, RSTART + 3, RLENGTH); \
+				gsub("\\\\", "", helpCommand); \
+				gsub(":+$$", "", helpCommand); \
+				printf "  \x1b[32;01m%-35s\x1b[0m %s\n", helpCommand, helpMessage; \
+			} \
+		} \
+		{ lastLine = $$0 }' $(MAKEFILE_LIST) | sort -u
+		@printf "\n"
+
+## Run tests locally.
+test: db/sqlc
 	go test -race ./...
 
-build: ## Compile the application. CGO is required by the SQLite driver.
-	CGO_ENABLED=1 go build -o ./bin/server ./cmd/server
-
-docker_build: ## Build the Docker image.
-	docker build \
-	--tag ${REALWORLD_IMAGE_NAME} \
-	--build-arg volume_mount_path=${REALWORLD_VOLUME_MOUNT_PATH} \
-	--build-arg port=${REALWORLD_PORT} \
-	.
-
-docker_create_volume: ## Create the persistence volume for the application.
-	docker volume create ${REALWORLD_VOLUME_NAME}
-
-# Mandatory environment variables to be passed to the application via Docker.
-docker_env_flags = \
-	--env REALWORLD_JWT_RSA_PRIVATE_KEY_PEM \
-	--env REALWORLD_VOLUME_MOUNT_PATH \
-	--env REALWORLD_DB_BASENAME
-
-docker_run: docker_create_volume ## Run the application in the background in a Docker container.
-	docker run \
-	--name=${REALWORLD_CONTAINER_NAME} \
-	$(docker_env_flags) \
-	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_VOLUME_MOUNT_PATH} \
-	realworld
-
-docker_run_it: docker_create_volume ## Run the application interactively in a Docker container.
-	docker run \
-	--name=${REALWORLD_CONTAINER_NAME} \
-	$(docker_env_flags) \
-	--interactive \
-	--tty \
-	--rm \
-	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount source=${REALWORLD_VOLUME_NAME},destination=${REALWORLD_VOLUME_MOUNT_PATH} \
-	realworld
+## Compile the application. CGO is required by the SQLite driver.
+build:
+	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server

@@ -1,29 +1,30 @@
-FROM golang:1.20.3-bullseye
+FROM golang:1.21-bullseye AS builder
 
-ARG volume_mount_path
-ARG port
+# The container-side mount point of the data volume.
+ARG DATA_DIR
 
 WORKDIR /app
 
 COPY . .
 
+# Create the data directory if it doesn't exist. It may already exist locally
+# if the application has previously been run with Air.
+# RUN mkdir -p $DATA_DIR
+
 RUN go mod download
+RUN make build
 
-RUN GOOS=linux GOARCH=amd64 make build
+FROM gcr.io/distroless/base-debian11:nonroot AS production
 
-RUN adduser \
-  --disabled-password \
-  --gecos "" \
-  --home /app \
-  --no-create-home \
-  --uid 65532 \
-  docker
+# The container-side mount point of
+ARG DATA_DIR
+ARG PORT
 
-RUN mkdir $volume_mount_path && chown -R docker:docker $volume_mount_path
-RUN chmod 700 $volume_mount_path
+COPY --from=builder --chown=nonroot:nonroot /app/bin/server /app/bin/server
 
-USER docker:docker
 
-EXPOSE $port
+USER nonroot
 
-CMD /app/bin/server
+EXPOSE $PORT
+
+CMD ["/app/bin/server"]
