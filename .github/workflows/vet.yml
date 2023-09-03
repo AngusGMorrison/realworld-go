@@ -53,7 +53,7 @@ jobs:
           go-version-file: "go.mod"
 
       - name: "Docker build"
-        run: "make docker_build"
+        run: "make docker/build"
 
   audit:
     runs-on: "ubuntu-latest"
