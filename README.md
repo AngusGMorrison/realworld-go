@@ -113,6 +113,73 @@ If you'd like to learn more about type-driven design in Go, including what happe
 extreme, check out[ my talk on the subject](https://www.angus-morrison.com/blog/type-driven-design-go) from London
 Gophers.
 
+## How this project is structured
+
+### `.`
+The project root. Contains `go.mod`, linter and generator config, `Dockerfile` and the root `Makefile`.
+
+### `./assets`
+Static assets used by this README. Not part of the application.
+
+### `./bin`
+Compiled binaries.
+
+### `./cmd`
+The application's entrypoints. Contains the `main` package for each binary, which is responsible for bootstrapping the
+application.
+
+#### `./cmd/server`
+The entrypoint for the HTTP server. Currently the only entrypoint.
+
+### `./env`
+Contains templates for the environment variables required by the build and run phases of the application. The
+.env files derived from these templates are .gitignored to protect secrets.
+
+### `./internal`
+Library code specific to the application.
+
+#### `./internal/config`
+Loads application configuration from the environment.
+
+#### `./internal/domain`
+Contains the business logic of the application, with one domain package per business domain. E.g. `./domain/user`, for
+all business logic concerning users.
+
+#### `./internal/inbound`
+Inbound adapters. These are responsible for:
+1. Translating inbound requests from specific transport technologies into
+transport-agnostic domain requests.
+2. Invoking a domain `Service` instance with the domain request.
+3. Translating domain responses back into transport-specific responses.
+
+##### `./internal/inbound/rest`
+The REST API adapter that satisfies the RealWorld spec. This spec isn't technically RESTful, but "jsonoverhttp" makes
+for a much worse package name.
+
+#### `./internal/outbound`
+Outbound adapters. These are responsible for:
+1. Implementing outbound ports defined by the domain.
+2. Translating requests from the domain into transport or data storage requests.
+3. Translating responses from the transport or data storage layer into responses accepted by the domain.
+
+##### `./internal/outbound/sqlite`
+This app uses SQLite as its datastore. This package provides the `SQLite` type, which satisfies the `user.Respository`
+domain port.
+
+#### `./internal/testutil`
+A collection of test utilities useful to all packages.
+
+### `./pkg`
+Library code that could be used by other applications, but that I haven't got round to extracting into a separate
+repo yet.
+
+### `./scripts`
+Build scripts and Docker entrypoints.
+
+### `./tasks`
+Makefiles for each major task family, which are imported by the root `Makefile`. This makes managing a large collection
+of tasks much easier.
+
 # Progress
 
 Here's what's been implemented from the RealWorld spec so far:
