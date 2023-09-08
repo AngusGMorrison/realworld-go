@@ -1,5 +1,7 @@
 # _The_ Type-Driven, Hexgonally Architected, Production-Ready, Golang Modular Monolith Example App
 
+![A gopher in priest's robes radiating light](assets/holy-gopher.webp "Let there be light!")
+
 A growing example of a real-world Golang web application, using the best of type-driven design
 and Hexagonal Architecture.
 
@@ -7,12 +9,12 @@ This codebase showcases advanced techniques for building production-ready applic
 tech firms, but are hard to find examples of in the wild.
 
 These patterns will help you slash production bugs, massively increase your test surface, and painlessly evolve your
-services as your product grows. Your code will be become more readable, more maintainable, and more fun to work on.
+services as your product grows. Your code will become more readable, more maintainable, and more fun to work on.
 
 ## Who is this for?
 
 You'll find this repo valuable if:
-* you're excited about Hexagonal Architecture by what you've learned from Uber and Netflix, but you're not sure how to
+* you're excited about Hexagonal Architecture from what you've learned from Uber and Netflix, but aren't sure how to
   apply it to your own projects;
 * you're inspired by the promise of type-driven design, which makes invalid data extremely hard to represent;
 * you're not ready for the cost and complexity of microservices, but you want an architecture that will seamlessly
@@ -23,11 +25,11 @@ You'll find this repo valuable if:
 ## Why was this built?
 
 It's not easy to find examples of production-grade web applications in the Go ecosystem. It's even harder to find
-comprehensive implementations of patterns like Hexagonal Architecture. Things are even worse if you're passionate
-about using the Go type system to its fullest, catching many common bugs at compile time. You'd have more luck catching
-Bigfoot than finding an example of all three in one place.
+comprehensive implementations of patterns like Hexagonal Architecture. It's even worse if you're passionate
+about using the Go type system to its fullest, catching many common bugs at compile time. Finding an example of all
+three in one place? Near impossible.
 
-For several years, I've helped industry-leading companies like [Qonto](https://qonto.com/en) to develop the architecture
+For years, I've helped industry-leading companies like [Qonto](https://qonto.com/en) develop the architecture
 standards used by hundreds of Go engineers. I've introduced or promoted the same techniques at companies as diverse as
 ISPs and tier-one investment banks. I've [spoken publicly](https://www.angus-morrison.com/blog/type-driven-design-go)
 about the benefits and implementation of type-driven design in Go.
@@ -35,7 +37,8 @@ about the benefits and implementation of type-driven design in Go.
 I'd have killed for high-quality examples like this when I started that journey.
 
 In this repo, I've combined everything I've learned about building bomb-proof web applications in Go. I hope you find
-these patterns as valuable as I have.
+these patterns as valuable as I have. If you have questions or feedback, open an issue or drop me a line at
+github@angus-morrison.com.
 
 ## What does this app do?
 
@@ -48,16 +51,16 @@ and SQLite as its datastore, but our business logic doesn't care. If we moved to
 business logic would need to change. This is an immensely powerful tool for any development team.
 
 But this app goes further by using type-driven design to enforce the validity of data passed into our domains. If a
-domain object exists, it's valid. It takes real effort to write code that hands the domain bad data, which means a
+domain object exists, it's valid. It takes real effort to write code that hands the domain bad data, which means
 entire families of sloppy mistakes are eliminated at compile time.
 
 ## Hexagawhatnow?
 
 Hexagonal Architecture. You might have heard about it under the name "Ports and Adapters" too.
 
-First proposed by [Alistair Cockburn](https://alistair.cockburn.us/hexagonal-architecture/) as a means to address the
+It was first proposed by [Alistair Cockburn](https://alistair.cockburn.us/hexagonal-architecture/) to address the
 symmetrical problems of business logic becoming tangled with the UI layer, and the tight coupling of an application to
-its database, Hexagonal Architecture has been adopted by some of the world's most successful tech companies.
+its database.
 
 [Netflix](https://netflixtechblog.com/ready-for-changes-with-hexagonal-architecture-b315ec967749) have written about it.
 [Uber's Go code structure](https://www.youtube.com/watch?v=nLskCRJOdxM) will also look familiar to Hexagonal
@@ -182,7 +185,9 @@ of tasks much easier.
 
 # Progress
 
-Here's what's been implemented from the RealWorld spec so far:
+Here's what's been implented so far.
+
+## RealWorld Spec
 
 - [x] Users
 - [x] Authentication
@@ -190,3 +195,17 @@ Here's what's been implemented from the RealWorld spec so far:
 - [ ] Articles
 - [ ] Comments
 - [ ] Tags
+
+## Productionization
+
+- [x] CI pipeline
+- [x] Optimized Docker image
+- [x] First-class error handling
+- [x] Linting
+- [x] Extensive, concurrent unit test suite
+- [ ] Concurrent integration tests
+- [ ] Health checks
+- [ ] Structured logging
+- [ ] Metrics
+- [ ] Tracing
+- 
