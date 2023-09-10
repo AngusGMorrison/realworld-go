@@ -26,7 +26,3 @@ db/inspect: docker/volume/create
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	keinos/sqlite3 \
 	sqlite3 ${REALWORLD_DB_BASENAME}
-
-## Generate sqlc data models.
-db/sqlc:
-	sqlc generate

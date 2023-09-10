@@ -1,19 +1,15 @@
 .PHONY: docker
 
 ## Build the production Docker image.
-docker/build: docker/volume/create db/sqlc
+docker/build: docker/volume/create generate
 	docker build \
 	--tag ${REALWORLD_IMAGE_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \
 	.
 
-docker/volume/create:
-	scripts/create_volume_if_not_exists.sh
-
-
 ## Build and run the Docker image in the background.
-docker/run: docker/volume/create docker/build db/sqlc
+docker/run: docker/volume/create docker/build generate
 	docker run \
 	--rm \
 	--name=${REALWORLD_CONTAINER_NAME} \
@@ -25,7 +21,7 @@ docker/run: docker/volume/create docker/build db/sqlc
 	${REALWORLD_IMAGE_NAME}
 
 ## Build and run the Docker image interactively.
-docker/run/it: docker/volume/create docker/build db/sqlc
+docker/run/it: docker/volume/create docker/build generate
 	docker run \
 	--interactive \
 	--tty \
@@ -39,7 +35,7 @@ docker/run/it: docker/volume/create docker/build db/sqlc
 	${REALWORLD_IMAGE_NAME}
 
 ## Run the app in a container with live reloading.
-docker/dev: docker/volume/create db/sqlc
+docker/dev: docker/volume/create generate
 	docker run \
 	--interactive \
 	--tty \
@@ -55,17 +51,7 @@ docker/dev: docker/volume/create db/sqlc
 	cosmtrek/air \
 	-c /app/.air.toml
 
-## List the files inside the Realworld data volume.
-docker/volume/ls: docker/volume/create
-	docker run \
-	--interactive \
-	--tty \
-	--rm \
-	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=/tmp/vol \
-	--user ${REALWORLD_USER}:${REALWORLD_USER} \
-	busybox \
-	ls -la /tmp/vol
-
+## Run a helper container with the Realworld data volume mounted.
 docker/volume/manage: docker/volume/create
 	docker run \
 	--interactive \
@@ -75,3 +61,6 @@ docker/volume/manage: docker/volume/create
 	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=/tmp/vol \
 	busybox \
 	sh
+
+docker/volume/create:
+	scripts/create_volume_if_not_exists.sh
