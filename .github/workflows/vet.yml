@@ -70,9 +70,6 @@ jobs:
       - name: "Install sqlc"
         run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
 
-      - name: "Run sqlc"
-        run: "make db/sqlc"
-
       - name: "Install govulncheck"
         run: "go install golang.org/x/vuln/cmd/govulncheck@latest"
 
