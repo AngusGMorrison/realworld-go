@@ -20,7 +20,7 @@ type Config struct {
 	AppName string `split_words:"true" default:"realworld"`
 
 	// The path to the directory containing runtime data, such as the DB file
-	// and encryption data.
+	// and encryption keys.
 	DataDir string `split_words:"true" required:"true"`
 
 	// The name of the SQLite DB file.
