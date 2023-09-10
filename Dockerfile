@@ -26,7 +26,6 @@ ARG PORT
 COPY --from=builder --chown=nonroot:nonroot /app/bin/server /app/bin/server
 COPY --from=builder --chown=nonroot:nonroot /app/data/* "$DATA_DIR/"
 
-
 USER nonroot
 
 EXPOSE $PORT

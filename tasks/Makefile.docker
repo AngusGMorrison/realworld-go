@@ -12,7 +12,7 @@ docker/build: docker/volume/create generate
 	.
 
 ## Build and run the Docker image in the background.
-docker/run: docker/volume/create docker/build generate
+docker/run: docker/build
 	docker run \
 	--rm \
 	--name=${REALWORLD_CONTAINER_NAME} \
@@ -24,7 +24,7 @@ docker/run: docker/volume/create docker/build generate
 	${REALWORLD_IMAGE_NAME}
 
 ## Build and run the Docker image interactively.
-docker/run/it: docker/volume/create docker/build generate
+docker/run/it: docker/build
 	docker run \
 	--interactive \
 	--tty \
@@ -36,23 +36,6 @@ docker/run/it: docker/volume/create docker/build generate
 	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	${REALWORLD_IMAGE_NAME}
-
-## Run the app in a container with live reloading.
-docker/dev: docker/volume/create generate
-	docker run \
-	--interactive \
-	--tty \
-	--rm \
-	--workdir /app \
-	--env air_wd=/app \
-	--env-file env/runtime.env \
-	--env-file env/common.env \
-	--mount type=bind,src=$(shell pwd),dst=/app \
-	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
-	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--entrypoint scripts/init_air.sh \
-	cosmtrek/air \
-	-c /app/.air.toml
 
 ## Run a helper container with the Realworld data volume mounted.
 docker/volume/manage: docker/volume/create
