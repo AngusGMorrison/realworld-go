@@ -7,20 +7,16 @@ WORKDIR /app
 
 COPY . .
 
-# Create the data directory if it doesn't exist. It may already exist locally
-# if the application has previously been run with Air.
-# RUN mkdir -p $DATA_DIR
-
 RUN go mod download
 RUN make build
 
-FROM gcr.io/distroless/base-debian11:nonroot AS production
+FROM gcr.io/distroless/base-debian11:nonroot AS distroless
 
-# The container-side mount point of
 ARG DATA_DIR
 ARG PORT
 
 COPY --from=builder --chown=nonroot:nonroot /app/bin/server /app/bin/server
+COPY --from=builder --chown=nonroot:nonroot /app/data/* "$DATA_DIR/"
 
 
 USER nonroot

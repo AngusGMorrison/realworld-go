@@ -2,8 +2,6 @@
 .idea
 .vscode
 bin/*
-certs
-data
-notes.md
+data/*
 sqlc
 tmp
