@@ -1,11 +1,14 @@
 .PHONY: docker
 
+GOCACHE := $(shell go env GOCACHE)
+
 ## Build the production Docker image.
 docker/build: docker/volume/create generate
 	docker build \
 	--tag ${REALWORLD_IMAGE_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \
+	--build-arg GOCACHE=$(GOCACHE) \
 	.
 
 ## Build and run the Docker image in the background.
