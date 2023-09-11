@@ -18,9 +18,6 @@ jobs:
         with:
           go-version-file: "go.mod"
 
-      - name: "Install sqlc"
-        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
-
       - name: "Test"
         run: "make docker/test"
 
@@ -34,12 +31,6 @@ jobs:
         with:
           go-version-file: "go.mod"
           cache: false # conflicts with the golangci-lint cache
-
-      - name: "Install sqlc"
-        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
-        
-      - name: "Code generation"
-        run: "make generate"
 
       - name: "golangci-lint"
         uses: "golangci/golangci-lint-action@v3"
@@ -64,9 +55,6 @@ jobs:
         with:
           go-version-file: "go.mod"
 
-      - name: "Install sqlc"
-        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
-
       - name: "Docker build"
         run: "make docker/build"
 
@@ -79,11 +67,19 @@ jobs:
         with:
           go-version-file: "go.mod"
 
-      - name: "Install sqlc"
-        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
-
       - name: "Install govulncheck"
         run: "go install golang.org/x/vuln/cmd/govulncheck@latest"
 
       - name: "Audit"
         run: "make vulncheck"
+
+  sqlc:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v3"
+
+      - uses: "sqlc-dev/setup-sqlc@v4"
+        with:
+          sqlc-version: "1.21.0"
+
+      - run: "sqlc diff"

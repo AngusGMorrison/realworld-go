@@ -36,5 +36,5 @@ build:
 	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server
 
 .PHONY: vulncheck
-vulncheck: generate
+vulncheck:
 	govulncheck ./...

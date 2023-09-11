@@ -3,5 +3,4 @@
 .vscode
 bin/*
 data/*
-sqlc
 tmp
