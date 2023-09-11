@@ -33,11 +33,18 @@ jobs:
       - uses: "actions/setup-go@v4"
         with:
           go-version-file: "go.mod"
+          cache: false # conflicts with the golangci-lint cache
+
+      - name: "Install sqlc"
+        run: "go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"
+        
+      - name: "Code generation"
+        run: "make generate"
 
       - name: "golangci-lint"
         uses: "golangci/golangci-lint-action@v3"
         with:
-          version: "v1.52"
+          version: "v1.54"
           args: "--timeout=3m"
 
   build:
