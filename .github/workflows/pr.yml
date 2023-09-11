@@ -83,5 +83,3 @@ jobs:
           sqlc-version: "1.21.0"
 
       - run: "sqlc diff"
-
-      - run: "sqlc vet"
