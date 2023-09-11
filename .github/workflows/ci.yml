@@ -1,4 +1,4 @@
-name: "PR"
+name: "CI"
 
 on: [push]
 
@@ -6,11 +6,6 @@ jobs:
   test:
     environment: "test"
     runs-on: "ubuntu-latest"
-    env:
-      REALWORLD_IMAGE_NAME: ${{ vars.REALWORLD_IMAGE_NAME }}
-      REALWORLD_DATA_DIR: ${{ vars.REALWORLD_DATA_DIR }}
-      REALWORLD_USER: ${{ vars.REALWORLD_USER }}
-      REALWORLD_VOLUME_NAME: ${{ vars.REALWORLD_VOLUME_NAME }}
     steps:
       - uses: "actions/checkout@v3"
 
@@ -18,8 +13,17 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - uses: "cardinalby/export-env-action@v2"
+        with:
+          envFile: "dev.env"
+
       - name: "Test"
         run: "make docker/test"
+
+      - name: "Upload coverage reports to Codecov"
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     environment: "test"
@@ -41,19 +45,16 @@ jobs:
   build:
     environment: "test"
     runs-on: "ubuntu-latest"
-    env:
-      REALWORLD_CONTAINER_NAME: ${{ vars.REALWORLD_CONTAINER_NAME }}
-      REALWORLD_IMAGE_NAME: ${{ vars.REALWORLD_IMAGE_NAME }}
-      REALWORLD_PORT: ${{ vars.REALWORLD_PORT }}
-      REALWORLD_DATA_DIR: ${{ vars.REALWORLD_DATA_DIR }}
-      REALWORLD_VOLUME_NAME: ${{ vars.REALWORLD_VOLUME_NAME }}
-      REALWORLD_USER: ${{ vars.REALWORLD_USER }}
     steps:
       - uses: "actions/checkout@v3"
 
       - uses: "actions/setup-go@v4"
         with:
           go-version-file: "go.mod"
+
+      - uses: "cardinalby/export-env-action@v2"
+        with:
+          envFile: "dev.env"
 
       - name: "Docker build"
         run: "make docker/build"

@@ -1,6 +1,6 @@
-*.env
 .idea
 .vscode
 bin/*
 data/*
 tmp
+coverage.txt
