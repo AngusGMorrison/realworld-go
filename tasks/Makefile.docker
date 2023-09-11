@@ -4,6 +4,7 @@ GOCACHE := $(shell go env GOCACHE)
 
 ## Build the production Docker image.
 docker/build: docker/volume/create generate
+	mkdir -p ./data
 	docker build \
 	--tag ${REALWORLD_IMAGE_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
