@@ -27,8 +27,8 @@ help:
 
 ## Run tests locally.
 .PHONY: test
-test: generate
-	go test -race ./...
+test:
+	go test -race -v ./...
 
 ## Compile the application. CGO is required by the SQLite driver.
 .PHONY: build
