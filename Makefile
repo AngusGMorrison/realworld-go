@@ -5,11 +5,11 @@
 -include env/*.env
 export
 
-.PHONY: help test build
-
 default: help
 
 ## Display this help message.
+
+.PHONY: help
 help:
 	@printf "Available targets:\n\n"
 		@awk '/^[a-zA-Z\-\_0-9%:\\]+/ { \
@@ -26,9 +26,15 @@ help:
 		@printf "\n"
 
 ## Run tests locally.
-test: db/sqlc
+.PHONY: test
+test: generate
 	go test -race ./...
 
 ## Compile the application. CGO is required by the SQLite driver.
+.PHONY: build
 build:
 	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server
+
+.PHONY: vulncheck
+vulncheck: generate
+	govulncheck ./...

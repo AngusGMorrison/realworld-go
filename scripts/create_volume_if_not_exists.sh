@@ -28,7 +28,7 @@ initialize_volume() {
     --workdir /tmp/data \
     --mount type=volume,src="${REALWORLD_VOLUME_NAME}",dst=/tmp/data \
     busybox \
-    sh -c "touch .initialized && chmod -R 0760 . && chown -R ${REALWORLD_USER}:${REALWORLD_USER} ."
+    sh -c "touch .initialized && chmod -R 0760 . && chown -R ${REALWORLD_USER}:${REALWORLD_USER} . && rm .initialized"
 }
 
 remove_volume() {

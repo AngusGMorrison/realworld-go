@@ -1,0 +1,7 @@
+queries := internal/outbounds/sqlite/queries.sql
+
+.PHONY: generate
+generate: $(queries)
+
+$(queries):
+	sqlc generate
