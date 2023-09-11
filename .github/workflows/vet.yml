@@ -74,4 +74,4 @@ jobs:
         run: "go install golang.org/x/vuln/cmd/govulncheck@latest"
 
       - name: "Audit"
-        run: "govulncheck ./..."
+        run: "make vulncheck"
