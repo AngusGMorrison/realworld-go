@@ -3,7 +3,7 @@
 GOCACHE := $(shell go env GOCACHE)
 
 ## Build the production Docker image.
-docker/build: docker/volume/create generate
+docker/build: docker/volume/create docker/volume/ensure_host_dir generate
 	mkdir -p ./data
 	docker build \
 	--tag ${REALWORLD_IMAGE_NAME} \
@@ -38,8 +38,19 @@ docker/run/it: docker/build
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	${REALWORLD_IMAGE_NAME}
 
+## Run the test suite in an optimized Docker container.
+docker/test: docker/volume/create docker/volume/ensure_host_dir generate
+	mkdir -p ./data
+	docker build \
+	--target test \
+	--tag "${REALWORLD_IMAGE_NAME}-test" \
+	--build-arg PORT=${REALWORLD_PORT} \
+	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \
+	--build-arg GOCACHE=$(GOCACHE) \
+	.
+
 ## Run a helper container with the Realworld data volume mounted.
-docker/volume/manage: docker/volume/create
+docker/volume/manage: docker/volume/create docker/volume/ensure_host_dir
 	docker run \
 	--interactive \
 	--tty \
@@ -51,3 +62,8 @@ docker/volume/manage: docker/volume/create
 
 docker/volume/create:
 	scripts/create_volume_if_not_exists.sh
+
+## Create the host directory to be mounted into the container if it
+## doesn't already exist.
+docker/volume/ensure_host_dir:
+	mkdir -p ./data
