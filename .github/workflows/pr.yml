@@ -9,6 +9,7 @@ jobs:
     env:
       REALWORLD_IMAGE_NAME: ${{ vars.REALWORLD_IMAGE_NAME }}
       REALWORLD_DATA_DIR: ${{ vars.REALWORLD_DATA_DIR }}
+      REALWORLD_USER: ${{ vars.REALWORLD_USER }}
       REALWORLD_VOLUME_NAME: ${{ vars.REALWORLD_VOLUME_NAME }}
     steps:
       - uses: "actions/checkout@v3"
