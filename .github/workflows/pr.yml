@@ -1,4 +1,4 @@
-name: "Vet"
+name: "PR"
 
 on: [push]
 
