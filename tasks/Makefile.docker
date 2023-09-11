@@ -3,7 +3,7 @@
 GOCACHE := $(shell go env GOCACHE)
 
 ## Build the production Docker image.
-docker/build: docker/volume/create docker/volume/ensure_host_dir generate
+docker/build: docker/volume/create docker/volume/ensure_host_dir
 	mkdir -p ./data
 	docker build \
 	--tag ${REALWORLD_IMAGE_NAME} \
@@ -39,7 +39,7 @@ docker/run/it: docker/build
 	${REALWORLD_IMAGE_NAME}
 
 ## Run the test suite in an optimized Docker container.
-docker/test: docker/volume/create docker/volume/ensure_host_dir generate
+docker/test: docker/volume/create docker/volume/ensure_host_dir
 	mkdir -p ./data
 	docker build \
 	--target test \
