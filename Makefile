@@ -1,10 +1,6 @@
 # Load tasks.
 -include tasks/Makefile.*
 
-# Load environment variables.
--include env/*.env
-export
-
 default: help
 
 ## Display this help message.
@@ -25,11 +21,6 @@ help:
 		{ lastLine = $$0 }' $(MAKEFILE_LIST) | sort -u
 		@printf "\n"
 
-## Run tests locally.
-.PHONY: test
-test:
-	go test -race -v -coverprofile=/coverage/coverage.txt -covermode=atomic ./...
-
 ## Compile the application. CGO is required by the SQLite driver.
 .PHONY: build
 build:
@@ -38,3 +29,4 @@ build:
 .PHONY: vulncheck
 vulncheck:
 	govulncheck ./...
+

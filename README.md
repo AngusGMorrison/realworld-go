@@ -121,7 +121,7 @@ Gophers.
 ## How this project is structured
 
 ### `.`
-The project root. Contains `go.mod`, linter and generator config, `Dockerfile` and the root `Makefile`.
+The project root. Contains `go.mod`, linter and generator config, `dev.env`, `Dockerfile` and the root `Makefile`.
 
 ### `./assets`
 Static assets used by this README. Not part of the application.
@@ -135,10 +135,6 @@ application.
 
 #### `./cmd/server`
 The entrypoint for the HTTP server. Currently the only entrypoint.
-
-### `./env`
-Contains templates for the environment variables required by the build and run phases of the application. The
-.env files derived from these templates are .gitignored to protect secrets.
 
 ### `./internal`
 Library code specific to the application.
