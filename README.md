@@ -1,5 +1,7 @@
 # _The_ Type-Driven, Hexgonally Architected, Production-Ready, Golang Modular Monolith Example App
 
+![CI](https://github.com/AngusGMorrison/realworld-go/actions/workflows/ci.yml/badge.svg)
+
 ![A gopher in priest's robes radiating light](assets/holy-gopher.webp "Let there be light!")
 
 A growing example of a real-world Golang web application, using the best of type-driven design

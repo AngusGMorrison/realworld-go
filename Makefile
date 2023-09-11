@@ -28,7 +28,7 @@ help:
 ## Run tests locally.
 .PHONY: test
 test:
-	go test -race -v ./...
+	go test -race -v -coverprofile=/coverage/coverage.txt -covermode=atomic ./...
 
 ## Compile the application. CGO is required by the SQLite driver.
 .PHONY: build

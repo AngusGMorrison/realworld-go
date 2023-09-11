@@ -1,4 +1,4 @@
-name: "PR"
+name: "CI"
 
 on: [push]
 
@@ -20,6 +20,11 @@ jobs:
 
       - name: "Test"
         run: "make docker/test"
+
+      - name: "Upload coverage reports to Codecov"
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     environment: "test"

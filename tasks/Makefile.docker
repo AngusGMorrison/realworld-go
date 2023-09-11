@@ -39,10 +39,22 @@ docker/run/it: docker/build
 	${REALWORLD_IMAGE_NAME}
 
 ## Run the test suite in an optimized Docker container.
-docker/test: docker/volume/create docker/volume/ensure_host_dir
+docker/test: docker/test/build
+	mkdir -p ./data
+	docker run \
+	--rm \
+	--name "${REALWORLD_IMAGE_NAME}-test" \
+	--env-file env/runtime.env \
+	--env-file env/common.env \
+	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
+	--mount type=bind,src=$(shell pwd),dst=/coverage \
+	${REALWORLD_IMAGE_NAME}-test \
+	go test -race -v -coverprofile=/coverage/coverage.txt -covermode=atomic ./...
+
+docker/test/build: docker/volume/create docker/volume/ensure_host_dir
 	mkdir -p ./data
 	docker build \
-	--target test \
+	--target base \
 	--tag "${REALWORLD_IMAGE_NAME}-test" \
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \

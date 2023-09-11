@@ -14,11 +14,6 @@ RUN go mod download
 
 COPY . .
 
-FROM base AS test
-# Mount the Go compiler cache to speed up builds.
-RUN --mount=type=cache,target=$GOCACHE \
-    make test
-
 FROM base AS build
 # Mount the Go compiler cache to speed up builds.
 RUN --mount=type=cache,target=$GOCACHE \
