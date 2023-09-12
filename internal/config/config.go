@@ -21,7 +21,7 @@ type Config struct {
 
 	// The path to the directory containing runtime data, such as the DB file
 	// and encryption keys.
-	DataDir string `split_words:"true" required:"true"`
+	DataDir string `envconfig:"REALWORLD_DATA_MOUNT" split_words:"true" required:"true"`
 
 	// The name of the SQLite DB file.
 	DBBasename string `split_words:"true" default:"realworld.db"`

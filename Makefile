@@ -3,9 +3,8 @@
 
 default: help
 
-## Display this help message.
-
 .PHONY: help
+## Display this help message.
 help:
 	@printf "Available targets:\n\n"
 		@awk '/^[a-zA-Z\-\_0-9%:\\]+/ { \
@@ -21,12 +20,12 @@ help:
 		{ lastLine = $$0 }' $(MAKEFILE_LIST) | sort -u
 		@printf "\n"
 
-## Compile the application. CGO is required by the SQLite driver.
 .PHONY: build
+## Compile the application.
 build:
 	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server
 
 .PHONY: vulncheck
+## Check dependencies for vulnerabilities.
 vulncheck:
 	govulncheck ./...
-

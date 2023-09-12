@@ -1,7 +1,5 @@
 FROM golang:1.21-bullseye AS base
 
-# The container-side mount point of the data volume.
-ARG DATA_DIR
 # Path to the Go compiler cache.
 ARG GOCACHE
 
@@ -21,11 +19,9 @@ RUN --mount=type=cache,target=$GOCACHE \
 
 FROM gcr.io/distroless/base-debian11:nonroot AS distroless
 
-ARG DATA_DIR
 ARG PORT
 
 COPY --from=build --chown=nonroot:nonroot /app/bin/server /app/bin/server
-COPY --from=build --chown=nonroot:nonroot /app/data/* "$DATA_DIR/"
 
 USER nonroot
 
