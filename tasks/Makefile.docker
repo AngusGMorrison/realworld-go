@@ -30,7 +30,9 @@ docker/run/it: docker/build generate/dev_data_dir
 ## Build the optimized production Docker image.
 docker/build:
 	docker build \
+	--rm \
 	--tag ${REALWORLD_IMAGE_NAME} \
+	--label app=${REALWORLD_APP_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg GOCACHE=$(GOCACHE) \
 	.
@@ -39,7 +41,7 @@ docker/build:
 docker/test: docker/test/build generate/dev_data_dir
 	docker run \
 	--rm \
-	--name "${REALWORLD_IMAGE_NAME}-test" \
+	--name ${REALWORLD_IMAGE_NAME}-test \
 	--env-file dev.env \
 	--mount type=bind,src=$(shell pwd),dst=/coverage \
 	${REALWORLD_IMAGE_NAME}-test \
@@ -49,7 +51,8 @@ docker/test: docker/test/build generate/dev_data_dir
 docker/test/build:
 	docker build \
 	--target base \
-	--tag "${REALWORLD_IMAGE_NAME}-test" \
+	--tag ${REALWORLD_IMAGE_NAME}-test \
+	--label app=${REALWORLD_APP_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg GOCACHE=$(GOCACHE) \
 	.
@@ -65,3 +68,7 @@ docker/db/connect:
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	keinos/sqlite3 \
 	sqlite3 ${REALWORLD_DB_BASENAME}
+
+## Remove all Docker-generated artifacts.
+docker/clean:
+	docker image prune --filter label=app=${REALWORLD_APP_NAME}
