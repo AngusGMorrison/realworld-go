@@ -85,11 +85,12 @@ func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
 func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	initGlobalMiddleware(router, cfg)
 
-	// /api
-	api := router.Group("/api")
-	api.Get("/ping", func(c *fiber.Ctx) error {
-		return c.SendString("pong")
+	router.Get("/healthcheck", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
 	})
+
+	// /api
+	api := router.Group("/api", validateAPIContentType)
 
 	// /api/v0
 	initV0Routes(api.Group("/v0"), cfg, userService)
@@ -109,8 +110,6 @@ func initGlobalMiddleware(router fiber.Router, cfg Config) {
 		recover.New(recover.Config{
 			EnableStackTrace: cfg.EnableStackTrace,
 		}),
-		// Validate content type.
-		validateContentType,
 	)
 }
 
@@ -147,7 +146,7 @@ func strictDecoder(b []byte, v any) error {
 
 var supportedMediaTypes = []string{fiber.MIMEApplicationJSON}
 
-func validateContentType(c *fiber.Ctx) error {
+func validateAPIContentType(c *fiber.Ctx) error {
 	mediaType := c.Get(fiber.HeaderContentType)
 	if !slices.Contains(supportedMediaTypes, mediaType) {
 		return v0.NewUnsupportedMediaTypeError(mediaType, supportedMediaTypes)

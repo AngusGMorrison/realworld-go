@@ -21,10 +21,13 @@ FROM gcr.io/distroless/base-debian11:nonroot AS distroless
 
 ARG PORT
 
-COPY --from=build --chown=nonroot:nonroot /app/bin/server /app/bin/server
+COPY --from=build --chown=nonroot:nonroot /app/bin /app/bin
 
 USER nonroot
 
 EXPOSE $PORT
+
+HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/app/bin/healthcheck"]
 
 CMD ["/app/bin/server"]

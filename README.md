@@ -84,9 +84,11 @@ According to Alistair:
 
 > The hexagon is intended to visually highlight
 >
-> (a) the inside-outside asymmetry and the similar nature of ports, to get away from the one-dimensional layered picture and all that evokes, and
+> (a) the inside-outside asymmetry and the similar nature of ports, to get away from the one-dimensional layered picture
+> and all that evokes, and
 >
-> (b) the presence of a defined number of different ports – two, three, or four (four is most I have encountered to date).
+> (b) the presence of a defined number of different ports – two, three, or four (four is most I have encountered to
+> date).
 
 Any nested shape will do. Don't overthink it.
 
@@ -137,6 +139,13 @@ application.
 #### `./cmd/server`
 The entrypoint for the HTTP server. Currently the only entrypoint.
 
+### `./data`
+The default host directory used to mount file dependencies into the Docker container during local development.
+Contains assets that shouldn't be committed, such as the RSA key used to generate JWTs, and the development database.
+
+The entire contents of `./data` are gitignored, so you won't see it in this repo. To generate all the dependencies
+you need for local development, run `make generate`.
+
 ### `./internal`
 Library code specific to the application.
 
@@ -176,7 +185,7 @@ Library code that could be used by other applications, but that I haven't got ro
 repo yet.
 
 ### `./scripts`
-Build scripts and Docker entrypoints.
+Build scripts and entrypoints.
 
 ### `./tasks`
 Makefiles for each major task family, which are imported by the root `Makefile`. This makes managing a large collection
@@ -184,7 +193,7 @@ of tasks much easier.
 
 # Progress
 
-Here's what's been implented so far.
+Here's what's been implemented so far.
 
 ## RealWorld Spec
 
@@ -202,8 +211,9 @@ Here's what's been implented so far.
 - [x] First-class error handling
 - [x] Linting
 - [x] Extensive, concurrent unit test suite
+- [x] Health checks
+- [x] Streamlined local development experience
 - [ ] Concurrent integration tests
-- [ ] Health checks
 - [ ] Structured logging
 - [ ] Metrics
 - [ ] Tracing
