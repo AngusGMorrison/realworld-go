@@ -1,6 +1,7 @@
 .PHONY: docker
 
 GOCACHE := $(shell go env GOCACHE)
+ABS_HOST_DATA_DIR := "$(shell pwd)/${REALWORLD_HOST_DATA_DIR}"
 
 ## Build and run the optimized Docker image in the background.
 docker/run: docker/build generate/dev_data_dir
@@ -9,7 +10,7 @@ docker/run: docker/build generate/dev_data_dir
 	--name=${REALWORLD_CONTAINER_NAME} \
 	--env-file dev.env \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
+	--mount type=bind,src=$(ABS_HOST_DATA_DIR),dst=${REALWORLD_DATA_MOUNT} \
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	${REALWORLD_IMAGE_NAME}
 
@@ -22,7 +23,7 @@ docker/run/it: docker/build generate/dev_data_dir
 	--name=${REALWORLD_CONTAINER_NAME} \
 	--env-file dev.env \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
+	--mount type=bind,src=$(ABS_HOST_DATA_DIR),dst=${REALWORLD_DATA_MOUNT} \
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	${REALWORLD_IMAGE_NAME}
 
@@ -52,3 +53,15 @@ docker/test/build:
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg GOCACHE=$(GOCACHE) \
 	.
+
+## Connect to the DB CLI.
+docker/db/connect:
+	docker run \
+	--interactive \
+	--tty \
+	--rm \
+	--workdir ${REALWORLD_DATA_DIR} \
+	--mount type=bind,src=$(ABS_HOST_DATA_DIR),dst=${REALWORLD_DATA_MOUNT} \
+	--user ${REALWORLD_USER}:${REALWORLD_USER} \
+	keinos/sqlite3 \
+	sqlite3 ${REALWORLD_DB_BASENAME}

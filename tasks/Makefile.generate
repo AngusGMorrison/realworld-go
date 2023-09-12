@@ -15,3 +15,7 @@ $(QUERIES_PATH):
 ## Generate the data directory, RSA key, DB, etc. to be mounted into Docker containers.
 generate/dev_data_dir:
 	@scripts/generate_dev_data_dir.sh
+
+## Generate a new migration named using the MIGRATION_NAME env var.
+generate/migration:
+	migrate create -ext sql -dir internal/outbound/sqlite/migrations ${MIGRATION_NAME}

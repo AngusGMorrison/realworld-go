@@ -23,7 +23,6 @@ help:
 .PHONY: build
 ## Compile the application.
 build:
-	# CGO is required by the SQLite driver.
 	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server
 
 .PHONY: vulncheck
