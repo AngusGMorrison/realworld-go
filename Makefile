@@ -29,4 +29,3 @@ build:
 ## Check dependencies for vulnerabilities.
 vulncheck:
 	govulncheck ./...
-
