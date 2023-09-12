@@ -1,7 +1,14 @@
-queries := internal/outbounds/sqlite/queries.sql
-
 .PHONY: generate
-generate: $(queries)
 
-$(queries):
-	sqlc generate
+generate: generate/queries generate/dev_data_dir
+
+QUERIES_PATH := internal/outbounds/sqlite/queries.sql
+
+generate/queries: $(QUERIES_PATH)
+
+$(QUERIES_PATH):
+	@echo "Generating sqlc models..."
+	@sqlc generate && echo "sqlc models generated."
+
+generate/dev_data_dir:
+	@scripts/generate_dev_data_dir.sh

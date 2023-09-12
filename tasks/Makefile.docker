@@ -2,78 +2,53 @@
 
 GOCACHE := $(shell go env GOCACHE)
 
-## Build the production Docker image.
-docker/build: docker/volume/create docker/volume/ensure_host_dir
-	mkdir -p ./data
-	docker build \
-	--tag ${REALWORLD_IMAGE_NAME} \
-	--build-arg PORT=${REALWORLD_PORT} \
-	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \
-	--build-arg GOCACHE=$(GOCACHE) \
-	.
-
-## Build and run the Docker image in the background.
-docker/run: docker/build
+## Build and run the optimized Docker image in the background.
+docker/run: docker/build generate/dev_data_dir
 	docker run \
 	--rm \
 	--name=${REALWORLD_CONTAINER_NAME} \
 	--env-file dev.env \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
+	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	${REALWORLD_IMAGE_NAME}
 
-## Build and run the Docker image interactively.
-docker/run/it: docker/build
+## Build and run the optimized Docker image interactively.
+docker/run/it: docker/build generate/dev_data_dir
 	docker run \
 	--interactive \
 	--tty \
 	--rm \
 	--name=${REALWORLD_CONTAINER_NAME} \
 	--env-file dev.env \
-	$(RUNTIME_ENV) \
 	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
+	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
 	--user ${REALWORLD_USER}:${REALWORLD_USER} \
 	${REALWORLD_IMAGE_NAME}
 
-## Run the test suite in an optimized Docker container.
-docker/test: docker/test/build
-	mkdir -p ./data
+## Build the optimized production Docker image.
+docker/build:
+	docker build \
+	--tag ${REALWORLD_IMAGE_NAME} \
+	--build-arg PORT=${REALWORLD_PORT} \
+	--build-arg GOCACHE=$(GOCACHE) \
+	.
+
+## Run the test suite in a Docker container.
+docker/test: docker/test/build generate/dev_data_dir
 	docker run \
 	--rm \
 	--name "${REALWORLD_IMAGE_NAME}-test" \
 	--env-file dev.env \
-	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=${REALWORLD_DATA_DIR} \
 	--mount type=bind,src=$(shell pwd),dst=/coverage \
 	${REALWORLD_IMAGE_NAME}-test \
 	go test -race -v -coverprofile=/coverage/coverage.txt -covermode=atomic ./...
 
-docker/test/build: docker/volume/create docker/volume/ensure_host_dir
-	mkdir -p ./data
+## Build the test Docker image.
+docker/test/build:
 	docker build \
 	--target base \
 	--tag "${REALWORLD_IMAGE_NAME}-test" \
 	--build-arg PORT=${REALWORLD_PORT} \
-	--build-arg DATA_DIR=${REALWORLD_DATA_DIR} \
 	--build-arg GOCACHE=$(GOCACHE) \
 	.
-
-## Run a helper container with the Realworld data volume mounted.
-docker/volume/manage: docker/volume/create docker/volume/ensure_host_dir
-	docker run \
-	--interactive \
-	--tty \
-	--rm \
-	--workdir /tmp/vol \
-	--mount type=volume,src=${REALWORLD_VOLUME_NAME},dst=/tmp/vol \
-	busybox \
-	sh
-
-docker/volume/create:
-	scripts/create_volume_if_not_exists.sh
-
-## Create the host directory to be mounted into the container if it
-## doesn't already exist.
-docker/volume/ensure_host_dir:
-	mkdir -p ./data
