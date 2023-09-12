@@ -27,7 +27,7 @@ clean: docker/clean generate/clean
 .PHONY: build
 ## Compile the application.
 build:
-	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/server ./cmd/server
+	CGO_ENABLED=1 GOFLAGS=-buildvcs=false go build -o ./bin/ ./cmd/server ./cmd/healthcheck
 
 .PHONY: vulncheck
 ## Check dependencies for vulnerabilities.
