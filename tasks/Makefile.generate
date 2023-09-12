@@ -19,3 +19,8 @@ generate/dev_data_dir:
 ## Generate a new migration named using the MIGRATION_NAME env var.
 generate/migration:
 	migrate create -ext sql -dir internal/outbound/sqlite/migrations ${MIGRATION_NAME}
+
+## Remove all generated artifacts.
+generate/clean:
+	rm -rf internal/outbound/sqlite/sqlc 2> /dev/null
+	rm -rf $(shell pwd)/${REALWORLD_HOST_DATA_DIR} 2> /dev/null

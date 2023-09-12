@@ -20,6 +20,10 @@ help:
 		{ lastLine = $$0 }' $(MAKEFILE_LIST) | sort -u
 		@printf "\n"
 
+.PHONY: clean
+## Remove all Make-generated artifacts.
+clean: docker/clean generate/clean
+
 .PHONY: build
 ## Compile the application.
 build:
