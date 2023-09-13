@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/angusgmorrison/logfusc"
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/require"
 
@@ -21,10 +20,10 @@ func RandomUsernameCandidate() string {
 	return gofakeit.Regex(usernamePattern)
 }
 
-func RandomPasswordCandidate() logfusc.Secret[string] {
+func RandomPasswordCandidate() string {
 	length := rand.Intn(PasswordMaxLen-PasswordMinLen) + PasswordMinLen
 	raw := gofakeit.Password(true, true, true, true, true, length)
-	return logfusc.NewSecret(raw)
+	return raw
 }
 
 func RandomBio() Bio {

@@ -72,14 +72,14 @@ func Map[T any, U any](opt Option[T], convert Conversion[T, U]) (Option[U], erro
 }
 
 func (o Option[T]) GoString() string {
-	return fmt.Sprintf("Option[%[1]T]{some: %[2]t, value: %#[1]v}", o.value, o.some)
+	return fmt.Sprintf("option.Option[%[1]T]{some:%[2]t, value:%#[1]v}", o.value, o.some)
 }
 
 func (o Option[T]) String() string {
 	if o.some {
-		return fmt.Sprintf("IsSome(%v)", o.value)
+		return fmt.Sprintf("Some[%[1]T]{%[1]v}", o.value)
 	}
-	return "None"
+	return fmt.Sprintf("None[%T]", o.value)
 }
 
 func (o *Option[T]) UnmarshalJSON(bytes []byte) error {

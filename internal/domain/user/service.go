@@ -17,7 +17,7 @@ type service struct {
 func NewService(repo Repository) Service {
 	return &service{
 		repo:               repo,
-		passwordComparator: bcryptComparator,
+		passwordComparator: bcryptCompare,
 	}
 }
 

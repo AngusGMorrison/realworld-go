@@ -6,7 +6,6 @@ import (
 	neturl "net/url"
 	"regexp"
 
-	"github.com/angusgmorrison/logfusc"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -84,15 +83,21 @@ const (
 )
 
 // PasswordHash represents a validated and hashed password.
+//
+// The hash is obfuscated when printed with the %s, %v and %#v verbs.
+//
+// CAUTION: The fmt package uses reflection to print unexported fields without
+// invoking their String or GoString methods. Printing structs containing
+// unexported PasswordHashes will result in the hash bytes being exposed.
 type PasswordHash struct {
-	inner logfusc.Secret[[]byte]
+	bytes []byte
 }
 
-func ParsePassword(candidate logfusc.Secret[string]) (PasswordHash, error) {
-	return parsePassword(candidate, bcryptHasher)
+func ParsePassword(candidate string) (PasswordHash, error) {
+	return parsePassword(candidate, bcryptHash)
 }
 
-func parsePassword(candidate logfusc.Secret[string], hasher passwordHasher) (PasswordHash, error) {
+func parsePassword(candidate string, hasher passwordHasher) (PasswordHash, error) {
 	if err := validatePasswordCandidate(candidate); err != nil {
 		return PasswordHash{}, err
 	}
@@ -105,68 +110,55 @@ func parsePassword(candidate logfusc.Secret[string], hasher passwordHasher) (Pas
 	return hash, nil
 }
 
-func validatePasswordCandidate(candidate logfusc.Secret[string]) error {
-	exposedPassword := candidate.Expose()
-	if len(exposedPassword) < PasswordMinLen {
+func validatePasswordCandidate(candidate string) error {
+	if len(candidate) < PasswordMinLen {
 		return NewPasswordTooShortError()
 	}
-	if len(exposedPassword) > PasswordMaxLen {
+	if len(candidate) > PasswordMaxLen {
 		return NewPasswordTooLongError()
 	}
 	return nil
 }
 
 // NewPasswordHashFromTrustedSource wraps a hashed password in a [PasswordHash].
-func NewPasswordHashFromTrustedSource(raw logfusc.Secret[[]byte]) PasswordHash {
-	return PasswordHash{inner: raw}
+func NewPasswordHashFromTrustedSource(raw []byte) PasswordHash {
+	return PasswordHash{bytes: raw}
 }
 
-// Expose returns the hashed password as a byte slice.
-func (ph PasswordHash) Expose() []byte {
-	return ph.inner.Expose()
+func (ph PasswordHash) Bytes() []byte {
+	return ph.bytes
 }
 
-// GoString satisfies [fmt.GoStringer]. Must be implemented manually to ensure
-// that the inner password hash is not printed. The fmt package uses reflection to
-// print unexported fields without invoking their String or GoString methods.
-func (ph PasswordHash) GoString() string {
-	return fmt.Sprintf("PasswordHash{inner:%s}", ph.inner)
-}
-
+// String obfuscates the hash bytes when the hash is printed with the %s and %v
+// verbs.
 func (ph PasswordHash) String() string {
-	return ph.GoString()
+	return "{REDACTED}"
 }
 
-type passwordHasher func(candidate logfusc.Secret[string]) (PasswordHash, error)
+// GoString obfuscates the hash bytes when the hash is printed with the %#v verb.
+func (ph PasswordHash) GoString() string {
+	return "PasswordHash{bytes:REDACTED}"
+}
 
-func bcryptHasher(candidate logfusc.Secret[string]) (PasswordHash, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(candidate.Expose()), bcrypt.DefaultCost)
+// passwordHasher is a function that hashes a password candidate. By abstracting
+// a general class of hasher functions, we can simulate hashing errors in tests.
+type passwordHasher func(candidate string) (PasswordHash, error)
+
+func bcryptHash(candidate string) (PasswordHash, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(candidate), bcrypt.DefaultCost)
 	if err != nil {
 		return PasswordHash{}, fmt.Errorf("hash password: %w", err)
 	}
-	return NewPasswordHashFromTrustedSource(logfusc.NewSecret(hash)), nil
+	return NewPasswordHashFromTrustedSource(hash), nil
 }
 
-type passwordComparator func(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError
+// passwordComparator is a function that compares a [PasswordHash] and password.
+// By abstracting a general class of comparator functions, we can simulate
+// comparison errors in tests.
+type passwordComparator func(hash PasswordHash, candidate string) error
 
-// CompareHashAndPassword compares a hashed password with its possible plaintext
-// equivalent. Returns nil on success, or an [AuthError] on failure.
-//
-// This function is exposed as a test utility, since it is often necessary to
-// compare two domain models, but direct comparison of password hashes is
-// impossible. CompareHashAndPassword allows dependent packages to remain
-// ignorant of the hashing algorithm.
-func CompareHashAndPassword(hash PasswordHash, candidate logfusc.Secret[string]) error {
-	// An explicit nil check is required to return a nil error interface, as opposed
-	// to non-nil error containing nil *AuthError.
-	if authErr := bcryptComparator(hash, candidate); authErr != nil {
-		return authErr
-	}
-	return nil
-}
-
-func bcryptComparator(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
-	if err := bcrypt.CompareHashAndPassword(hash.Expose(), []byte(candidate.Expose())); err != nil {
+func bcryptCompare(hash PasswordHash, candidate string) error {
+	if err := bcrypt.CompareHashAndPassword(hash.bytes, []byte(candidate)); err != nil {
 		return &AuthError{Cause: err}
 	}
 	return nil
@@ -254,16 +246,20 @@ func (u *User) ImageURL() option.Option[URL] {
 	return u.imageURL
 }
 
-// GoString satisfies [fmt.GoStringer]. Must be implemented manually to ensure
-// that User's password hash is not printed. The fmt package uses reflection to
-// print unexported fields without invoking their String or GoString methods.
+// GoString ensures that the [PasswordHash]'s GoString method is invoked when the
+// User is printed with the %#v verb. Unexported fields are otherwise printed
+// reflectively, which would expose the hash.
 func (u User) GoString() string {
-	return fmt.Sprintf("User{id:%v, username:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
-		u.id, u.username, u.email, u.passwordHash, u.bio.UnwrapOrZero(), u.imageURL.UnwrapOrZero())
+	return fmt.Sprintf("User{id:%#v, username:%#v, email:%#v, passwordHash:%#v, bio:%#v, imageURL:%#v}",
+		u.id, u.username, u.email, u.passwordHash, u.bio, u.imageURL)
 }
 
+// GoString ensures that the [PasswordHash]'s GoString method is invoked when the
+// User is printed with the %s or %v verbs. Unexported fields are otherwise printed
+// reflectively, which would expose the hash.
 func (u User) String() string {
-	return u.GoString()
+	return fmt.Sprintf("{%s %s %s %s %s %s}",
+		u.id, u.username, u.email, u.passwordHash, u.bio, u.imageURL)
 }
 
 // RegistrationRequest carries validated data required to register a new user.
@@ -291,7 +287,7 @@ func NewRegistrationRequest(
 func ParseRegistrationRequest(
 	usernameCandidate string,
 	emailCandidate string,
-	passwordCandidate logfusc.Secret[string],
+	passwordCandidate string,
 ) (*RegistrationRequest, error) {
 	var validationErrs ValidationErrors
 	username, err := ParseUsername(usernameCandidate)
@@ -328,26 +324,40 @@ func (r *RegistrationRequest) PasswordHash() PasswordHash {
 	return r.passwordHash
 }
 
-// GoString satisfies [fmt.GoStringer]. Must be implemented manually to ensure
-// that the RegistrationRequest's password hash is not printed. The fmt package
-// uses reflection to print unexported fields without invoking their String or
-// GoString methods.
+// Equal returns true if `r.passwordHash` can be obtained from `password`,
+// and the two requests are equal in all other fields.
+//
+// Direct comparison of password hashes is impossible by design.
+func (r *RegistrationRequest) Equal(other *RegistrationRequest, password string) bool {
+	if err := bcryptCompare(r.passwordHash, password); err != nil {
+		return false
+	}
+
+	return r.username == other.username && r.email == other.email
+}
+
+// GoString ensures that the [PasswordHash]'s GoString method is invoked when the
+// request is printed with the %#v verb. Unexported fields are otherwise printed
+// reflectively, which would expose the hash.
 func (r RegistrationRequest) GoString() string {
-	return fmt.Sprintf("RegistrationRequest{username:%q, email:%q, passwordHash:%s}",
+	return fmt.Sprintf("RegistrationRequest{username:%#v, email:%#v, passwordHash:%#v}",
 		r.username, r.email, r.passwordHash)
 }
 
+// String ensures that the [PasswordHash]'s String method is invoked when the
+// request is printed with the %s or %v verbs. Unexported fields are otherwise
+// printed reflectively, which would expose the hash.
 func (r RegistrationRequest) String() string {
-	return r.GoString()
+	return fmt.Sprintf("{%s %s %s}", r.username, r.email, r.passwordHash)
 }
 
 // AuthRequest describes the data required to authenticate a user.
 type AuthRequest struct {
 	email             EmailAddress
-	passwordCandidate logfusc.Secret[string]
+	passwordCandidate string
 }
 
-func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]) *AuthRequest {
+func NewAuthRequest(email EmailAddress, passwordCandidate string) *AuthRequest {
 	return &AuthRequest{
 		email:             email,
 		passwordCandidate: passwordCandidate,
@@ -358,7 +368,7 @@ func NewAuthRequest(email EmailAddress, passwordCandidate logfusc.Secret[string]
 //
 // # Errors
 //   - [ValidationErrors], if `emailCandidate` is invalid.
-func ParseAuthRequest(emailCandidate string, passwordCandidate logfusc.Secret[string]) (*AuthRequest, error) {
+func ParseAuthRequest(emailCandidate string, passwordCandidate string) (*AuthRequest, error) {
 	var validationErrs ValidationErrors
 	email, err := ParseEmailAddress(emailCandidate)
 	if pushErr := validationErrs.PushValidationError(err); pushErr != nil {
@@ -376,21 +386,22 @@ func (ar *AuthRequest) Email() EmailAddress {
 	return ar.email
 }
 
-func (ar *AuthRequest) PasswordCandidate() logfusc.Secret[string] {
+func (ar *AuthRequest) PasswordCandidate() string {
 	return ar.passwordCandidate
 }
 
-// GoString satisfies [fmt.GoStringer]. Must be implemented manually to ensure
-// that the AuthRequest's password hash is not printed. The fmt package
-// uses reflection to print unexported fields without invoking their String or
-// GoString methods.
+// GoString ensures that `passwordCandidate` is obfuscated when the request is
+// printed with the %#v verb. Unexported fields are otherwise printed
+// reflectively, which would expose the hash.
 func (ar AuthRequest) GoString() string {
-	return fmt.Sprintf("AuthRequest{email:%q, passwordCandidate:%s}",
-		ar.email, ar.passwordCandidate)
+	return fmt.Sprintf("AuthRequest{email:%#v, passwordCandidate:REDACTED}", ar.email)
 }
 
+// GoString ensures that `passwordCandidate` is obfuscated when the request is
+// printed with the %s or %v verbs. Unexported fields are otherwise printed
+// reflectively, which would expose the hash.
 func (ar AuthRequest) String() string {
-	return ar.GoString()
+	return fmt.Sprintf("{%s REDACTED}", ar.email)
 }
 
 // UpdateRequest describes the data required to update a user. All fields but
@@ -428,7 +439,7 @@ func NewUpdateRequest(
 func ParseUpdateRequest(
 	userID uuid.UUID,
 	emailCandidate option.Option[string],
-	passwordCandidate option.Option[logfusc.Secret[string]],
+	passwordCandidate option.Option[string],
 	rawBio option.Option[string],
 	imageURLCandidate option.Option[string],
 ) (*UpdateRequest, error) {
@@ -465,6 +476,10 @@ func (ur *UpdateRequest) Email() option.Option[EmailAddress] {
 	return ur.email
 }
 
+func (ur *UpdateRequest) PasswordHash() option.Option[PasswordHash] {
+	return ur.passwordHash
+}
+
 func (ur *UpdateRequest) Bio() option.Option[Bio] {
 	return ur.bio
 }
@@ -473,19 +488,36 @@ func (ur *UpdateRequest) ImageURL() option.Option[URL] {
 	return ur.imageURL
 }
 
-func (ur *UpdateRequest) PasswordHash() option.Option[PasswordHash] {
-	return ur.passwordHash
-}
-
-// GoString satisfies [fmt.GoStringer]. Must be implemented manually to ensure
-// that the UpdateRequest's password hash is not printed. The fmt package uses
-// reflection to print unexported fields without invoking their String or
-// GoString methods.
+// GoString ensures that the [PasswordHash] [option.Option]'s GoString method is
+// invoked when the request is printed with the %#v verb, which in turn calls
+// GoString on the PasswordHash, if present. Unexported fields are otherwise
+// printed reflectively, which would expose the hash.
 func (ur UpdateRequest) GoString() string {
-	return fmt.Sprintf("UpdateRequest{userID:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
+	return fmt.Sprintf("UpdateRequest{userID:%#v, email:%#v, passwordHash:%#v, bio:%#v, imageURL:%#v}",
 		ur.userID, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
 }
 
+// GoString ensures that the [PasswordHash] [option.Option]'s GoString method is
+// invoked when the request is printed with the %s or %v verbs, which in turn calls
+// GoString on the PasswordHash, if present. Unexported fields are otherwise
+// printed reflectively, which would expose the hash.
 func (ur UpdateRequest) String() string {
-	return ur.GoString()
+	return fmt.Sprintf("{%s %s %s %s %s}", ur.userID, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
+}
+
+// Equal returns true if `ur.passwordHash` can be obtained from `password`,
+// and the two requests are equal in all other fields.
+//
+// Direct comparison of password hashes is impossible by design.
+func (ur *UpdateRequest) Equal(other *UpdateRequest, password string) bool {
+	if ur.passwordHash.IsSome() {
+		if err := bcryptCompare(ur.passwordHash.UnwrapOrZero(), password); err != nil {
+			return false
+		}
+	}
+
+	return ur.userID == other.userID &&
+		ur.email == other.email &&
+		ur.bio == other.bio &&
+		ur.imageURL == other.imageURL
 }

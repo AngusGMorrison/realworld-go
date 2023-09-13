@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/angusgmorrison/logfusc"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -125,23 +124,23 @@ func Test_parsePassword(t *testing.T) {
 
 	anyError := errors.New("any error")
 
-	assertEmptyPasswordHash := func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[string]) {
+	assertEmptyPasswordHash := func(t *testing.T, hash PasswordHash, candidate string) {
 		t.Helper()
-		assert.Empty(t, hash.Expose())
+		assert.Empty(t, hash)
 	}
 
 	testCases := []struct {
 		name               string
-		candidate          logfusc.Secret[string]
+		candidate          string
 		hasher             passwordHasher
-		assertPasswordHash func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[string])
+		assertPasswordHash func(t *testing.T, hash PasswordHash, candidate string)
 		wantErr            error
 	}{
 		{
 			name:      "valid password",
 			candidate: RandomPasswordCandidate(),
-			hasher:    bcryptHasher,
-			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate logfusc.Secret[string]) {
+			hasher:    bcryptHash,
+			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate string) {
 				t.Helper()
 				assert.NoError(t, CompareHashAndPassword(hash, candidate))
 			},
@@ -149,22 +148,22 @@ func Test_parsePassword(t *testing.T) {
 		},
 		{
 			name:               "password too short",
-			candidate:          logfusc.NewSecret(strings.Repeat("a", PasswordMinLen-1)),
-			hasher:             bcryptHasher,
+			candidate:          strings.Repeat("a", PasswordMinLen-1),
+			hasher:             bcryptHash,
 			assertPasswordHash: assertEmptyPasswordHash,
 			wantErr:            NewPasswordTooShortError(),
 		},
 		{
 			name:               "password too long",
-			candidate:          logfusc.NewSecret(strings.Repeat("a", PasswordMaxLen+1)),
-			hasher:             bcryptHasher,
+			candidate:          strings.Repeat("a", PasswordMaxLen+1),
+			hasher:             bcryptHash,
 			assertPasswordHash: assertEmptyPasswordHash,
 			wantErr:            NewPasswordTooLongError(),
 		},
 		{
 			name:      "hasher returns any error",
 			candidate: RandomPasswordCandidate(),
-			hasher: func(secret logfusc.Secret[string]) (PasswordHash, error) {
+			hasher: func(secret string) (PasswordHash, error) {
 				return PasswordHash{}, anyError
 			},
 			assertPasswordHash: assertEmptyPasswordHash,
@@ -191,27 +190,25 @@ func Test_NewPasswordHashFromTrustedSource(t *testing.T) {
 
 	want := RandomPasswordHash(t)
 
-	got := NewPasswordHashFromTrustedSource(want.inner)
+	got := NewPasswordHashFromTrustedSource(want.bytes)
 
 	assert.Equal(t, want, got)
 }
 
-func Test_PasswordHash_Expose(t *testing.T) {
+func Test_PasswordHash_GoString(t *testing.T) {
 	t.Parallel()
 
 	hash := RandomPasswordHash(t)
 
-	assert.Equal(t, hash.inner.Expose(), hash.Expose())
+	assert.Equal(t, "PasswordHash{bytes:REDACTED}", hash.GoString())
 }
 
-func Test_PasswordHash_StringMethods(t *testing.T) {
+func Test_PasswordHash_String(t *testing.T) {
 	t.Parallel()
 
 	hash := RandomPasswordHash(t)
-	want := fmt.Sprintf("PasswordHash{inner:%s}", hash.inner.GoString())
 
-	assert.Equal(t, want, hash.GoString())
-	assert.Equal(t, want, hash.String())
+	assert.Equal(t, "{REDACTED}", hash.String())
 }
 
 func Test_ParseURL(t *testing.T) {
@@ -286,7 +283,7 @@ func Test_NewUser(t *testing.T) {
 	assert.Equal(t, wantUser, gotUser)
 }
 
-func Test_User_StringMethods(t *testing.T) {
+func Test_User_GoString(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
@@ -296,10 +293,25 @@ func Test_User_StringMethods(t *testing.T) {
 	bio := RandomOption[Bio](t)
 	imageURL := RandomOption[URL](t)
 	user := NewUser(id, username, email, passwordHash, bio, imageURL)
-	want := fmt.Sprintf("User{id:%v, username:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
-		id, username, email, passwordHash, bio.UnwrapOrZero(), imageURL.UnwrapOrZero())
+	want := fmt.Sprintf(
+		"User{id:%#v, username:%#v, email:%#v, passwordHash:PasswordHash{bytes:REDACTED}, bio:%#v, imageURL:%#v}",
+		id, username, email, bio, imageURL)
 
 	assert.Equal(t, want, user.GoString())
+}
+
+func Test_User_String(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	username := RandomUsername(t)
+	email := RandomEmailAddress(t)
+	passwordHash := RandomPasswordHash(t)
+	bio := RandomOption[Bio](t)
+	imageURL := RandomOption[URL](t)
+	user := NewUser(id, username, email, passwordHash, bio, imageURL)
+	want := fmt.Sprintf("{%s %s %s {REDACTED} %s %s}", id, username, email, bio, imageURL)
+
 	assert.Equal(t, want, user.String())
 }
 
@@ -331,7 +343,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 		name                      string
 		usernameCandidate         string
 		emailCandidate            string
-		passwordCandidate         logfusc.Secret[string]
+		passwordCandidate         string
 		assertRegistrationRequest assert.ValueAssertionFunc
 		wantErr                   error
 	}{
@@ -387,7 +399,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 			name:                      "invalid password",
 			usernameCandidate:         validUsernameCandidate,
 			emailCandidate:            validEmailCandidate,
-			passwordCandidate:         logfusc.NewSecret(""),
+			passwordCandidate:         "",
 			assertRegistrationRequest: assert.Nil,
 			wantErr: ValidationErrors{
 				NewPasswordTooShortError().(*ValidationError),
@@ -397,7 +409,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 			name:                      "multiple invalid inputs",
 			usernameCandidate:         "",
 			emailCandidate:            "",
-			passwordCandidate:         logfusc.NewSecret(""),
+			passwordCandidate:         "",
 			assertRegistrationRequest: assert.Nil,
 			wantErr: ValidationErrors{
 				NewUsernameTooShortError().(*ValidationError),
@@ -421,17 +433,28 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 	}
 }
 
-func Test_RegistrationRequest_StringMethods(t *testing.T) {
+func Test_RegistrationRequest_GoString(t *testing.T) {
 	t.Parallel()
 
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
 	registrationRequest := NewRegistrationRequest(username, email, passwordHash)
-	want := fmt.Sprintf("RegistrationRequest{username:%q, email:%q, passwordHash:%s}",
-		username, email, passwordHash)
+	want := fmt.Sprintf("RegistrationRequest{username:%#v, email:%#v, passwordHash:PasswordHash{bytes:REDACTED}}",
+		username, email)
 
 	assert.Equal(t, want, registrationRequest.GoString())
+}
+
+func Test_RegistrationRequest_String(t *testing.T) {
+	t.Parallel()
+
+	username := RandomUsername(t)
+	email := RandomEmailAddress(t)
+	passwordHash := RandomPasswordHash(t)
+	registrationRequest := NewRegistrationRequest(username, email, passwordHash)
+	want := fmt.Sprintf("{%s %s {REDACTED}}", username, email)
+
 	assert.Equal(t, want, registrationRequest.String())
 }
 
@@ -459,7 +482,7 @@ func Test_ParseAuthRequest(t *testing.T) {
 	testCases := []struct {
 		name              string
 		emailCandidate    string
-		passwordCandidate logfusc.Secret[string]
+		passwordCandidate string
 		wantAuthRequest   *AuthRequest
 		wantErr           error
 	}{
@@ -496,15 +519,25 @@ func Test_ParseAuthRequest(t *testing.T) {
 	}
 }
 
-func Test_AuthRequest_StringMethods(t *testing.T) {
+func Test_AuthRequest_GoString(t *testing.T) {
 	t.Parallel()
 
 	email := RandomEmailAddress(t)
 	passwordCandidate := RandomPasswordCandidate()
 	authRequest := NewAuthRequest(email, passwordCandidate)
-	want := fmt.Sprintf("AuthRequest{email:%q, passwordCandidate:%s}", email, passwordCandidate)
+	want := fmt.Sprintf("AuthRequest{email:%#v, passwordCandidate:REDACTED}", email)
 
 	assert.Equal(t, want, authRequest.GoString())
+}
+
+func Test_AuthRequest_String(t *testing.T) {
+	t.Parallel()
+
+	email := RandomEmailAddress(t)
+	passwordCandidate := RandomPasswordCandidate()
+	authRequest := NewAuthRequest(email, passwordCandidate)
+	want := fmt.Sprintf("{%s REDACTED}", email)
+
 	assert.Equal(t, want, authRequest.String())
 }
 
@@ -572,7 +605,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		name              string
 		userID            uuid.UUID
 		emailCandidate    option.Option[string]
-		passwordCandidate option.Option[logfusc.Secret[string]]
+		passwordCandidate option.Option[string]
 		bio               option.Option[string]
 		urlCandidate      option.Option[string]
 		wantUpdateRequest *UpdateRequest
@@ -598,7 +631,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			name:              "valid inputs, optional inputs absent",
 			userID:            userID,
 			emailCandidate:    option.None[string](),
-			passwordCandidate: option.None[logfusc.Secret[string]](),
+			passwordCandidate: option.None[string](),
 			bio:               option.None[string](),
 			urlCandidate:      option.None[string](),
 			wantUpdateRequest: &UpdateRequest{
@@ -626,7 +659,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			name:              "invalid password",
 			userID:            uuid.New(),
 			emailCandidate:    option.Some(validEmailCandidate),
-			passwordCandidate: option.Some(logfusc.NewSecret("")),
+			passwordCandidate: option.Some(""),
 			bio:               option.Some(string(bio)),
 			urlCandidate:      option.Some(validURLCandidate),
 			wantUpdateRequest: nil,
@@ -668,18 +701,31 @@ func Test_ParseUpdateRequest(t *testing.T) {
 	}
 }
 
-func Test_UpdateRequest_StringMethods(t *testing.T) {
+func Test_UpdateRequest_GoString(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
 	email := RandomOption[EmailAddress](t)
-	passwordHash := RandomOption[PasswordHash](t)
+	passwordHash := option.Some(RandomPasswordHash(t)) // None[PasswordHash] is always safe to print
 	bio := RandomOption[Bio](t)
 	imageUrl := RandomOption[URL](t)
 	updateRequest := NewUpdateRequest(userID, email, passwordHash, bio, imageUrl)
-	want := fmt.Sprintf("UpdateRequest{userID:%q, email:%q, passwordHash:%s, bio:%q, imageURL:%q}",
-		userID, email, passwordHash, bio, imageUrl)
+	want := fmt.Sprintf(
+		"UpdateRequest{userID:%#v, email:%#v, passwordHash:option.Option[user.PasswordHash]{some:true, value:PasswordHash{bytes:REDACTED}}, bio:%#v, imageURL:%#v}",
+		userID, email, bio, imageUrl)
 
 	assert.Equal(t, want, updateRequest.GoString())
+}
+func Test_UpdateRequest_String(t *testing.T) {
+	t.Parallel()
+
+	userID := uuid.New()
+	email := RandomOption[EmailAddress](t)
+	passwordHash := option.Some(RandomPasswordHash(t)) // None[PasswordHash] is always safe to print
+	bio := RandomOption[Bio](t)
+	imageUrl := RandomOption[URL](t)
+	updateRequest := NewUpdateRequest(userID, email, passwordHash, bio, imageUrl)
+	want := fmt.Sprintf("{%s %s Some[user.PasswordHash]{{REDACTED}} %s %s}", userID, email, bio, imageUrl)
+
 	assert.Equal(t, want, updateRequest.String())
 }
