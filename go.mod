@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/brianvoe/gofakeit/v6 v6.23.1
 	github.com/gofiber/contrib/jwt v1.0.4
-	github.com/gofiber/fiber/v2 v2.49.2-0.20230906112033-b8c9ede6efa2
+	github.com/gofiber/fiber/v2 v2.49.2
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/golang-migrate/migrate/v4 v4.16.2
