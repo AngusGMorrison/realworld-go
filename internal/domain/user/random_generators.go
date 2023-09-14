@@ -35,10 +35,7 @@ func RandomBio() Bio {
 }
 
 func RandomURLCandidate() string {
-	if rand.Intn(2) == 0 {
-		return gofakeit.URL()
-	}
-	return ""
+	return gofakeit.URL()
 }
 
 func RandomEmailAddress(t *testing.T) EmailAddress {
