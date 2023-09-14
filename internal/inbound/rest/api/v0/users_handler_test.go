@@ -687,7 +687,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 					service.On(
 						"UpdateUser",
 						mock.AnythingOfType("*fasthttp.RequestCtx"),
-						mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateReq, passwordOption.UnwrapOrZero())),
+						mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateReq, passwordOption)),
 					).Return(user.RandomUser(t), nil)
 				},
 				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
@@ -795,7 +795,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 					service.On(
 						"UpdateUser",
 						mock.AnythingOfType("*fasthttp.RequestCtx"),
-						mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateRequest, passwordOption.UnwrapOrZero())),
+						mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateRequest, passwordOption)),
 					).Return((*user.User)(nil), assert.AnError)
 				},
 				assertError: func(t *testing.T, err error) {
@@ -895,7 +895,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 		service.On(
 			"UpdateUser",
 			mock.AnythingOfType("*fasthttp.RequestCtx"),
-			mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateRequest, passwordOption.UnwrapOrZero())),
+			mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateRequest, passwordOption)),
 		).Return(wantUser, nil)
 
 		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)

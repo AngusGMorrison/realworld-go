@@ -137,7 +137,7 @@ func Test_parsePassword(t *testing.T) {
 		wantErr            error
 	}{
 		{
-			name:      "valid password",
+			name:      "valid passwordToCompare",
 			candidate: RandomPasswordCandidate(),
 			hasher:    bcryptHash,
 			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate string) {
@@ -147,14 +147,14 @@ func Test_parsePassword(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:               "password too short",
+			name:               "passwordToCompare too short",
 			candidate:          strings.Repeat("a", PasswordMinLen-1),
 			hasher:             bcryptHash,
 			assertPasswordHash: assertEmptyPasswordHash,
 			wantErr:            NewPasswordTooShortError(),
 		},
 		{
-			name:               "password too long",
+			name:               "passwordToCompare too long",
 			candidate:          strings.Repeat("a", PasswordMaxLen+1),
 			hasher:             bcryptHash,
 			assertPasswordHash: assertEmptyPasswordHash,
@@ -248,6 +248,47 @@ func Test_ParseURL(t *testing.T) {
 
 			assert.Equal(t, tc.wantURL, gotURL)
 			assert.Equal(t, tc.wantErr, gotErr)
+		})
+	}
+}
+
+func Test_URL_Equal(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name string
+		url1 URL
+		url2 URL
+		want bool
+	}{
+		{
+			name: "zero values",
+			url1: URL{},
+			url2: URL{},
+			want: true,
+		},
+		{
+			name: "equal values",
+			url1: URL{inner: &url.URL{Scheme: "https", Host: "example.com"}},
+			url2: URL{inner: &url.URL{Scheme: "https", Host: "example.com"}},
+			want: true,
+		},
+		{
+			name: "unequal values",
+			url1: URL{inner: &url.URL{Scheme: "https", Host: "example.com"}},
+			url2: URL{inner: &url.URL{Scheme: "http", Host: "example.com"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tc.url1.Equal(tc.url2)
+
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -396,7 +437,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 			},
 		},
 		{
-			name:                      "invalid password",
+			name:                      "invalid passwordToCompare",
 			usernameCandidate:         validUsernameCandidate,
 			emailCandidate:            validEmailCandidate,
 			passwordCandidate:         "",
@@ -429,6 +470,77 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 
 			tc.assertRegistrationRequest(t, gotRegistrationRequest)
 			assert.Equal(t, tc.wantErr, gotErr)
+		})
+	}
+}
+
+func Test_RegistrationRequest_Equal(t *testing.T) {
+	t.Parallel()
+
+	email1 := RandomEmailAddress(t)
+	email2 := RandomEmailAddress(t)
+	username1 := RandomUsername(t)
+	username2 := RandomUsername(t)
+	password1 := RandomPasswordCandidate()
+	password2 := RandomPasswordCandidate()
+	hash1, err := bcryptHash(password1)
+	require.NoError(t, err)
+	hash2, err := bcryptHash(password2)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name              string
+		req1              *RegistrationRequest
+		req2              *RegistrationRequest
+		passwordToCompare string
+		want              bool
+	}{
+		{
+			name:              "zero values",
+			req1:              &RegistrationRequest{},
+			req2:              &RegistrationRequest{},
+			passwordToCompare: "",
+			want:              true,
+		},
+		{
+			name:              "equal values",
+			req1:              NewRegistrationRequest(username1, email1, hash1),
+			req2:              NewRegistrationRequest(username1, email1, hash1),
+			passwordToCompare: password1,
+			want:              true,
+		},
+		{
+			name:              "unequal usernames",
+			req1:              NewRegistrationRequest(username1, email1, hash1),
+			req2:              NewRegistrationRequest(username2, email1, hash1),
+			passwordToCompare: password1,
+			want:              false,
+		},
+		{
+			name:              "unequal emails",
+			req1:              NewRegistrationRequest(username1, email1, hash1),
+			req2:              NewRegistrationRequest(username1, email2, hash1),
+			passwordToCompare: password1,
+			want:              false,
+		},
+		{
+			name:              "unequal passwords",
+			req1:              NewRegistrationRequest(username1, email1, hash1),
+			req2:              NewRegistrationRequest(username1, email1, hash2),
+			passwordToCompare: password1,
+			want:              false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tc.req1.Equal(tc.req2, tc.passwordToCompare)
+
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -656,7 +768,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			},
 		},
 		{
-			name:              "invalid password",
+			name:              "invalid passwordToCompare",
 			userID:            uuid.New(),
 			emailCandidate:    option.Some(validEmailCandidate),
 			passwordCandidate: option.Some(""),
@@ -728,4 +840,260 @@ func Test_UpdateRequest_String(t *testing.T) {
 	want := fmt.Sprintf("{%s %s Some[user.PasswordHash]{{REDACTED}} %s %s}", userID, email, bio, imageUrl)
 
 	assert.Equal(t, want, updateRequest.String())
+}
+
+func Test_UpdateRequest_Equal(t *testing.T) {
+	t.Parallel()
+
+	userID1 := uuid.New()
+	userID2 := uuid.New()
+	email1 := RandomEmailAddress(t)
+	email2 := RandomEmailAddress(t)
+	password1 := RandomPasswordCandidate()
+	password2 := RandomPasswordCandidate()
+	hash1, err := bcryptHash(password1)
+	require.NoError(t, err)
+	hash2, err := bcryptHash(password2)
+	require.NoError(t, err)
+	bio1 := RandomBio()
+	bio2 := RandomBio()
+	url1 := RandomURL(t)
+	url2 := RandomURL(t)
+
+	testCases := []struct {
+		name              string
+		req1              *UpdateRequest
+		req2              *UpdateRequest
+		passwordToCompare option.Option[string]
+		want              bool
+	}{
+		{
+			name:              "zero values",
+			req1:              &UpdateRequest{},
+			req2:              &UpdateRequest{},
+			passwordToCompare: option.None[string](),
+			want:              true,
+		},
+		{
+			name: "equal values (some)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.Some(email1),
+				passwordHash: option.Some(hash1),
+				bio:          option.Some(bio1),
+				imageURL:     option.Some(url1),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.Some(email1),
+				passwordHash: option.Some(hash1),
+				bio:          option.Some(bio1),
+				imageURL:     option.Some(url1),
+			},
+			passwordToCompare: option.Some(password1),
+			want:              true,
+		},
+		{
+			name: "equal values (none)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              true,
+		},
+		{
+			name: "unequal userIDs",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID2,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal emails (some)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.Some(email1),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.Some(email2),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal emails (none)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.Some(email2),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal passwords (some)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.Some(hash1),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.Some(hash2),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.Some(password1),
+			want:              false,
+		},
+		{
+			name: "unequal passwords (none)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.Some(hash2),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal bios (some)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.Some(bio1),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.Some(bio2),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal bios (none)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.Some(bio2),
+				imageURL:     option.None[URL](),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal image URLs (some)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.Some(url1),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.Some(url2),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+		{
+			name: "unequal image URLs (none)",
+			req1: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.None[URL](),
+			},
+			req2: &UpdateRequest{
+				userID:       userID1,
+				email:        option.None[EmailAddress](),
+				passwordHash: option.None[PasswordHash](),
+				bio:          option.None[Bio](),
+				imageURL:     option.Some(url2),
+			},
+			passwordToCompare: option.None[string](),
+			want:              false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tc.req1.Equal(tc.req2, tc.passwordToCompare)
+
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }

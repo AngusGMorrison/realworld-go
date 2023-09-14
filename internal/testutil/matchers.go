@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
+	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -27,7 +28,7 @@ func NewUserRegistrationRequestMatcher(
 func NewUserUpdateRequestMatcher(
 	t *testing.T,
 	want *user.UpdateRequest,
-	wantPassword string,
+	wantPassword option.Option[string],
 ) func(*user.UpdateRequest) bool {
 	t.Helper()
 
