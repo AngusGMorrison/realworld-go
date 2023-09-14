@@ -192,7 +192,7 @@ func Test_Option_GoString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			want := fmt.Sprintf("Option[%[1]T]{some: %[2]t, value: %#[1]v}", tc.opt.value, tc.opt.some)
+			want := fmt.Sprintf("option.Option[%[1]T]{some:%[2]t, value:%#[1]v}", tc.opt.value, tc.opt.some)
 
 			got := tc.opt.GoString()
 			assert.Equal(t, want, got)
@@ -211,12 +211,12 @@ func Test_Option_String(t *testing.T) {
 		{
 			name: "IsSome",
 			opt:  Some("value"),
-			want: "IsSome(value)",
+			want: "Some[string]{value}",
 		},
 		{
 			name: "None",
 			opt:  None[string](),
-			want: "None",
+			want: "None[string]",
 		},
 	}
 

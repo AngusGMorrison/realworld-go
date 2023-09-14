@@ -194,6 +194,16 @@ func (u URL) String() string {
 	return u.inner.String()
 }
 
+func (u URL) Equal(other URL) bool {
+	if u.inner == nil && other.inner == nil {
+		return true
+	}
+	if u.inner == nil || other.inner == nil {
+		return false
+	}
+	return *u.inner == *other.inner
+}
+
 // User is the central domain type for this package.
 type User struct {
 	id           uuid.UUID
@@ -516,8 +526,13 @@ func (ur *UpdateRequest) Equal(other *UpdateRequest, password string) bool {
 		}
 	}
 
-	return ur.userID == other.userID &&
-		ur.email == other.email &&
-		ur.bio == other.bio &&
-		ur.imageURL == other.imageURL
+	if ur.userID != other.userID ||
+		ur.email != other.email ||
+		ur.bio != other.bio ||
+		ur.imageURL.IsSome() != other.imageURL.IsSome() ||
+		!ur.imageURL.UnwrapOrZero().Equal(other.imageURL.UnwrapOrZero()) {
+		return false
+	}
+
+	return true
 }

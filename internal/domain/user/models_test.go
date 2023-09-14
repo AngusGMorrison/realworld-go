@@ -142,7 +142,7 @@ func Test_parsePassword(t *testing.T) {
 			hasher:    bcryptHash,
 			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate string) {
 				t.Helper()
-				assert.NoError(t, CompareHashAndPassword(hash, candidate))
+				assert.NoError(t, bcryptCompare(hash, candidate))
 			},
 			wantErr: nil,
 		},
@@ -366,7 +366,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 					return false
 				}
 
-				gotPasswordComparisonErr := CompareHashAndPassword(got.PasswordHash(), validPasswordCandidate)
+				gotPasswordComparisonErr := bcryptCompare(got.PasswordHash(), validPasswordCandidate)
 				if pass := assert.NoError(t, gotPasswordComparisonErr); !pass {
 					return false
 				}
@@ -596,7 +596,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 				got.passwordHash.UnwrapOrZero(),
 			)
 		} else {
-			err := CompareHashAndPassword(got.PasswordHash().UnwrapOrZero(), validPasswordCandidate)
+			err := bcryptCompare(got.PasswordHash().UnwrapOrZero(), validPasswordCandidate)
 			assert.NoError(t, err)
 		}
 	}
