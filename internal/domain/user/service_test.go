@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"errors"
-	"github.com/angusgmorrison/logfusc"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -70,7 +69,7 @@ func Test_service_Authenticate(t *testing.T) {
 			name:     "success",
 			repoUser: &User{},
 			repoErr:  nil,
-			passwordComparator: func(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
+			passwordComparator: func(hash PasswordHash, candidate string) error {
 				return nil
 			},
 			wantUser: &User{},
@@ -98,7 +97,7 @@ func Test_service_Authenticate(t *testing.T) {
 			name:     "passwordComparator returns an error",
 			repoUser: &User{},
 			repoErr:  nil,
-			passwordComparator: func(hash PasswordHash, candidate logfusc.Secret[string]) *AuthError {
+			passwordComparator: func(hash PasswordHash, candidate string) error {
 				return &AuthError{}
 			},
 			wantUser: nil,

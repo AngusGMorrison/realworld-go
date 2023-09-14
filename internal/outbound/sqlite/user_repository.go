@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/angusgmorrison/logfusc"
 	"github.com/google/uuid"
 	"github.com/mattn/go-sqlite3"
 
@@ -80,7 +79,7 @@ func newCreateUserParamsFromRegistrationRequest(req *user.RegistrationRequest) s
 		ID:           uuid.New().String(),
 		Email:        req.Email().String(),
 		Username:     req.Username().String(),
-		PasswordHash: string(req.PasswordHash().Expose()),
+		PasswordHash: string(req.PasswordHash().Bytes()),
 	}
 }
 
@@ -132,7 +131,7 @@ func newUpdateUserParamsFromDomain(req *user.UpdateRequest) sqlc.UpdateUserParam
 		Valid:  req.ImageURL().IsSome(),
 	}
 	passwordHash := sql.NullString{
-		String: string(req.PasswordHash().UnwrapOrZero().Expose()),
+		String: string(req.PasswordHash().UnwrapOrZero().Bytes()),
 		Valid:  req.PasswordHash().IsSome(),
 	}
 
@@ -191,7 +190,7 @@ func parseUser(
 	}
 
 	parsedPasswordHash := user.NewPasswordHashFromTrustedSource(
-		logfusc.NewSecret([]byte(passwordHash)),
+		[]byte(passwordHash),
 	)
 
 	parsedBio := option.None[user.Bio]()

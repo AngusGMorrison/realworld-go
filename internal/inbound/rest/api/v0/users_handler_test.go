@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/angusgmorrison/logfusc"
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
@@ -86,7 +85,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 			{
 				name: "service error",
 				requestBody: fmt.Sprintf(`{"user": {"username": %q, "email": %q, "password": %q}}`,
-					validUsernameCandidate, validEmailCandidate, validPasswordCandidate.Expose()),
+					validUsernameCandidate, validEmailCandidate, validPasswordCandidate),
 				setupMocks: func(service *testutil.MockUserService, jwtProvider *mockJWTProvider) {
 					wantRegistrationReq, err := user.ParseRegistrationRequest(
 						validUsernameCandidate,
@@ -118,7 +117,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 			{
 				name: "JWTProvider error",
 				requestBody: fmt.Sprintf(`{"user": {"username": %q, "email": %q, "password": %q}}`,
-					validUsernameCandidate, validEmailCandidate, validPasswordCandidate.Expose()),
+					validUsernameCandidate, validEmailCandidate, validPasswordCandidate),
 				setupMocks: func(service *testutil.MockUserService, jwtProvider *mockJWTProvider) {
 					wantRegistrationReq, err := user.ParseRegistrationRequest(
 						validUsernameCandidate,
@@ -199,7 +198,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 		app.Post("/", handler.Register)
 
 		requestBody := fmt.Sprintf(`{"user": {"username": %q, "email": %q, "password": %q}}`,
-			validUsernameCandidate, validEmailCandidate, validPasswordCandidate.Expose())
+			validUsernameCandidate, validEmailCandidate, validPasswordCandidate)
 		req, err := http.NewRequestWithContext(
 			context.Background(),
 			http.MethodPost,
@@ -307,7 +306,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 			{
 				name: "service error",
 				requestBody: fmt.Sprintf(`{"user": {"email": %q, "password": %q}}`,
-					validEmailCandidate, validPasswordCandidate.Expose()),
+					validEmailCandidate, validPasswordCandidate),
 				setupMocks: func(service *testutil.MockUserService, jwtProvider *mockJWTProvider) {
 					wantAuthReq, err := user.ParseAuthRequest(
 						validEmailCandidate,
@@ -334,7 +333,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 			{
 				name: "JWTProvider error",
 				requestBody: fmt.Sprintf(`{"user": {"email": %q, "password": %q}}`,
-					validEmailCandidate, validPasswordCandidate.Expose()),
+					validEmailCandidate, validPasswordCandidate),
 				setupMocks: func(service *testutil.MockUserService, jwtProvider *mockJWTProvider) {
 					wantAuthReq, err := user.ParseAuthRequest(
 						validEmailCandidate,
@@ -410,7 +409,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 		app.Post("/", handler.Login)
 
 		requestBody := fmt.Sprintf(`{"user": {"email": %q, "password": %q}}`,
-			validEmailCandidate, validPasswordCandidate.Expose())
+			validEmailCandidate, validPasswordCandidate)
 		req, err := http.NewRequestWithContext(
 			context.Background(),
 			http.MethodPost,
@@ -990,14 +989,14 @@ func Test_UsersErrorHandler(t *testing.T) {
 
 func updateRequestBodyFromOptions(
 	emailOption, bioOption, urlOption option.Option[string],
-	passwordOption option.Option[logfusc.Secret[string]],
+	passwordOption option.Option[string],
 ) string {
 	var requestFields []string
 	if emailOption.IsSome() {
 		requestFields = append(requestFields, fmt.Sprintf(`"email": %q`, emailOption.UnwrapOrZero()))
 	}
 	if passwordOption.IsSome() {
-		requestFields = append(requestFields, fmt.Sprintf(`"password": %q`, passwordOption.UnwrapOrZero().Expose()))
+		requestFields = append(requestFields, fmt.Sprintf(`"password": %q`, passwordOption.UnwrapOrZero()))
 	}
 	if bioOption.IsSome() {
 		requestFields = append(requestFields, fmt.Sprintf(`"bio": %q`, bioOption.UnwrapOrZero()))

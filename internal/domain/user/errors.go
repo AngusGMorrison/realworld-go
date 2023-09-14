@@ -19,7 +19,7 @@ const (
 	URLFieldType
 )
 
-var fieldNames = [5]string{"id", "username", "email", "password", "imageURL"}
+var fieldNames = [5]string{"id", "username", "email", "passwordToCompare", "imageURL"}
 
 func (f FieldType) String() string {
 	return fieldNames[f-1]

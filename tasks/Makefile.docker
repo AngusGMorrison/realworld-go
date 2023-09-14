@@ -28,7 +28,7 @@ docker/run/it: docker/build generate/dev_data_dir
 	${REALWORLD_IMAGE_NAME}
 
 ## Build the optimized production Docker image.
-docker/build:
+docker/build: docker/prune
 	docker build \
 	--rm \
 	--tag ${REALWORLD_IMAGE_NAME} \
@@ -48,7 +48,7 @@ docker/test: docker/test/build generate/dev_data_dir
 	go test -race -v -coverprofile=/coverage/coverage.txt -covermode=atomic ./...
 
 ## Build the test Docker image.
-docker/test/build:
+docker/test/build: docker/prune
 	docker build \
 	--target base \
 	--tag ${REALWORLD_IMAGE_NAME}-test \
@@ -70,5 +70,9 @@ docker/db/connect:
 	sqlite3 ${REALWORLD_DB_BASENAME}
 
 ## Remove all Docker-generated artifacts.
-docker/clean:
-	docker image prune --filter label=app=${REALWORLD_APP_NAME}
+docker/clean: docker/prune
+	docker image rm ${REALWORLD_IMAGE_NAME} || true
+	docker image rm ${REALWORLD_IMAGE_NAME}-test || true
+
+docker/prune:
+	docker image prune --force --filter label=app=${REALWORLD_APP_NAME}

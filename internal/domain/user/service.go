@@ -17,7 +17,7 @@ type service struct {
 func NewService(repo Repository) Service {
 	return &service{
 		repo:               repo,
-		passwordComparator: bcryptComparator,
+		passwordComparator: bcryptCompare,
 	}
 }
 
@@ -31,7 +31,7 @@ func (s *service) Register(ctx context.Context, req *RegistrationRequest) (*User
 	return user, nil
 }
 
-// Authenticate looks up the user by email and compares its password hash with
+// Authenticate looks up the user by email and compares its passwordToCompare hash with
 // the request. If there is a match, the user is returned along with a signed
 // JWT.
 func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*User, error) {
