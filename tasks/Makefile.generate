@@ -1,7 +1,7 @@
 .PHONY: generate
 
 ## Generate all project dependencies.
-generate: generate/queries generate/dev_data_dir
+generate: generate/queries generate/dev_data_dir generate/dev_dotenv
 
 QUERIES_PATH := internal/outbounds/sqlite/queries.sql
 
@@ -16,11 +16,15 @@ $(QUERIES_PATH):
 generate/dev_data_dir:
 	@scripts/generate_dev_data_dir.sh
 
+generate/dev_dotenv:
+	@scripts/generate_dev_dotenv.sh
+
 ## Generate a new migration named using the MIGRATION_NAME env var.
 generate/migration:
 	migrate create -ext sql -dir internal/outbound/sqlite/migrations ${MIGRATION_NAME}
 
 ## Remove all generated artifacts.
 generate/clean:
-	rm -rf internal/outbound/sqlite/sqlc 2> /dev/null
-	rm -rf $(shell pwd)/${REALWORLD_HOST_DATA_DIR} 2> /dev/null
+	rm -rf internal/outbound/sqlite/sqlc
+	rm -rf ${REALWORLD_HOST_DATA_DIR}
+	rm -rf dev.env
