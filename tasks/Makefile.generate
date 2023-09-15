@@ -27,4 +27,4 @@ generate/migration:
 generate/clean:
 	rm -rf internal/outbound/sqlite/sqlc
 	rm -rf ${REALWORLD_HOST_DATA_DIR}
-	rm -rf dev.env
+	rm -f dev.env
