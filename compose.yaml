@@ -1,0 +1,7 @@
+name: realworld
+services:
+  env_file: "dev.env"
+  app:
+    build: .
+    args:
+      - GOCACHE=$(
