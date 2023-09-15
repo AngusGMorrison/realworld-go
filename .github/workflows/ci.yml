@@ -12,6 +12,8 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - run: "make generate/dev_dotenv"
+
       - uses: "cardinalby/export-env-action@v2"
         with:
           envFile: "dev.env"
@@ -48,6 +50,8 @@ jobs:
       - uses: "actions/setup-go@v4"
         with:
           go-version-file: "go.mod"
+
+      - run: "make generate/dev_dotenv"
 
       - uses: "cardinalby/export-env-action@v2"
         with:
