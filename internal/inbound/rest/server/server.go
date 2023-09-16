@@ -83,59 +83,39 @@ func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
 }
 
 func initRouter(router fiber.Router, cfg Config, userService user.Service) {
-	initGlobalMiddleware(router, cfg)
+	router.Use(
+		requestid.New(),
+		requestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
+		requestStatsLogging(os.Stdout),
+		recover.New(recover.Config{EnableStackTrace: cfg.EnableStackTrace}),
+	)
 
 	router.Get("/healthcheck", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
 	})
 
-	// /api
-	api := router.Group("/api", validateAPIContentType)
+	router.Route("/api", func(api fiber.Router) {
+		api.Use(validateAPIContentType)
 
-	// /api/v0
-	initV0Routes(api.Group("/v0"), cfg, userService)
-}
+		api.Route("/v0", func(apiV0 fiber.Router) {
+			usersHandler := v0.NewUsersHandler(
+				userService,
+				v0.NewJWTProvider(cfg.JwtCfg.RS265PrivateKey, cfg.JwtCfg.TTL, cfg.JwtCfg.Issuer),
+			)
 
-func initGlobalMiddleware(router fiber.Router, cfg Config) {
-	// Order of middleware is important.
-	router.Use(
-		// Add a UUID to each request.
-		requestid.New(),
-		// Add a logger to the context for each request that automatically logs
-		// the request's ID.
-		requestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
-		// Log request stats.
-		requestStatsLogging(os.Stdout),
-		// Recover from panics.
-		recover.New(recover.Config{
-			EnableStackTrace: cfg.EnableStackTrace,
-		}),
-	)
-}
+			apiV0.Route("/users", func(users fiber.Router) {
+				users.Use(v0.UsersErrorHandler)
+				users.Post("/", usersHandler.Register)
+				users.Post("/login", usersHandler.Login)
+			})
 
-func initV0Routes(router fiber.Router, cfg Config, userService user.Service) {
-	handler := v0.NewUsersHandler(
-		userService,
-		v0.NewJWTProvider(
-			cfg.JwtCfg.RS265PrivateKey,
-			cfg.JwtCfg.TTL,
-			cfg.JwtCfg.Issuer,
-		),
-	)
-
-	// /api/v0/users
-	usersGroup := router.Group("/users", v0.UsersErrorHandler)
-	usersGroup.Post("/", handler.Register)
-	usersGroup.Post("/login", handler.Login)
-
-	// /api/v0/user
-	authenticatedUserGroup := router.Group(
-		"/user",
-		v0.NewRS256JWTAuthMiddleware(cfg.JwtCfg.PublicKey()),
-		v0.UsersErrorHandler,
-	)
-	authenticatedUserGroup.Get("/", handler.GetCurrent)
-	authenticatedUserGroup.Put("/", handler.UpdateCurrent)
+			apiV0.Route("/user", func(user fiber.Router) {
+				user.Use(v0.NewRS256JWTAuthMiddleware(cfg.JwtCfg.PublicKey()), v0.UsersErrorHandler)
+				user.Get("/", usersHandler.GetCurrent)
+				user.Put("/", usersHandler.UpdateCurrent)
+			})
+		})
+	})
 }
 
 func strictDecoder(b []byte, v any) error {

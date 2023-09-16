@@ -2,9 +2,10 @@
 package user
 
 import (
-	"github.com/google/uuid"
 	"math/rand"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/require"

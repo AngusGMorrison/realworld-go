@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+
 	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
 	"github.com/stretchr/testify/mock"
 )

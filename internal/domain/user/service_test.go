@@ -3,9 +3,10 @@ package user
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 var anyError = errors.New("any error")
