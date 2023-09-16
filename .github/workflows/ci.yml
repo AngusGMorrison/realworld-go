@@ -16,7 +16,7 @@ jobs:
 
       - uses: "cardinalby/export-env-action@v2"
         with:
-          envFile: "dev.env"
+          envFile: ".env"
 
       - name: "Test"
         run: "make docker/test"
@@ -55,7 +55,7 @@ jobs:
 
       - uses: "cardinalby/export-env-action@v2"
         with:
-          envFile: "dev.env"
+          envFile: ".env"
 
       - name: "Docker build"
         run: "make docker/build"
@@ -73,7 +73,7 @@ jobs:
         run: "go install golang.org/x/vuln/cmd/govulncheck@latest"
 
       - name: "Audit"
-        run: "make vulncheck"
+        run: "govulncheck ./..."
 
   sqlc:
     runs-on: "ubuntu-latest"

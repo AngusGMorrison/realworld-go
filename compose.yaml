@@ -1,7 +1,21 @@
 name: realworld
 services:
-  env_file: "dev.env"
   app:
-    build: .
-    args:
-      - GOCACHE=$(
+    image: ${REALWORLD_IMAGE_NAME}
+    build:
+      context: .
+      args:
+        - GO_COMPILER_CACHE=${GO_COMPILER_CACHE}
+        - PORT=${REALWORLD_PORT}
+      labels:
+        - app=${REALWORLD_APP_NAME}
+      tags:
+        - ${REALWORLD_IMAGE_NAME}
+      target: ${REALWORLD_DOCKER_BUILD_TARGET}
+    env_file: .env
+    ports:
+      - ${REALWORLD_PORT}:${REALWORLD_PORT}
+    volumes:
+      - type: bind
+        source: ${REALWORLD_HOST_DATA_DIR}
+        target: ${REALWORLD_DATA_MOUNT}

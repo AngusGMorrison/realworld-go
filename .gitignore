@@ -4,4 +4,3 @@ bin/*
 data/*
 tmp
 coverage.txt
-*.env
