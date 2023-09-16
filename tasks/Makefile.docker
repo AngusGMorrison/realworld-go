@@ -15,14 +15,25 @@ docker/test: docker/prune
 	REALWORLD_DOCKER_BUILD_TARGET=test \
 	docker compose build --progress=plain app
 
-## Run the app interactively.
-docker/run: docker/prune
+## Run all services interactively.
+docker/up: docker/prune
 	REALWORLD_DOCKER_BUILD_TARGET=optimized \
 	docker compose up --build
 
+## Run Postgres detached.
+docker/up/postgres: docker/prune
+	docker compose up --build --wait postgres
+
+## Run psql against the database.
+docker/exec/psql: docker/up/postgres
+	docker compose exec postgres psql --username=${REALWORLD_DB_USER} --dbname=${REALWORLD_DB_NAME}
+
 ## Remove all Docker-generated artifacts.
 docker/clean: docker/prune
+	docker compose rm --stop --volumes || true
 	docker image rm ${REALWORLD_IMAGE_NAME} || true
+	docker image prune --force
 
+## Housekeeping. Removes dangling images when docker tasks are invoked.
 docker/prune:
-	docker image prune --force --filter label=app=${REALWORLD_APP_NAME}
+	docker image prune --force

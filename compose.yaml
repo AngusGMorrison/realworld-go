@@ -1,4 +1,5 @@
 name: realworld
+
 services:
   app:
     image: ${REALWORLD_IMAGE_NAME}
@@ -7,11 +8,12 @@ services:
       args:
         - GO_COMPILER_CACHE=${GO_COMPILER_CACHE}
         - PORT=${REALWORLD_PORT}
-      labels:
-        - app=${REALWORLD_APP_NAME}
       tags:
         - ${REALWORLD_IMAGE_NAME}
       target: ${REALWORLD_DOCKER_BUILD_TARGET}
+    depends_on:
+      postgres:
+        condition: service_healthy
     env_file: .env
     ports:
       - ${REALWORLD_PORT}:${REALWORLD_PORT}
@@ -20,3 +22,25 @@ services:
       - type: bind
         source: ${REALWORLD_HOST_DATA_DIR}
         target: ${REALWORLD_DATA_MOUNT}
+
+  postgres:
+    image: postgres:16.0-alpine3.18
+    environment:
+      - POSTGRES_USER=${REALWORLD_DB_USER}
+      - POSTGRES_PASSWORD=${REALWORLD_DB_PASSWORD}
+      - POSTGRES_DB=${REALWORLD_DB_NAME}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${REALWORLD_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - ${REALWORLD_DB_PORT}:5432
+    volumes:
+      - type: volume
+        source: db_data
+        target: /var/lib/postgresql/data
+
+volumes:
+  db_data:
+    name: ${REALWORLD_DB_VOLUME}

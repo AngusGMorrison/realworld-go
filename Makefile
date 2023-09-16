@@ -20,9 +20,13 @@ clean: docker/clean generate/clean
 ## Generate development dependencies.
 generate: generate/queries generate/data_mount_fixtures
 
-.PHONY: run
-## Run the app interactively. Alias for docker/run.
-run: docker/run
+.PHONY: psql
+## Run psql against the database. Alias for docker/exec/psql.
+psql: docker/exec/psql
+
+.PHONY: up
+## Run the app interactively. Alias for docker/up.
+up: docker/up
 
 .PHONY: test
 ## Run the test suite. Alias for docker/test.
