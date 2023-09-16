@@ -1,75 +1,28 @@
 .PHONY: docker
 
-## Build and run the optimized Docker image in the background.
-docker/run: docker/build generate/dev_data_dir
-	docker run \
-	--rm \
-	--name=${REALWORLD_CONTAINER_NAME} \
-	--env-file dev.env \
-	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
-	--user ${REALWORLD_USER}:${REALWORLD_USER} \
-	${REALWORLD_IMAGE_NAME}
-
-## Build and run the optimized Docker image interactively.
-docker/run/it: docker/build generate/dev_data_dir
-	docker run \
-	--interactive \
-	--tty \
-	--rm \
-	--name=${REALWORLD_CONTAINER_NAME} \
-	--env-file dev.env \
-	--publish ${REALWORLD_PORT}:${REALWORLD_PORT} \
-	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
-	--user ${REALWORLD_USER}:${REALWORLD_USER} \
-	${REALWORLD_IMAGE_NAME}
-
-## Build the optimized production Docker image.
+## Build an optimized Docker image.
 docker/build: docker/prune
 	docker build \
 	--rm \
 	--tag ${REALWORLD_IMAGE_NAME} \
 	--label app=${REALWORLD_APP_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
-	--build-arg GOCACHE=${GOCACHE} \
+	--build-arg GO_COMPILER_CACHE=${GO_COMPILER_CACHE} \
 	.
 
-## Run the test suite in a Docker container.
-docker/test: docker/test/build generate/dev_data_dir
-	docker run \
-	--rm \
-	--name ${REALWORLD_IMAGE_NAME}-test \
-	--env-file dev.env \
-	--mount type=bind,src=$(shell pwd),dst=/coverage \
-	${REALWORLD_IMAGE_NAME}-test \
-	go test -race -v -coverprofile=/coverage/coverage.txt -covermode=atomic ./...
+## Run the test suite.
+docker/test: docker/prune
+	REALWORLD_DOCKER_BUILD_TARGET=test \
+	docker compose build --progress=plain app
 
-## Build the test Docker image.
-docker/test/build: docker/prune
-	docker build \
-	--target base \
-	--tag ${REALWORLD_IMAGE_NAME}-test \
-	--label app=${REALWORLD_APP_NAME} \
-	--build-arg PORT=${REALWORLD_PORT} \
-	--build-arg GOCACHE=${GOCACHE} \
-	.
-
-## Connect to the DB CLI.
-docker/db/connect:
-	docker run \
-	--interactive \
-	--tty \
-	--rm \
-	--workdir ${REALWORLD_DATA_DIR} \
-	--mount type=bind,src=${REALWORLD_HOST_DATA_DIR},dst=${REALWORLD_DATA_MOUNT} \
-	--user ${REALWORLD_USER}:${REALWORLD_USER} \
-	keinos/sqlite3 \
-	sqlite3 ${REALWORLD_DB_BASENAME}
+## Run the app interactively.
+docker/run: docker/prune
+	REALWORLD_DOCKER_BUILD_TARGET=optimized \
+	docker compose up --build
 
 ## Remove all Docker-generated artifacts.
 docker/clean: docker/prune
 	docker image rm ${REALWORLD_IMAGE_NAME} || true
-	docker image rm ${REALWORLD_IMAGE_NAME}-test || true
 
 docker/prune:
 	docker image prune --force --filter label=app=${REALWORLD_APP_NAME}
