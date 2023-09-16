@@ -1,6 +1,6 @@
 .PHONY: docker
 
-## Build the optimized production Docker image.
+## Build an optimized Docker image.
 docker/build: docker/prune
 	docker build \
 	--rm \
@@ -10,12 +10,12 @@ docker/build: docker/prune
 	--build-arg GO_COMPILER_CACHE=${GO_COMPILER_CACHE} \
 	.
 
-## Run the test suite in a Docker container.
+## Run the test suite.
 docker/test: docker/prune
 	REALWORLD_DOCKER_BUILD_TARGET=test \
 	docker compose build --progress=plain app
 
-## Build and run the optimized Docker image interactively.
+## Run the app interactively.
 docker/run: docker/prune
 	REALWORLD_DOCKER_BUILD_TARGET=optimized \
 	docker compose up --build

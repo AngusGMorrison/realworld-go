@@ -9,7 +9,7 @@ $(QUERIES_PATH):
 	@echo "Generating sqlc models..."
 	@sqlc generate && echo "sqlc models generated."
 
-## Generate the data directory, RSA key, DB, etc. to be mounted into Docker containers.
+## Generate the development fixtures to be mounted into local containers.
 generate/data_mount_fixtures:
 	@scripts/generate_data_mount_fixtures.sh
 
@@ -17,7 +17,7 @@ generate/data_mount_fixtures:
 generate/migration:
 	migrate create -ext sql -dir internal/outbound/sqlite/migrations ${MIGRATION_NAME}
 
-## Remove all generated artifacts.
+## Remove generated artifacts.
 generate/clean:
 	rm -rf internal/outbound/sqlite/sqlc
 	rm -rf ${REALWORLD_HOST_DATA_DIR}
