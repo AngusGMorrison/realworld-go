@@ -5,15 +5,16 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func Test_NewRS256JWTAuthMiddleware(t *testing.T) {

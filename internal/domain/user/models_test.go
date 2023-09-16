@@ -828,6 +828,7 @@ func Test_UpdateRequest_GoString(t *testing.T) {
 
 	assert.Equal(t, want, updateRequest.GoString())
 }
+
 func Test_UpdateRequest_String(t *testing.T) {
 	t.Parallel()
 

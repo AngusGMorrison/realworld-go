@@ -3,9 +3,10 @@ package server
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_JWTConfig_PublicKey(t *testing.T) {

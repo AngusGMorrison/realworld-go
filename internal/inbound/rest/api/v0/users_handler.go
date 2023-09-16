@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"

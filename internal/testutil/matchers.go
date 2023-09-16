@@ -1,10 +1,11 @@
 package testutil
 
 import (
+	"testing"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func NewUserRegistrationRequestMatcher(

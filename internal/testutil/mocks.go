@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"

@@ -15,6 +15,7 @@ services:
     env_file: .env
     ports:
       - ${REALWORLD_PORT}:${REALWORLD_PORT}
+    tty: true
     volumes:
       - type: bind
         source: ${REALWORLD_HOST_DATA_DIR}

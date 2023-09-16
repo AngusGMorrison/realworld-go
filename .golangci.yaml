@@ -17,6 +17,7 @@ linters: # https://golangci-lint.run/usage/linters/
     - "errcheck"
     - "exhaustive"
     - "gocheckcompilerdirectives"
+    - "gofumpt"
     - "gosec"
     - "gosimple"
     - "govet"

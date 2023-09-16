@@ -3,8 +3,9 @@ package v0
 import (
 	"crypto/rsa"
 	"fmt"
-	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"time"
+
+	"github.com/angusgmorrison/realworld-go/internal/testutil"
 
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"

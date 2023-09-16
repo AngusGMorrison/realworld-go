@@ -2,8 +2,9 @@ package server
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"io"
+
+	"github.com/google/uuid"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"

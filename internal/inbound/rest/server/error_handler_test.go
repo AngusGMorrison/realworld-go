@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"testing"
+
 	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/http"
-	"testing"
 )
 
 func Test_newErrorHandler(t *testing.T) {

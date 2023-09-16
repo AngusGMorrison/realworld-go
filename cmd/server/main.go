@@ -4,8 +4,9 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/server"
 	"log"
+
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/server"
 
 	"github.com/angusgmorrison/realworld-go/internal/config"
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
