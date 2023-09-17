@@ -11,7 +11,7 @@ docker/build: docker/prune
 	.
 
 ## Run the test suite.
-docker/test: docker/prune
+docker/test: docker/prune generate/data_mount_fixtures
 	REALWORLD_DOCKER_BUILD_TARGET=base \
 	REALWORLD_TAG=${REALWORLD_IMAGE_NAME}:test \
 	docker compose run \
