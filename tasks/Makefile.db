@@ -1,0 +1,7 @@
+.PHONY: db
+
+MIGRATION_DIR = "file://$(shell pwd)/internal/outbound/postgres/migrations"
+
+db/migrate: docker/up/postgres
+	@echo "Migrating database..."
+	migrate -source $(MIGRATION_DIR) -database ${REALWORLD_DATABASE_URL} up && echo "Database migrated."
