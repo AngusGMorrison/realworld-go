@@ -26,7 +26,7 @@ func Test_Client_GetUserByID(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -53,7 +53,7 @@ func Test_Client_GetUserByID(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -95,7 +95,7 @@ func Test_Client_GetUserByEmail(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -122,7 +122,7 @@ func Test_Client_GetUserByEmail(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -164,7 +164,7 @@ func Test_Client_CreateUser(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -185,7 +185,7 @@ func Test_Client_CreateUser(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -213,7 +213,7 @@ func Test_Client_CreateUser(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -351,7 +351,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 				cfg, err := config.New()
 				require.NoError(t, err)
 
-				db, err := New(cfg)
+				db, err := New(NewURL(cfg))
 				require.NoError(t, err)
 
 				row, err := db.queries.CreateUser(
@@ -378,7 +378,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 
 		req := user.RandomUpdateRequest(t)
@@ -394,7 +394,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		db, err := New(cfg)
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 
 		existingUserWithTargetEmail := user.RandomUser(t)

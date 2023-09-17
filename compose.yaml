@@ -33,7 +33,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - ${REALWORLD_DB_PORT}:5432
+      - ${REALWORLD_DB_PUBLISHED_PORT}:5432
     volumes:
       - type: volume
         source: db_data

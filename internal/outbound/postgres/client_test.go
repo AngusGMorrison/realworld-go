@@ -21,7 +21,7 @@ func TestNew(t *testing.T) {
 		cfg, err := config.New()
 		require.NoError(t, err)
 
-		client, err := New(cfg)
+		client, err := New(NewURL(cfg))
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 		assert.NotNil(t, client.db)
@@ -32,6 +32,7 @@ func TestNew(t *testing.T) {
 
 		expectedVersion := latestMigrationVersion(t)
 		migrator, err := newMigrator(client.db)
+		require.NoError(t, err)
 		gotVersion, dirty, err := migrator.Version()
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, gotVersion)
@@ -45,7 +46,7 @@ func TestNew(t *testing.T) {
 
 		cfg := config.Config{}
 
-		client, err := New(cfg)
+		client, err := New(NewURL(cfg))
 		assert.Error(t, err)
 		assert.Nil(t, client)
 	})

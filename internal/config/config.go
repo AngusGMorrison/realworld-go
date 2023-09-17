@@ -23,9 +23,6 @@ type Config struct {
 	// and encryption keys.
 	DataDir string `envconfig:"REALWORLD_DATA_MOUNT" split_words:"true" required:"true"`
 
-	// The name of the SQLite DB file.
-	DBBasename string `split_words:"true" default:"realworld.db"`
-
 	// The database server hostname.
 	DBHost string `split_words:"true" required:"true"`
 
@@ -87,11 +84,6 @@ func New() (Config, error) {
 	cfg.jwtRSAPrivateKey = privateKey
 
 	return cfg, nil
-}
-
-// DBPath returns the absolute path to the database file.
-func (c *Config) DBPath() string {
-	return filepath.Join(c.DataDir, c.DBBasename)
 }
 
 // JWTPrivateKey parses the RSA private key PEM loaded from the environment into

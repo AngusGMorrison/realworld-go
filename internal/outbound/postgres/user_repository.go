@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 
@@ -84,10 +85,10 @@ func newCreateUserParamsFromRegistrationRequest(req *user.RegistrationRequest) s
 
 func createUserErrToDomain(err *pq.Error, req *user.RegistrationRequest) error {
 	if err.Code.Name() == "unique_violation" {
-		switch err.Column {
-		case "email":
+		if strings.Contains(err.Constraint, "email") {
 			return user.NewDuplicateEmailError(req.Email())
-		case "username":
+		}
+		if strings.Contains(err.Constraint, "username") {
 			return user.NewDuplicateUsernameError(req.Username())
 		}
 	}
@@ -147,7 +148,7 @@ func updateUserErrorToDomain(err error, req *user.UpdateRequest) error {
 
 	var postgresErr *pq.Error
 	if errors.As(err, &postgresErr) && postgresErr.Code.Name() == "unique_violation" {
-		if postgresErr.Column == "email" {
+		if strings.Contains(postgresErr.Constraint, "email") {
 			return user.NewDuplicateEmailError(req.Email().UnwrapOrZero())
 		}
 	}

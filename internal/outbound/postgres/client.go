@@ -40,9 +40,8 @@ type Client struct {
 
 // New returns a [Client] instance connected to the server at `url`, running any
 // migrations that have not yet been applied.
-func New(cfg config.Config) (*Client, error) {
-	url := postgresURL(cfg)
-	db, err := sql.Open("postgres", url)
+func New(url URL) (*Client, error) {
+	db, err := sql.Open("postgres", url.Expose())
 	if err != nil {
 		return nil, fmt.Errorf("open Postgres DB at %q: %w", url, err)
 	}
@@ -104,14 +103,61 @@ func newMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	return m, nil
 }
 
-func postgresURL(cfg config.Config) string {
+// URL is a Postgres connection URL.
+type URL struct {
+	host     string
+	port     string
+	dbName   string
+	user     string
+	password string
+	sslMode  string
+}
+
+func NewURL(cfg config.Config) URL {
+	return URL{
+		host:     cfg.DBHost,
+		port:     cfg.DBPort,
+		dbName:   cfg.DBName,
+		user:     cfg.DBUser,
+		password: cfg.DBPassword,
+		sslMode:  cfg.DbSslMode,
+	}
+}
+
+// GoString returns a Go-syntax representation of the URL, with the password
+// redacted.
+func (u URL) GoString() string {
+	return fmt.Sprintf(
+		"postgres.URL{host:%q, port:%q, dbName:%q, user:%q, password:REDACTED, sslMode:%q}",
+		u.host,
+		u.port,
+		u.dbName,
+		u.user,
+		u.sslMode,
+	)
+}
+
+// String returns a connection string with the password redacted.
+func (u URL) String() string {
+	return fmt.Sprintf(
+		"postgres://%s:REDACTED@%s:%s/%s?sslmode=%s",
+		u.user,
+		u.host,
+		u.port,
+		u.dbName,
+		u.sslMode,
+	)
+}
+
+// Expose returns a connection string with the password exposed.
+func (u URL) Expose() string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		cfg.DBUser,
-		cfg.DBPassword,
-		cfg.DBHost,
-		cfg.DBPort,
-		cfg.DBName,
-		cfg.DbSslMode,
+		u.user,
+		u.password,
+		u.host,
+		u.port,
+		u.dbName,
+		u.sslMode,
 	)
 }
