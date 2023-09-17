@@ -26,6 +26,24 @@ type Config struct {
 	// The name of the SQLite DB file.
 	DBBasename string `split_words:"true" default:"realworld.db"`
 
+	// The database server hostname.
+	DBHost string `split_words:"true" required:"true"`
+
+	// The database password.
+	DBPassword string `split_words:"true" required:"true"`
+
+	// The database server port.
+	DBPort string `split_words:"true" required:"true"`
+
+	// The database to connect to.
+	DBName string `split_words:"true" required:"true"`
+
+	// The SSL mode for database connections.
+	DbSslMode string `split_words:"true" required:"true"`
+
+	// The database username.
+	DBUser string `split_words:"true" required:"true"`
+
 	// Enables stack tracing by panic recovery middleware.
 	EnableStackTrace bool `split_words:"true" default:"false"`
 

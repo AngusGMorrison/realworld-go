@@ -10,6 +10,7 @@ RUN go mod download
 FROM base AS test
 
 ARG GO_COMPILER_CACHE
+ARG DATA_MOUNT
 
 # Mount the project directory and Go compiler cache to avoid copying
 # and speed up builds.

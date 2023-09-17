@@ -2,14 +2,12 @@ name: realworld
 
 services:
   app:
-    image: ${REALWORLD_IMAGE_NAME}
+    image: ${REALWORLD_TAG}
     build:
       context: .
       args:
         - GO_COMPILER_CACHE=${GO_COMPILER_CACHE}
         - PORT=${REALWORLD_PORT}
-      tags:
-        - ${REALWORLD_IMAGE_NAME}
       target: ${REALWORLD_DOCKER_BUILD_TARGET}
     depends_on:
       postgres:
