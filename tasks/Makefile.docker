@@ -4,7 +4,7 @@
 docker/build: docker/prune
 	docker build \
 	--rm \
-	--tag ${REALWORLD_IMAGE_NAME} \
+	--tag ${REALWORLD_TAG} \
 	--label app=${REALWORLD_APP_NAME} \
 	--build-arg PORT=${REALWORLD_PORT} \
 	--build-arg GO_COMPILER_CACHE=${GO_COMPILER_CACHE} \
@@ -13,7 +13,7 @@ docker/build: docker/prune
 ## Run the test suite.
 docker/test: docker/prune
 	REALWORLD_DOCKER_BUILD_TARGET=base \
-	REALWORLD_TAG=realworld:test \
+	REALWORLD_TAG=${REALWORLD_IMAGE_NAME}:test \
 	docker compose run \
 	--rm \
 	--build \
@@ -40,6 +40,7 @@ docker/exec/psql: docker/up/postgres
 docker/clean: docker/prune
 	docker compose rm --stop --volumes || true
 	docker image rm ${REALWORLD_IMAGE_NAME} || true
+	docker image rm ${REALWORLD_IMAGE_NAME}:test || true
 	docker image prune --force
 
 ## Housekeeping. Removes dangling images when docker tasks are invoked.
