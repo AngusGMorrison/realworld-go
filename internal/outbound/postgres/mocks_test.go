@@ -1,9 +1,9 @@
-package sqlite
+package postgres
 
 import (
 	"context"
 
-	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/postgres/sqlc"
 	"github.com/stretchr/testify/mock"
 )
 

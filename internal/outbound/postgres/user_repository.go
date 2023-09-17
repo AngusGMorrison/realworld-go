@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -7,20 +7,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
-	"github.com/mattn/go-sqlite3"
+	"github.com/lib/pq"
 
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
-	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/postgres/sqlc"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
+	"github.com/google/uuid"
 )
 
-var _ user.Repository = (*SQLite)(nil)
+var _ user.Repository = (*Client)(nil)
 
 // GetUserByID returns the [user.User] with the given ID, or
 // [user.NotFoundError] if no such user exists.
-func (db *SQLite) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	return getUserById(ctx, db.queries, id)
+func (c *Client) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	return getUserById(ctx, c.queries, id)
 }
 
 func getUserById(ctx context.Context, q queries, id uuid.UUID) (*user.User, error) {
@@ -29,7 +29,7 @@ func getUserById(ctx context.Context, q queries, id uuid.UUID) (*user.User, erro
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.NewNotFoundByIDError(id)
 		}
-		return nil, fmt.Errorf("SQLite error: %w", err)
+		return nil, fmt.Errorf("Client error: %w", err)
 	}
 
 	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
@@ -37,8 +37,8 @@ func getUserById(ctx context.Context, q queries, id uuid.UUID) (*user.User, erro
 
 // GetUserByEmail returns the [user.User] with the given email, or
 // [user.NotFoundError] if no user exists with that email.
-func (db *SQLite) GetUserByEmail(ctx context.Context, email user.EmailAddress) (*user.User, error) {
-	return getUserByEmail(ctx, db.queries, email)
+func (c *Client) GetUserByEmail(ctx context.Context, email user.EmailAddress) (*user.User, error) {
+	return getUserByEmail(ctx, c.queries, email)
 }
 
 func getUserByEmail(ctx context.Context, q queries, email user.EmailAddress) (*user.User, error) {
@@ -47,7 +47,7 @@ func getUserByEmail(ctx context.Context, q queries, email user.EmailAddress) (*u
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.NewNotFoundByEmailError(email)
 		}
-		return nil, fmt.Errorf("SQLite error: %w", err)
+		return nil, fmt.Errorf("Client error: %w", err)
 	}
 
 	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
@@ -57,16 +57,16 @@ func getUserByEmail(ctx context.Context, q queries, email user.EmailAddress) (*u
 // [user.RegistrationRequest] and returns the created [user.User].
 //
 // Returns [user.ValidationError] if database constraints are violated.
-func (db *SQLite) CreateUser(ctx context.Context, req *user.RegistrationRequest) (*user.User, error) {
-	return createUser(ctx, db.queries, req)
+func (c *Client) CreateUser(ctx context.Context, req *user.RegistrationRequest) (*user.User, error) {
+	return createUser(ctx, c.queries, req)
 }
 
 func createUser(ctx context.Context, q queries, req *user.RegistrationRequest) (*user.User, error) {
 	row, err := q.CreateUser(ctx, newCreateUserParamsFromRegistrationRequest(req))
 	if err != nil {
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			return nil, createUserErrToDomain(sqliteErr, req)
+		var postgresErr *pq.Error
+		if errors.As(err, &postgresErr) {
+			return nil, createUserErrToDomain(postgresErr, req)
 		}
 		return nil, fmt.Errorf("create user record from request %#v: %w", req, err)
 	}
@@ -83,16 +83,13 @@ func newCreateUserParamsFromRegistrationRequest(req *user.RegistrationRequest) s
 	}
 }
 
-func createUserErrToDomain(err sqlite3.Error, req *user.RegistrationRequest) error {
-	if err.ExtendedCode == sqlite3.ErrConstraintUnique {
-		msg := err.Error()
-		if strings.Contains(msg, "users.") {
-			if strings.Contains(msg, ".email") {
-				return user.NewDuplicateEmailError(req.Email())
-			}
-			if strings.Contains(msg, ".username") {
-				return user.NewDuplicateUsernameError(req.Username())
-			}
+func createUserErrToDomain(err *pq.Error, req *user.RegistrationRequest) error {
+	if err.Code.Name() == "unique_violation" {
+		if strings.Contains(err.Constraint, "email") {
+			return user.NewDuplicateEmailError(req.Email())
+		}
+		if strings.Contains(err.Constraint, "username") {
+			return user.NewDuplicateUsernameError(req.Username())
 		}
 	}
 
@@ -104,8 +101,8 @@ func createUserErrToDomain(err sqlite3.Error, req *user.RegistrationRequest) err
 // [user.User].
 //
 // Returns [user.ValidationError] if database constraints are violated.
-func (db *SQLite) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
-	return updateUser(ctx, db.queries, req)
+func (c *Client) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
+	return updateUser(ctx, c.queries, req)
 }
 
 func updateUser(ctx context.Context, q queries, req *user.UpdateRequest) (*user.User, error) {
@@ -149,10 +146,9 @@ func updateUserErrorToDomain(err error, req *user.UpdateRequest) error {
 		return user.NewNotFoundByIDError(req.UserID())
 	}
 
-	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-		msg := err.Error()
-		if strings.Contains(msg, "users.email") {
+	var postgresErr *pq.Error
+	if errors.As(err, &postgresErr) && postgresErr.Code.Name() == "unique_violation" {
+		if strings.Contains(postgresErr.Constraint, "email") {
 			return user.NewDuplicateEmailError(req.Email().UnwrapOrZero())
 		}
 	}

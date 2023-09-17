@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -6,8 +6,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/internal/config"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
-	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite/sqlc"
+	"github.com/angusgmorrison/realworld-go/internal/outbound/postgres/sqlc"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,18 +17,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_SQLite_GetUserByID(t *testing.T) {
+func Test_Client_GetUserByID(t *testing.T) {
 	t.Parallel()
 
 	t.Run("user exists", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
 		existingUser := user.RandomUser(t)
-		queries := sqlc.New(db.innerDB)
+		queries := sqlc.New(db.db)
 
 		_, err = queries.CreateUser(context.Background(), newCreateUserParamsFromUser(existingUser))
 		require.NoError(t, err)
@@ -45,7 +50,10 @@ func Test_SQLite_GetUserByID(t *testing.T) {
 	t.Run("user does not exist", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -60,7 +68,7 @@ func Test_SQLite_GetUserByID(t *testing.T) {
 		t.Parallel()
 
 		queries := &mockQueries{}
-		db := &SQLite{
+		db := &Client{
 			queries: queries,
 		}
 		userID := uuid.New()
@@ -78,18 +86,21 @@ func Test_SQLite_GetUserByID(t *testing.T) {
 	})
 }
 
-func Test_SQLite_GetUserByEmail(t *testing.T) {
+func Test_Client_GetUserByEmail(t *testing.T) {
 	t.Parallel()
 
 	t.Run("user exists", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
 		existingUser := user.RandomUser(t)
-		queries := sqlc.New(db.innerDB)
+		queries := sqlc.New(db.db)
 
 		_, err = queries.CreateUser(context.Background(), newCreateUserParamsFromUser(existingUser))
 		require.NoError(t, err)
@@ -108,7 +119,10 @@ func Test_SQLite_GetUserByEmail(t *testing.T) {
 	t.Run("user does not exist", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -123,7 +137,7 @@ func Test_SQLite_GetUserByEmail(t *testing.T) {
 		t.Parallel()
 
 		queries := &mockQueries{}
-		db := &SQLite{
+		db := &Client{
 			queries: queries,
 		}
 		email := user.RandomEmailAddress(t)
@@ -141,13 +155,16 @@ func Test_SQLite_GetUserByEmail(t *testing.T) {
 	})
 }
 
-func Test_SQLite_CreateUser(t *testing.T) {
+func Test_Client_CreateUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("user does not exist", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
@@ -165,12 +182,15 @@ func Test_SQLite_CreateUser(t *testing.T) {
 	t.Run("user with same username already exists", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
 		existingUser := user.RandomUser(t)
-		queries := sqlc.New(db.innerDB)
+		queries := sqlc.New(db.db)
 
 		_, err = queries.CreateUser(context.Background(), newCreateUserParamsFromUser(existingUser))
 		require.NoError(t, err)
@@ -190,12 +210,15 @@ func Test_SQLite_CreateUser(t *testing.T) {
 	t.Run("user with same email address already exists", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
 		existingUser := user.RandomUser(t)
-		queries := sqlc.New(db.innerDB)
+		queries := sqlc.New(db.db)
 
 		_, err = queries.CreateUser(context.Background(), newCreateUserParamsFromUser(existingUser))
 		require.NoError(t, err)
@@ -216,7 +239,7 @@ func Test_SQLite_CreateUser(t *testing.T) {
 		t.Parallel()
 
 		queries := &mockQueries{}
-		db := &SQLite{
+		db := &Client{
 			queries: queries,
 		}
 		wantErr := errors.New("some error")
@@ -233,7 +256,7 @@ func Test_SQLite_CreateUser(t *testing.T) {
 	})
 }
 
-func Test_SQLite_UpdateUser(t *testing.T) {
+func Test_Client_UpdateUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success", func(t *testing.T) {
@@ -325,7 +348,10 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				db, err := New(testDBPath)
+				cfg, err := config.New()
+				require.NoError(t, err)
+
+				db, err := New(NewURL(cfg))
 				require.NoError(t, err)
 
 				row, err := db.queries.CreateUser(
@@ -349,7 +375,10 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 	t.Run("user does not exist", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 
 		req := user.RandomUpdateRequest(t)
@@ -362,7 +391,10 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 	t.Run("email address already exists", func(t *testing.T) {
 		t.Parallel()
 
-		db, err := New(testDBPath)
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 
 		existingUserWithTargetEmail := user.RandomUser(t)
@@ -396,7 +428,7 @@ func Test_SQLite_UpdateUser(t *testing.T) {
 		t.Parallel()
 
 		queries := &mockQueries{}
-		db := &SQLite{
+		db := &Client{
 			queries: queries,
 		}
 		req := user.RandomUpdateRequest(t)

@@ -1,12 +1,12 @@
 -- name: GetUserById :one
 SELECT id, email, username, bio, password_hash, image_url
 FROM users
-WHERE id = ?;
+WHERE id = $1;
 
 -- name: GetUserByEmail :one
 SELECT id, email, username, bio, password_hash, image_url
 FROM users
-WHERE email = ?;
+WHERE email = $1;
 
 -- name: CreateUser :one
 INSERT INTO users (
@@ -17,7 +17,7 @@ INSERT INTO users (
     bio,
     image_url
 )
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: UpdateUser :one
@@ -26,9 +26,9 @@ UPDATE users SET
     password_hash = COALESCE(sqlc.narg(password_hash), password_hash),
     bio = COALESCE(sqlc.narg(bio), bio),
     image_url = COALESCE(sqlc.narg(image_url), image_url)
-WHERE id = @id
+WHERE id = $1
 RETURNING *;
 
 -- name: DeleteUser :exec
 DELETE FROM users
-WHERE id = ?;
+WHERE id = $1;

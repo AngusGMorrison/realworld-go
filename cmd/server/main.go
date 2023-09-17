@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/angusgmorrison/realworld-go/internal/outbound/postgres"
+
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/server"
 
 	"github.com/angusgmorrison/realworld-go/internal/config"
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
-	"github.com/angusgmorrison/realworld-go/internal/outbound/sqlite"
 )
 
 func main() {
@@ -27,9 +28,9 @@ func run() (err error) {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	db, err := sqlite.New(cfg.DBPath())
+	db, err := postgres.New(postgres.NewURL(cfg))
 	if err != nil {
-		return fmt.Errorf("open DB at %q: %w", cfg.DBPath(), err)
+		return fmt.Errorf("create Postgres client: %w", err)
 	}
 	defer func() {
 		if closeErr := db.Close(); closeErr != nil {
@@ -51,9 +52,9 @@ func run() (err error) {
 		},
 	}
 
-	server := server.New(serverConfig, userService)
+	srv := server.New(serverConfig, userService)
 
-	if err = server.Listen(cfg.ServerAddress()); err != nil {
+	if err = srv.Listen(cfg.ServerAddress()); err != nil {
 		return fmt.Errorf("listen on %s: %w", cfg.ServerAddress(), err)
 	}
 

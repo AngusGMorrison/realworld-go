@@ -19,7 +19,7 @@ INSERT INTO users (
     bio,
     image_url
 )
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, username, email, password_hash, bio, image_url
 `
 
@@ -55,7 +55,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 
 const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
-WHERE id = ?
+WHERE id = $1
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id string) error {
@@ -66,7 +66,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, username, bio, password_hash, image_url
 FROM users
-WHERE email = ?
+WHERE email = $1
 `
 
 type GetUserByEmailRow struct {
@@ -95,7 +95,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 const getUserById = `-- name: GetUserById :one
 SELECT id, email, username, bio, password_hash, image_url
 FROM users
-WHERE id = ?
+WHERE id = $1
 `
 
 type GetUserByIdRow struct {
@@ -123,29 +123,29 @@ func (q *Queries) GetUserById(ctx context.Context, id string) (GetUserByIdRow, e
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users SET
-    email = COALESCE(?1, email),
-    password_hash = COALESCE(?2, password_hash),
-    bio = COALESCE(?3, bio),
-    image_url = COALESCE(?4, image_url)
-WHERE id = ?5
+    email = COALESCE($2, email),
+    password_hash = COALESCE($3, password_hash),
+    bio = COALESCE($4, bio),
+    image_url = COALESCE($5, image_url)
+WHERE id = $1
 RETURNING id, username, email, password_hash, bio, image_url
 `
 
 type UpdateUserParams struct {
+	ID           string
 	Email        sql.NullString
 	PasswordHash sql.NullString
 	Bio          sql.NullString
 	ImageUrl     sql.NullString
-	ID           string
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUser,
+		arg.ID,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Bio,
 		arg.ImageUrl,
-		arg.ID,
 	)
 	var i User
 	err := row.Scan(

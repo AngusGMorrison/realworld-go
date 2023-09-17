@@ -2,14 +2,12 @@ name: realworld
 
 services:
   app:
-    image: ${REALWORLD_IMAGE_NAME}
+    image: ${REALWORLD_TAG}
     build:
       context: .
       args:
         - GO_COMPILER_CACHE=${GO_COMPILER_CACHE}
         - PORT=${REALWORLD_PORT}
-      tags:
-        - ${REALWORLD_IMAGE_NAME}
       target: ${REALWORLD_DOCKER_BUILD_TARGET}
     depends_on:
       postgres:
@@ -35,7 +33,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - ${REALWORLD_DB_PORT}:5432
+      - ${REALWORLD_DB_PUBLISHED_PORT}:5432
     volumes:
       - type: volume
         source: db_data

@@ -1,11 +1,11 @@
 .PHONY: generate
 
-QUERIES_PATH := internal/outbounds/sqlite/queries.sql
-
-generate/queries: $(QUERIES_PATH)
+QUERIES_PATH := internal/outbound/postgres/queries/queries.sql
 
 ## Generate sqlc models from SQL.
-$(QUERIES_PATH):
+generate/queries: $(QUERIES_PATH)
+
+$(QUERIES_PATH): docker/up/postgres
 	@echo "Generating sqlc models..."
 	@sqlc generate && echo "sqlc models generated."
 
