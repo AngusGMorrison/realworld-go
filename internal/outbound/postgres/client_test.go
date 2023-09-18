@@ -52,6 +52,78 @@ func TestNew(t *testing.T) {
 	})
 }
 
+func Test_URL_New(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.Config{
+		DBHost:     "localhost",
+		DBPort:     "5432",
+		DBName:     "realworld",
+		DBUser:     "user",
+		DBPassword: "password",
+		DbSslMode:  "disable",
+	}
+
+	wantURL := URL{
+		host:     cfg.DBHost,
+		port:     cfg.DBPort,
+		dbName:   cfg.DBName,
+		user:     cfg.DBUser,
+		password: cfg.DBPassword,
+		sslMode:  cfg.DbSslMode,
+	}
+
+	assert.Equal(t, wantURL, NewURL(cfg))
+}
+
+func Test_URL_GoString(t *testing.T) {
+	t.Parallel()
+
+	url := URL{
+		host:     "localhost",
+		port:     "5432",
+		dbName:   "realworld",
+		user:     "user",
+		password: "password",
+		sslMode:  "disable",
+	}
+	want := `postgres.URL{host:"localhost", port:"5432", dbName:"realworld", user:"user", password:REDACTED, sslMode:"disable"}`
+
+	assert.Equal(t, want, url.GoString())
+}
+
+func Test_URL_String(t *testing.T) {
+	t.Parallel()
+
+	url := URL{
+		host:     "localhost",
+		port:     "5432",
+		dbName:   "realworld",
+		user:     "user",
+		password: "password",
+		sslMode:  "disable",
+	}
+	want := "postgres://user:REDACTED@localhost:5432/realworld?sslmode=disable"
+
+	assert.Equal(t, want, url.String())
+}
+
+func Test_URL_Expose(t *testing.T) {
+	t.Parallel()
+
+	url := URL{
+		host:     "localhost",
+		port:     "5432",
+		dbName:   "realworld",
+		user:     "user",
+		password: "password",
+		sslMode:  "disable",
+	}
+	want := "postgres://user:password@localhost:5432/realworld?sslmode=disable"
+
+	assert.Equal(t, want, url.Expose())
+}
+
 func latestMigrationVersion(t *testing.T) uint {
 	t.Helper()
 
