@@ -106,7 +106,8 @@ func Test_LoggerFrom(t *testing.T) {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 			require.NoError(t, err)
 
-			_, _ = app.Test(req, testutil.FiberTestTimeoutMillis)
+			_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
+			require.NoError(t, err)
 		})
 	}
 }

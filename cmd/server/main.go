@@ -50,6 +50,7 @@ func run() (err error) {
 			TTL:             cfg.JwtTTL,
 			Issuer:          cfg.JwtIssuer,
 		},
+		AllowOrigins: cfg.CORSAllowedOrigins,
 	}
 
 	srv := server.New(serverConfig, userService)

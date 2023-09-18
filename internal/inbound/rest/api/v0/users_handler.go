@@ -232,7 +232,7 @@ func handleValidationErrors(errs ...*user.ValidationError) error {
 		case user.URLFieldType:
 			userFacingMessages["image"] = append(userFacingMessages["image"], err.Message)
 		default:
-			panic(fmt.Errorf("unhandled validation error field type %q: %w", err.FieldType, err))
+			return fmt.Errorf("unhandled validation error field type %d: %w", err.FieldType, err)
 		}
 	}
 
