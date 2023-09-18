@@ -1,4 +1,4 @@
-package server
+package middleware
 
 import (
 	"fmt"
@@ -33,9 +33,9 @@ type loggerKeyT int
 
 const loggerKey loggerKeyT = 0
 
-// requestScopedLogging is Fiber middleware that adds a request-scoped logger
+// RequestScopedLoggerInjection is Fiber middleware that adds a request-scoped logger
 // containing the current request ID to the Fiber context.
-func requestScopedLogging(logger Logger) fiber.Handler {
+func RequestScopedLoggerInjection(logger Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		reqID, ok := c.Locals("requestid").(string)
 		if !ok {
@@ -52,18 +52,6 @@ func requestScopedLogging(logger Logger) fiber.Handler {
 	}
 }
 
-// requestStatsLogging wraps the standard Fiber logger middleware, specifying a
-// log format that can be reused consistently across the application (e.g.
-// between the application server and test servers).
-func requestStatsLogging(out io.Writer) fiber.Handler {
-	return logger.New(logger.Config{
-		Output:     out,
-		Format:     "${time} | ${locals:requestid} | ${method} | ${path} | ${status} | ${latency}\n",
-		TimeFormat: "2006/01/02 15:04:05",
-		TimeZone:   "UTC",
-	})
-}
-
 // LoggerFrom returns the request-scoped logger from the Fiber context, or
 // [noOpLogger] if no logger is present.
 func LoggerFrom(c *fiber.Ctx) Logger {
@@ -78,3 +66,23 @@ func LoggerFrom(c *fiber.Ctx) Logger {
 type noOpLogger struct{}
 
 func (l noOpLogger) Printf(_ string, _ ...interface{}) {}
+
+// RequestStatsLogging wraps the standard Fiber logger middleware, specifying a
+// log format that can be reused consistently across the application (e.g.
+// between the application server and test servers).
+func RequestStatsLogging(out io.Writer) fiber.Handler {
+	return logger.New(logger.Config{
+		Output:     out,
+		Format:     "${time} | ${locals:requestid} | ${method} | ${path} | ${status} | ${latency}\n",
+		TimeFormat: "2006/01/02 15:04:05",
+		TimeZone:   "UTC",
+	})
+}
+
+type MockLogger struct {
+	Buf io.ReadWriter
+}
+
+func (m *MockLogger) Printf(format string, v ...interface{}) {
+	_, _ = fmt.Fprintf(m.Buf, format, v...)
+}

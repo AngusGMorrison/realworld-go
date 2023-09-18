@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
+
 	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
@@ -20,14 +22,14 @@ func Test_newErrorHandler(t *testing.T) {
 	t.Run("unhandled errors map to 500 Internal Server Error and the error is logged", func(t *testing.T) {
 		t.Parallel()
 
-		logger := &mockLogger{buf: &bytes.Buffer{}}
+		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
 		handlerErr := errors.New("unhandled")
 		expectedLogEntry := handlerErr.Error()
 		app := fiber.New(fiber.Config{
 			ErrorHandler: newErrorHandler(),
 		})
 		app.Use(
-			requestScopedLogging(logger),
+			middleware.RequestScopedLoggerInjection(logger),
 		)
 		app.Get("/", func(c *fiber.Ctx) error {
 			return handlerErr
@@ -49,7 +51,7 @@ func Test_newErrorHandler(t *testing.T) {
 		assert.Equal(t, string(bodyBytes), http.StatusText(http.StatusInternalServerError))
 
 		// Assert error is logged.
-		logEntry, err := io.ReadAll(logger.buf)
+		logEntry, err := io.ReadAll(logger.Buf)
 		require.NoError(t, err)
 		assert.Contains(t, string(logEntry), expectedLogEntry)
 	})
@@ -59,14 +61,14 @@ func Test_newErrorHandler(t *testing.T) {
 		func(t *testing.T) {
 			t.Parallel()
 
-			logger := &mockLogger{buf: &bytes.Buffer{}}
+			logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
 			handlerErr := v0.NewBadRequestError(errors.New("some cause")).(*v0.UserFacingError)
 			wantBody := `{"errors": {"bad_request": ["request body was invalid JSON or contained unknown fields"]}}`
 			app := fiber.New(fiber.Config{
 				ErrorHandler: newErrorHandler(),
 			})
 			app.Use(
-				requestScopedLogging(logger),
+				middleware.RequestScopedLoggerInjection(logger),
 			)
 			app.Get("/", func(c *fiber.Ctx) error {
 				return handlerErr
@@ -88,7 +90,7 @@ func Test_newErrorHandler(t *testing.T) {
 			assert.JSONEq(t, string(bodyBytes), wantBody)
 
 			// Assert error is logged.
-			logEntry, err := io.ReadAll(logger.buf)
+			logEntry, err := io.ReadAll(logger.Buf)
 			require.NoError(t, err)
 			assert.Empty(t, logEntry)
 		},

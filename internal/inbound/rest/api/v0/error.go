@@ -95,7 +95,7 @@ func NewUnprocessableEntityError(messages userFacingValidationErrorMessages) err
 }
 
 func NewUnsupportedMediaTypeError(mediaType string, supportedMediaTypes []string) error {
-	message := fmt.Sprintf("Media type %q is not supported. Suported media types are: %s.",
+	message := fmt.Sprintf("Media type %q is not supported. Supported media types are: %s.",
 		mediaType, strings.Join(supportedMediaTypes, ", "))
 	return &UserFacingError{
 		StatusCode: http.StatusUnsupportedMediaType,

@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"slices"
 	"time"
+
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
 
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 
@@ -85,8 +86,8 @@ func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
 func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	router.Use(
 		requestid.New(),
-		requestScopedLogging(log.New(os.Stdout, "", log.LstdFlags)),
-		requestStatsLogging(os.Stdout),
+		middleware.RequestScopedLoggerInjection(log.New(os.Stdout, "", log.LstdFlags)),
+		middleware.RequestStatsLogging(os.Stdout),
 		recover.New(recover.Config{EnableStackTrace: cfg.EnableStackTrace}),
 	)
 
@@ -95,7 +96,7 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	})
 
 	router.Route("/api", func(api fiber.Router) {
-		api.Use(validateAPIContentType)
+		api.Use(middleware.ContentTypeValidation(v0.SupportedContentTypes, v0.UnsupportedContentTypeHandler))
 
 		api.Route("/v0", func(apiV0 fiber.Router) {
 			usersHandler := v0.NewUsersHandler(
@@ -122,14 +123,4 @@ func strictDecoder(b []byte, v any) error {
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(v) // nolint:wrapcheck
-}
-
-var supportedMediaTypes = []string{fiber.MIMEApplicationJSON}
-
-func validateAPIContentType(c *fiber.Ctx) error {
-	mediaType := c.Get(fiber.HeaderContentType)
-	if !slices.Contains(supportedMediaTypes, mediaType) {
-		return v0.NewUnsupportedMediaTypeError(mediaType, supportedMediaTypes)
-	}
-	return c.Next()
 }
