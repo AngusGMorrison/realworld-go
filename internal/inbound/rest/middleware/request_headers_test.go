@@ -58,7 +58,8 @@ func Test_ContentTypeValidation(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Add(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
-			_, _ = app.Test(req, testutil.FiberTestTimeoutMillis)
+			_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
+			require.NoError(t, err)
 		})
 	}
 }
