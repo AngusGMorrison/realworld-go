@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
+
 	v0 "github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,7 +34,7 @@ func newLoggingErrorHandler(next fiber.ErrorHandler) fiber.ErrorHandler {
 	return func(c *fiber.Ctx, err error) error {
 		handledErr := next(c, err)
 		if handledErr != nil && c.Response().StatusCode() == http.StatusInternalServerError {
-			LoggerFrom(c).Printf("%v\n", err)
+			middleware.LoggerFrom(c).Printf("%v\n", err)
 		}
 		return handledErr
 	}
