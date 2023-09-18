@@ -40,6 +40,7 @@ type Config struct {
 	WriteTimeout     time.Duration
 	JwtCfg           JWTConfig
 	EnableStackTrace bool
+	AllowOrigins     string
 }
 
 // Server encapsulates a Fiber app and exposes methods for starting and stopping
@@ -91,7 +92,9 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 		middleware.RequestScopedLoggerInjection(log.New(os.Stdout, "", log.LstdFlags)),
 		middleware.RequestStatsLogging(os.Stdout),
 		recover.New(recover.Config{EnableStackTrace: cfg.EnableStackTrace}),
-		cors.New(),
+		cors.New(cors.Config{
+			AllowOrigins: cfg.AllowOrigins,
+		}),
 	)
 
 	router.Get("/healthcheck", func(c *fiber.Ctx) error {

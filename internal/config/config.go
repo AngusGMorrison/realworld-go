@@ -19,6 +19,9 @@ type Config struct {
 	// The name of the application.
 	AppName string `split_words:"true" default:"realworld"`
 
+	// A comma-separated list of allow origins for CORS requests.
+	CORSAllowedOrigins string `envconfig:"REALWORLD_CORS_ALLOWED_ORIGINS" split_words:"true"`
+
 	// The path to the directory containing runtime data, such as the DB file
 	// and encryption keys.
 	DataDir string `envconfig:"REALWORLD_DATA_MOUNT" split_words:"true" required:"true"`
