@@ -17,7 +17,7 @@ type Service interface {
 	//	- [AuthError].
 	Authenticate(ctx context.Context, req *AuthRequest) (*User, error)
 
-	// GetUser a user by ID.
+	// GetUser a user by RequestID.
 	GetUser(ctx context.Context, id uuid.UUID) (*User, error)
 
 	// UpdateUser updates an existing user.

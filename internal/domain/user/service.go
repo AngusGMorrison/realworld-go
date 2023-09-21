@@ -51,21 +51,21 @@ func (s *service) Authenticate(ctx context.Context, req *AuthRequest) (*User, er
 	return user, nil
 }
 
-// GetUser returns the user with the given ID.
+// GetUser returns the user with the given RequestID.
 func (s *service) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
 	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get user with ID %s: %w", id, err)
+		return nil, fmt.Errorf("get user with RequestID %s: %w", id, err)
 	}
 
 	return user, nil
 }
 
-// UpdateUser updates the user with the given ID.
+// UpdateUser updates the user with the given RequestID.
 func (s *service) UpdateUser(ctx context.Context, req *UpdateRequest) (*User, error) {
 	user, err := s.repo.UpdateUser(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("update user with ID %s: %w", req.UserID(), err)
+		return nil, fmt.Errorf("update user with RequestID %s: %w", req.UserID(), err)
 	}
 
 	return user, nil

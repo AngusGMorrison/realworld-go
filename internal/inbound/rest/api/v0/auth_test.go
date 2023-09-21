@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
+
 	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -17,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_NewRS256JWTAuthMiddleware(t *testing.T) {
+func Test_Authentication(t *testing.T) {
 	t.Parallel()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -31,7 +33,7 @@ func Test_NewRS256JWTAuthMiddleware(t *testing.T) {
 		token, err := provider.TokenFor(subject)
 		require.NoError(t, err)
 
-		authMiddleware := NewRS256JWTAuthMiddleware(&privateKey.PublicKey)
+		authMiddleware := Authentication(&privateKey.PublicKey)
 		app := fiber.New()
 		app.Get("/", authMiddleware, func(c *fiber.Ctx) error {
 			gotSubject, ok := currentUserIDFromContext(c)
@@ -53,13 +55,13 @@ func Test_NewRS256JWTAuthMiddleware(t *testing.T) {
 
 		app := fiber.New(fiber.Config{
 			ErrorHandler: func(c *fiber.Ctx, err error) error {
-				var userFacingErr *UserFacingError
-				require.ErrorAs(t, err, &userFacingErr)
-				assert.Equal(t, http.StatusUnauthorized, userFacingErr.StatusCode)
+				var jsonErr *JSONError
+				require.ErrorAs(t, err, &jsonErr)
+				assert.Equal(t, fiber.StatusUnauthorized, jsonErr.Status)
 				return nil
 			},
 		})
-		app.Get("/", NewRS256JWTAuthMiddleware(&privateKey.PublicKey))
+		app.Get("/", middleware.RequestIDInjection(), Authentication(&privateKey.PublicKey))
 
 		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 		require.NoError(t, err)
@@ -74,13 +76,13 @@ func Test_NewRS256JWTAuthMiddleware(t *testing.T) {
 
 		app := fiber.New(fiber.Config{
 			ErrorHandler: func(c *fiber.Ctx, err error) error {
-				var userFacingErr *UserFacingError
-				require.ErrorAs(t, err, &userFacingErr)
-				assert.Equal(t, http.StatusUnauthorized, userFacingErr.StatusCode)
+				var jsonErr *JSONError
+				require.ErrorAs(t, err, &jsonErr)
+				assert.Equal(t, http.StatusUnauthorized, jsonErr.Status)
 				return nil
 			},
 		})
-		app.Get("/", NewRS256JWTAuthMiddleware(&privateKey.PublicKey))
+		app.Get("/", middleware.RequestIDInjection(), Authentication(&privateKey.PublicKey))
 
 		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 		require.NoError(t, err)

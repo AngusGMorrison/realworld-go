@@ -8,8 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
+
+	"github.com/gofiber/fiber/v2/utils"
 
 	"github.com/gofiber/fiber/v2/middleware/cors"
 
@@ -58,7 +61,7 @@ func New(
 ) *Server {
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.AppName,
-		ErrorHandler: newErrorHandler(),
+		ErrorHandler: globalErrorHandler,
 		JSONDecoder:  strictDecoder,
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
@@ -88,10 +91,17 @@ func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
 
 func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	router.Use(
-		requestid.New(),
+		requestid.New(requestid.Config{
+			// The default generator is fast but leaks the number of requests to the server.
+			// Since request IDs are returned in error responses, we used the UUIDv4
+			// generator to avoid this.
+			Generator: utils.UUIDv4,
+		}),
 		middleware.RequestScopedLoggerInjection(log.New(os.Stdout, "", log.LstdFlags)),
 		middleware.RequestStatsLogging(os.Stdout),
-		recover.New(recover.Config{EnableStackTrace: cfg.EnableStackTrace}),
+		recover.New(recover.Config{
+			EnableStackTrace: cfg.EnableStackTrace,
+		}),
 		cors.New(cors.Config{
 			AllowOrigins: cfg.AllowOrigins,
 		}),
@@ -102,22 +112,24 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	})
 
 	router.Route("/api", func(api fiber.Router) {
-		api.Use(middleware.ContentTypeValidation(v0.SupportedContentTypes, v0.UnsupportedContentTypeHandler))
+		api.Use(v0.ContentTypeValidation)
 
 		api.Route("/v0", func(apiV0 fiber.Router) {
+			apiV0.Use(v0.ErrorHandling)
+
 			usersHandler := v0.NewUsersHandler(
 				userService,
 				v0.NewJWTProvider(cfg.JwtCfg.RS265PrivateKey, cfg.JwtCfg.TTL, cfg.JwtCfg.Issuer),
 			)
 
 			apiV0.Route("/users", func(users fiber.Router) {
-				users.Use(v0.UsersErrorHandler)
+				users.Use(v0.UsersErrorHandling)
 				users.Post("/", usersHandler.Register)
 				users.Post("/login", usersHandler.Login)
 			})
 
 			apiV0.Route("/user", func(user fiber.Router) {
-				user.Use(v0.NewRS256JWTAuthMiddleware(cfg.JwtCfg.PublicKey()), v0.UsersErrorHandler)
+				user.Use(v0.Authentication(cfg.JwtCfg.PublicKey()), v0.UsersErrorHandling)
 				user.Get("/", usersHandler.GetCurrent)
 				user.Put("/", usersHandler.UpdateCurrent)
 			})
@@ -129,4 +141,15 @@ func strictDecoder(b []byte, v any) error {
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(v) // nolint:wrapcheck
+}
+
+// globalErrorHandler is the top-level error handler for the application. It
+// mops up all errors that API error handlers were unable to handle.
+func globalErrorHandler(c *fiber.Ctx, err error) error {
+	middleware.LoggerFrom(c).Printf("%v\n", err)
+
+	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		"status":  fiber.StatusInternalServerError,
+		"message": http.StatusText(fiber.StatusInternalServerError),
+	})
 }

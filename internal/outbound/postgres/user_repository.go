@@ -17,7 +17,7 @@ import (
 
 var _ user.Repository = (*Client)(nil)
 
-// GetUserByID returns the [user.User] with the given ID, or
+// GetUserByID returns the [user.User] with the given RequestID, or
 // [user.NotFoundError] if no such user exists.
 func (c *Client) GetUserByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	return getUserById(ctx, c.queries, id)

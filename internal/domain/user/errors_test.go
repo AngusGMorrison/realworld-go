@@ -145,8 +145,8 @@ func Test_ValidationErrors_PushValidationError(t *testing.T) {
 	t.Parallel()
 
 	validationErr := &ValidationError{
-		FieldType: UUIDFieldType,
-		Message:   "reason",
+		Field:   UUIDFieldType,
+		Message: "reason",
 	}
 	nonValidationErr := errors.New("error")
 
@@ -235,8 +235,8 @@ func Test_ValidationErrors_Error(t *testing.T) {
 	t.Parallel()
 
 	validationErr := &ValidationError{
-		FieldType: UUIDFieldType,
-		Message:   "reason",
+		Field:   UUIDFieldType,
+		Message: "reason",
 	}
 
 	testCases := []struct {
@@ -286,10 +286,10 @@ func Test_ValidationError_Error(t *testing.T) {
 	t.Parallel()
 
 	err := &ValidationError{
-		FieldType: UUIDFieldType,
-		Message:   "reason",
+		Field:   UUIDFieldType,
+		Message: "reason",
 	}
-	want := "id: reason"
+	want := "{Field: \"id\", Message: \"reason\"}"
 
 	assert.Equal(t, want, err.Error())
 }
