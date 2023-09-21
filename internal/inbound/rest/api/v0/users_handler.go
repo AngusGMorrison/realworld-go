@@ -211,9 +211,9 @@ func UsersErrorHandling(c *fiber.Ctx) error {
 
 	switch {
 	case errors.As(err, &syntaxErr):
-		return NewBadRequestError(requestID)
+		return NewBadRequestError(requestID, syntaxErr)
 	case errors.As(err, &authErr):
-		return NewUnauthorizedError(requestID)
+		return NewUnauthorizedError(requestID, authErr)
 	case errors.As(err, &notFoundErr):
 		return NewNotFoundError(
 			requestID,

@@ -935,14 +935,19 @@ func Test_UsersErrorHandler(t *testing.T) {
 			{
 				name:  "*json.SyntaxError",
 				input: &json.SyntaxError{},
-				want:  NewBadRequestError(requestID),
+				want:  NewBadRequestError(requestID, &json.SyntaxError{}),
 			},
 			{
 				name: "*user.AuthError",
 				input: &user.AuthError{
 					Cause: assert.AnError,
 				},
-				want: NewUnauthorizedError(requestID),
+				want: NewUnauthorizedError(
+					requestID,
+					&user.AuthError{
+						Cause: assert.AnError,
+					},
+				),
 			},
 			{
 				name: "*user.NotFoundError",

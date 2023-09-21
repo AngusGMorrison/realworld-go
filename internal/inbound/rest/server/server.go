@@ -103,10 +103,8 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	})
 
 	router.Route("/api", func(api fiber.Router) {
-		api.Use(v0.ContentTypeValidation)
-
 		api.Route("/v0", func(apiV0 fiber.Router) {
-			apiV0.Use(v0.ErrorHandling)
+			apiV0.Use(v0.ErrorHandling, v0.ContentTypeValidation)
 
 			usersHandler := v0.NewUsersHandler(
 				userService,

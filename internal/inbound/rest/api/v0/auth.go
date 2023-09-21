@@ -63,7 +63,7 @@ func handleError(c *fiber.Ctx, err error) error {
 		return fmt.Errorf("unhandled auth middleware error: request ID not set on context: %w", err)
 	}
 
-	return NewUnauthorizedError(requestID)
+	return NewUnauthorizedError(requestID, err)
 }
 
 func setSubjectOnContext(c *fiber.Ctx) error {

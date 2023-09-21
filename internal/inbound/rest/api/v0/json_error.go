@@ -1,7 +1,6 @@
 package v0
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -20,15 +19,12 @@ type JSONError struct {
 	Status    int                 `json:"status"`
 	Message   string              `json:"message"`
 	Errors    map[string][]string `json:"errors,omitempty"`
+	cause     error
 }
 
 func (e *JSONError) Error() string {
-	bytes, err := json.Marshal(e)
-	if err != nil {
-		panic(fmt.Errorf("marshal JSONError: %w", err)) // never
-	}
-
-	return string(bytes)
+	return fmt.Sprintf("{RequestID:%q, Status:%d, Message:%q, Errors:%v, cause:%v}",
+		e.RequestID, e.Status, e.Message, e.Errors, e.cause)
 }
 
 func (e *JSONError) Is(other error) bool {
@@ -44,11 +40,12 @@ func (e *JSONError) Is(other error) bool {
 
 // NewBadRequestError should be used in responses to syntactically invalid
 // requests.
-func NewBadRequestError(requestID string) error {
+func NewBadRequestError(requestID string, cause error) error {
 	return &JSONError{
 		RequestID: requestID,
 		Status:    fiber.StatusBadRequest,
 		Message:   http.StatusText(fiber.StatusBadRequest),
+		cause:     cause,
 	}
 }
 
@@ -68,11 +65,12 @@ func NewNotFoundError(requestID string, resource missingResource) error {
 	}
 }
 
-func NewUnauthorizedError(requestID string) error {
+func NewUnauthorizedError(requestID string, cause error) error {
 	return &JSONError{
 		RequestID: requestID,
 		Status:    fiber.StatusUnauthorized,
 		Message:   http.StatusText(fiber.StatusUnauthorized),
+		cause:     cause,
 	}
 }
 
@@ -89,6 +87,7 @@ func NewUnprocessableEntityError(requestID string, validationErrs user.Validatio
 		Status:    fiber.StatusUnprocessableEntity,
 		Message:   "Request contained invalid fields.",
 		Errors:    errorMessages,
+		cause:     validationErrs,
 	}
 }
 
@@ -128,10 +127,11 @@ func NewUnsupportedContentTypeError(requestID string, contentType string, suppor
 	}
 }
 
-func NewInternalServerError(requestID string) error {
+func NewInternalServerError(requestID string, cause error) error {
 	return &JSONError{
 		RequestID: requestID,
 		Status:    fiber.StatusInternalServerError,
 		Message:   http.StatusText(fiber.StatusInternalServerError),
+		cause:     cause,
 	}
 }

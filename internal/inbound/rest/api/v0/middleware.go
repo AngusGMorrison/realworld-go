@@ -53,5 +53,5 @@ func ErrorHandling(c *fiber.Ctx) error {
 	}
 
 	middleware.LoggerFrom(c).Printf("%v\n", err)
-	return c.Status(fiber.StatusInternalServerError).JSON(NewInternalServerError(requestID))
+	return c.Status(fiber.StatusInternalServerError).JSON(NewInternalServerError(requestID, err))
 }
