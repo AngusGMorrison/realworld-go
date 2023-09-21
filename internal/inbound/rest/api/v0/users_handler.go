@@ -70,7 +70,7 @@ func (h *UsersHandler) Login(c *fiber.Ctx) error {
 	)
 }
 
-// GetCurrent returns the user corresponding to the RequestID contained in the
+// GetCurrent returns the user corresponding to the ID contained in the
 // request JWT.
 func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 	currentUser, err := h.service.GetUser(c.Context(), mustGetCurrentUserIDFromContext(c))
@@ -85,7 +85,7 @@ func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 	)
 }
 
-// UpdateCurrent updates the user corresponding to the RequestID contained in the
+// UpdateCurrent updates the user corresponding to the ID contained in the
 // request JWT.
 func (h *UsersHandler) UpdateCurrent(c *fiber.Ctx) error {
 	updateReq, err := parseUpdateRequest(c)

@@ -82,7 +82,7 @@ const (
 	PasswordMaxLen = 72
 )
 
-// PasswordHash represents a validated and hashed passwordToCompare.
+// PasswordHash represents a validated and hashed password.
 //
 // The hash is obfuscated when printed with the %s, %v and %#v verbs.
 //
@@ -120,7 +120,7 @@ func validatePasswordCandidate(candidate string) error {
 	return nil
 }
 
-// NewPasswordHashFromTrustedSource wraps a hashed passwordToCompare in a [PasswordHash].
+// NewPasswordHashFromTrustedSource wraps a hashed password in a [PasswordHash].
 func NewPasswordHashFromTrustedSource(raw []byte) PasswordHash {
 	return PasswordHash{bytes: raw}
 }
@@ -140,19 +140,19 @@ func (ph PasswordHash) GoString() string {
 	return "PasswordHash{bytes:REDACTED}"
 }
 
-// passwordHasher is a function that hashes a passwordToCompare candidate. By abstracting
+// passwordHasher is a function that hashes a password candidate. By abstracting
 // a general class of hasher functions, we can simulate hashing errors in tests.
 type passwordHasher func(candidate string) (PasswordHash, error)
 
 func bcryptHash(candidate string) (PasswordHash, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(candidate), bcrypt.DefaultCost)
 	if err != nil {
-		return PasswordHash{}, fmt.Errorf("hash passwordToCompare: %w", err)
+		return PasswordHash{}, fmt.Errorf("hash password: %w", err)
 	}
 	return NewPasswordHashFromTrustedSource(hash), nil
 }
 
-// passwordComparator is a function that compares a [PasswordHash] and passwordToCompare.
+// passwordComparator is a function that compares a [PasswordHash] and password.
 // By abstracting a general class of comparator functions, we can simulate
 // comparison errors in tests.
 type passwordComparator func(hash PasswordHash, candidate string) error
@@ -334,10 +334,10 @@ func (r *RegistrationRequest) PasswordHash() PasswordHash {
 	return r.passwordHash
 }
 
-// Equal returns true if `r.passwordHash` can be obtained from `passwordToCompare`,
+// Equal returns true if `r.passwordHash` can be obtained from `password`,
 // and the two requests are equal in all other fields.
 //
-// Direct comparison of passwordToCompare hashes is impossible by design.
+// Direct comparison of password hashes is impossible by design.
 func (r *RegistrationRequest) Equal(other *RegistrationRequest, password string) bool {
 	if len(r.passwordHash.bytes) > 0 || len(other.passwordHash.bytes) > 0 {
 		if err := bcryptCompare(r.passwordHash, password); err != nil {
@@ -520,10 +520,10 @@ func (ur UpdateRequest) String() string {
 	return fmt.Sprintf("{%s %s %s %s %s}", ur.userID, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
 }
 
-// Equal returns true if `ur.passwordHash` can be obtained from `passwordToCompare`,
+// Equal returns true if `ur.passwordHash` can be obtained from `password`,
 // and the two requests are equal in all other fields.
 //
-// Direct comparison of passwordToCompare hashes is impossible by design.
+// Direct comparison of password hashes is impossible by design.
 func (ur *UpdateRequest) Equal(other *UpdateRequest, password option.Option[string]) bool {
 	if ur.passwordHash.IsSome() || other.passwordHash.IsSome() {
 		pw := password.UnwrapOrZero()

@@ -3,12 +3,39 @@ package user
 import (
 	"errors"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_FieldType_String(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		fieldType FieldType
+		want      string
+	}{
+		{fieldType: UUIDFieldType, want: "id"},
+		{fieldType: EmailFieldType, want: "email"},
+		{fieldType: UsernameFieldType, want: "username"},
+		{fieldType: PasswordFieldType, want: "password"},
+		{fieldType: URLFieldType, want: "imageURL"},
+		{fieldType: math.MaxInt, want: "unknown"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.want, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tc.want, tc.fieldType.String())
+		})
+	}
+}
 
 func Test_AuthError_Error(t *testing.T) {
 	t.Parallel()

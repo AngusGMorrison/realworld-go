@@ -12,19 +12,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/gofiber/fiber/v2/utils"
-
 	"github.com/gofiber/fiber/v2/middleware/cors"
 
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
 
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
 
+	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
-
-	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 )
 
 type JWTConfig struct {
@@ -91,12 +87,7 @@ func (s *Server) ShutdownWithTimeout(timeout time.Duration) error {
 
 func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	router.Use(
-		requestid.New(requestid.Config{
-			// The default generator is fast but leaks the number of requests to the server.
-			// Since request IDs are returned in error responses, we used the UUIDv4
-			// generator to avoid this.
-			Generator: utils.UUIDv4,
-		}),
+		middleware.RequestIDInjection(),
 		middleware.RequestScopedLoggerInjection(log.New(os.Stdout, "", log.LstdFlags)),
 		middleware.RequestStatsLogging(os.Stdout),
 		recover.New(recover.Config{

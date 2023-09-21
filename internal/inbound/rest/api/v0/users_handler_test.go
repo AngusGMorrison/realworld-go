@@ -482,7 +482,7 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 			setupMocks   func(service *testutil.MockUserService)
 		}{
 			{
-				name: "current user RequestID missing from context",
+				name: "current user ID missing from context",
 				setupContext: func(c *fiber.Ctx) error {
 					return c.Next()
 				},
@@ -662,7 +662,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			assertMocks  func(t *testing.T, service *testutil.MockUserService)
 		}{
 			{
-				name: "current user RequestID missing from context",
+				name: "current user ID missing from context",
 				setupContext: func(c *fiber.Ctx) error {
 					return c.Next()
 				},

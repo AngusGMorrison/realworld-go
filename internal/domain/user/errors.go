@@ -19,10 +19,10 @@ const (
 	URLFieldType
 )
 
-var fieldNames = [5]string{"id", "username", "email", "passwordToCompare", "imageURL"}
+var fieldNames = [5]string{"id", "username", "email", "password", "imageURL"}
 
 func (f FieldType) String() string {
-	if int(f) >= len(fieldNames) {
+	if int(f) > len(fieldNames) {
 		return "unknown"
 	}
 	return fieldNames[f-1]

@@ -44,7 +44,7 @@ type userIDKeyT int
 const userIDKey userIDKeyT = 0
 
 // Authentication wraps Fiber's JWT middleware, parsing the current
-// user RequestID from the JWT claims and setting it on the request context.
+// user ID from the JWT claims and setting it on the request context.
 //
 // A request ID is expected to be present on the request context.
 func Authentication(publicKey *rsa.PublicKey) fiber.Handler {
@@ -76,7 +76,7 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 
 	userID, err := uuid.Parse(sub)
 	if err != nil {
-		return fmt.Errorf("parse user RequestID string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
+		return fmt.Errorf("parse user ID string %q as UUID.\n\tError: %v\n\tClaims: %#v", sub, err, token.Claims)
 	}
 
 	c.Locals(userIDKey, userID)
@@ -100,7 +100,7 @@ func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
 func mustGetCurrentUserIDFromContext(c *fiber.Ctx) uuid.UUID {
 	userID, ok := currentUserIDFromContext(c)
 	if !ok {
-		panic("current user RequestID not set on request context")
+		panic("current user ID not set on request context")
 	}
 	return userID
 }

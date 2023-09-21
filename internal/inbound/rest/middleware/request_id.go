@@ -8,10 +8,8 @@ import (
 	"github.com/gofiber/fiber/v2/utils"
 )
 
-type requestIDKey int
-
 // RequestIDKey is the fiber context key for the request ID.
-const RequestIDKey requestIDKey = 0
+const RequestIDKey string = "requestid"
 
 // RequestIDInjection returns middleware injects a UUID into the context of each
 // request.
