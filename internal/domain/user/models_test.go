@@ -137,7 +137,7 @@ func Test_parsePassword(t *testing.T) {
 		wantErr            error
 	}{
 		{
-			name:      "valid passwordToCompare",
+			name:      "valid password",
 			candidate: RandomPasswordCandidate(),
 			hasher:    bcryptHash,
 			assertPasswordHash: func(t *testing.T, hash PasswordHash, candidate string) {
@@ -147,14 +147,14 @@ func Test_parsePassword(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:               "passwordToCompare too short",
+			name:               "password too short",
 			candidate:          strings.Repeat("a", PasswordMinLen-1),
 			hasher:             bcryptHash,
 			assertPasswordHash: assertEmptyPasswordHash,
 			wantErr:            NewPasswordTooShortError(),
 		},
 		{
-			name:               "passwordToCompare too long",
+			name:               "password too long",
 			candidate:          strings.Repeat("a", PasswordMaxLen+1),
 			hasher:             bcryptHash,
 			assertPasswordHash: assertEmptyPasswordHash,
@@ -437,7 +437,7 @@ func Test_ParseRegistrationRequest(t *testing.T) {
 			},
 		},
 		{
-			name:                      "invalid passwordToCompare",
+			name:                      "invalid password",
 			usernameCandidate:         validUsernameCandidate,
 			emailCandidate:            validEmailCandidate,
 			passwordCandidate:         "",
@@ -489,46 +489,46 @@ func Test_RegistrationRequest_Equal(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		name              string
-		req1              *RegistrationRequest
-		req2              *RegistrationRequest
-		passwordToCompare string
-		want              bool
+		name     string
+		req1     *RegistrationRequest
+		req2     *RegistrationRequest
+		password string
+		want     bool
 	}{
 		{
-			name:              "zero values",
-			req1:              &RegistrationRequest{},
-			req2:              &RegistrationRequest{},
-			passwordToCompare: "",
-			want:              true,
+			name:     "zero values",
+			req1:     &RegistrationRequest{},
+			req2:     &RegistrationRequest{},
+			password: "",
+			want:     true,
 		},
 		{
-			name:              "equal values",
-			req1:              NewRegistrationRequest(username1, email1, hash1),
-			req2:              NewRegistrationRequest(username1, email1, hash1),
-			passwordToCompare: password1,
-			want:              true,
+			name:     "equal values",
+			req1:     NewRegistrationRequest(username1, email1, hash1),
+			req2:     NewRegistrationRequest(username1, email1, hash1),
+			password: password1,
+			want:     true,
 		},
 		{
-			name:              "unequal usernames",
-			req1:              NewRegistrationRequest(username1, email1, hash1),
-			req2:              NewRegistrationRequest(username2, email1, hash1),
-			passwordToCompare: password1,
-			want:              false,
+			name:     "unequal usernames",
+			req1:     NewRegistrationRequest(username1, email1, hash1),
+			req2:     NewRegistrationRequest(username2, email1, hash1),
+			password: password1,
+			want:     false,
 		},
 		{
-			name:              "unequal emails",
-			req1:              NewRegistrationRequest(username1, email1, hash1),
-			req2:              NewRegistrationRequest(username1, email2, hash1),
-			passwordToCompare: password1,
-			want:              false,
+			name:     "unequal emails",
+			req1:     NewRegistrationRequest(username1, email1, hash1),
+			req2:     NewRegistrationRequest(username1, email2, hash1),
+			password: password1,
+			want:     false,
 		},
 		{
-			name:              "unequal passwords",
-			req1:              NewRegistrationRequest(username1, email1, hash1),
-			req2:              NewRegistrationRequest(username1, email1, hash2),
-			passwordToCompare: password1,
-			want:              false,
+			name:     "unequal passwords",
+			req1:     NewRegistrationRequest(username1, email1, hash1),
+			req2:     NewRegistrationRequest(username1, email1, hash2),
+			password: password1,
+			want:     false,
 		},
 	}
 
@@ -538,7 +538,7 @@ func Test_RegistrationRequest_Equal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := tc.req1.Equal(tc.req2, tc.passwordToCompare)
+			got := tc.req1.Equal(tc.req2, tc.password)
 
 			assert.Equal(t, tc.want, got)
 		})
@@ -768,7 +768,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			},
 		},
 		{
-			name:              "invalid passwordToCompare",
+			name:              "invalid password",
 			userID:            uuid.New(),
 			emailCandidate:    option.Some(validEmailCandidate),
 			passwordCandidate: option.Some(""),
@@ -862,18 +862,18 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 	url2 := RandomURL(t)
 
 	testCases := []struct {
-		name              string
-		req1              *UpdateRequest
-		req2              *UpdateRequest
-		passwordToCompare option.Option[string]
-		want              bool
+		name     string
+		req1     *UpdateRequest
+		req2     *UpdateRequest
+		password option.Option[string]
+		want     bool
 	}{
 		{
-			name:              "zero values",
-			req1:              &UpdateRequest{},
-			req2:              &UpdateRequest{},
-			passwordToCompare: option.None[string](),
-			want:              true,
+			name:     "zero values",
+			req1:     &UpdateRequest{},
+			req2:     &UpdateRequest{},
+			password: option.None[string](),
+			want:     true,
 		},
 		{
 			name: "equal values (some)",
@@ -891,8 +891,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.Some(bio1),
 				imageURL:     option.Some(url1),
 			},
-			passwordToCompare: option.Some(password1),
-			want:              true,
+			password: option.Some(password1),
+			want:     true,
 		},
 		{
 			name: "equal values (none)",
@@ -910,8 +910,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              true,
+			password: option.None[string](),
+			want:     true,
 		},
 		{
 			name: "unequal userIDs",
@@ -929,8 +929,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal emails (some)",
@@ -948,8 +948,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal emails (none)",
@@ -967,8 +967,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal passwords (some)",
@@ -986,8 +986,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.Some(password1),
-			want:              false,
+			password: option.Some(password1),
+			want:     false,
 		},
 		{
 			name: "unequal passwords (none)",
@@ -1005,8 +1005,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal bios (some)",
@@ -1024,8 +1024,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.Some(bio2),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal bios (none)",
@@ -1043,8 +1043,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.Some(bio2),
 				imageURL:     option.None[URL](),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal image URLs (some)",
@@ -1062,8 +1062,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.Some(url2),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 		{
 			name: "unequal image URLs (none)",
@@ -1081,8 +1081,8 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 				bio:          option.None[Bio](),
 				imageURL:     option.Some(url2),
 			},
-			passwordToCompare: option.None[string](),
-			want:              false,
+			password: option.None[string](),
+			want:     false,
 		},
 	}
 
@@ -1092,7 +1092,7 @@ func Test_UpdateRequest_Equal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := tc.req1.Equal(tc.req2, tc.passwordToCompare)
+			got := tc.req1.Equal(tc.req2, tc.password)
 
 			assert.Equal(t, tc.want, got)
 		})
