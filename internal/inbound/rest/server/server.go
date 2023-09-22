@@ -12,8 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gofiber/fiber/v2/middleware/cors"
-
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
 
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/api/v0"
@@ -93,10 +91,12 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 		recover.New(recover.Config{
 			EnableStackTrace: cfg.EnableStackTrace,
 		}),
-		cors.New(cors.Config{
-			AllowOrigins: cfg.AllowOrigins,
-		}),
+		middleware.CORS(cfg.AllowOrigins),
 	)
+
+	router.Head("/", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusMethodNotAllowed)
+	})
 
 	router.Get("/healthcheck", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusOK)
