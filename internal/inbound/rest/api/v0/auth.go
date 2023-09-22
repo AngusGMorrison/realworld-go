@@ -2,6 +2,7 @@ package v0
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"time"
 
@@ -84,46 +85,30 @@ func setSubjectOnContext(c *fiber.Ctx) error {
 	return c.Next()
 }
 
-// currentUserIDFromContext attempts to retrieve the current user ID from the request
-// context. The boolean value is true if it is set, and false otherwise.
-func currentUserIDFromContext(c *fiber.Ctx) (uuid.UUID, bool) {
-	userID, _ := c.Locals(userIDKey).(uuid.UUID)
-	if userID == uuid.Nil {
-		return uuid.Nil, false
+var errMissingCurrentUserID = errors.New("current user ID not set on request context")
+
+// currentUserIDFrom attempts to retrieve the current user ID from the request
+// context.
+func currentUserIDFrom(c *fiber.Ctx) (uuid.UUID, error) {
+	userID, ok := c.Locals(userIDKey).(uuid.UUID)
+	if !ok || userID == uuid.Nil {
+		return uuid.Nil, errMissingCurrentUserID
 	}
 
-	return userID, true
+	return userID, nil
 }
 
-// mustGetCurrentUserIDFromContext retrieves the current user ID from the request context,
-// panicking if it is not set.
-func mustGetCurrentUserIDFromContext(c *fiber.Ctx) uuid.UUID {
-	userID, ok := currentUserIDFromContext(c)
-	if !ok {
-		panic("current user ID not set on request context")
-	}
-	return userID
-}
+var errMissingCurrentJWT = errors.New("current JWT not set on request context")
 
-// currentJWTFromContext attempts to retrieve the current JWT from the request context.
-// The boolean value is true if it is set, and false otherwise.
-func currentJWTFromContext(c *fiber.Ctx) (JWT, bool) {
+// currentJWTFrom attempts to retrieve the current JWT from the request
+// context.
+func currentJWTFrom(c *fiber.Ctx) (JWT, error) {
 	token, ok := c.Locals(requestJWTKey).(*jwt.Token)
 	if !ok {
-		return JWT(""), false
+		return JWT(""), errMissingCurrentJWT
 	}
 
-	return JWT(token.Raw), true
-}
-
-// mustGetCurrentJWTFromContext retrieves the current JWT from the request context,
-// panicking if it is not set.
-func mustGetCurrentJWTFromContext(c *fiber.Ctx) JWT {
-	token, ok := currentJWTFromContext(c)
-	if !ok {
-		panic("current JWT not set on request context")
-	}
-	return token
+	return JWT(token.Raw), nil
 }
 
 // JWTProvider is a source of signed JSON Web Tokens.

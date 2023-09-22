@@ -73,16 +73,22 @@ func (h *UsersHandler) Login(c *fiber.Ctx) error {
 // GetCurrent returns the user corresponding to the ID contained in the
 // request JWT.
 func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
-	currentUser, err := h.service.GetUser(c.Context(), mustGetCurrentUserIDFromContext(c))
+	currentUserID, err := currentUserIDFrom(c)
 	if err != nil {
 		return err
 	}
 
-	token := mustGetCurrentJWTFromContext(c)
+	currentUser, err := h.service.GetUser(c.Context(), currentUserID)
+	if err != nil {
+		return err
+	}
 
-	return c.Status(fiber.StatusOK).JSON(
-		newUserResponseBody(currentUser, token),
-	)
+	token, err := currentJWTFrom(c)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(newUserResponseBody(currentUser, token))
 }
 
 // UpdateCurrent updates the user corresponding to the ID contained in the
@@ -98,9 +104,12 @@ func (h *UsersHandler) UpdateCurrent(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusOK).JSON(
-		newUserResponseBody(updatedUser, mustGetCurrentJWTFromContext(c)),
-	)
+	currentJWT, err := currentJWTFrom(c)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(newUserResponseBody(updatedUser, currentJWT))
 }
 
 type registrationRequestBody struct {
@@ -157,8 +166,13 @@ func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
 		return nil, fmt.Errorf("parse request body: %w", err)
 	}
 
+	currentUserID, err := currentUserIDFrom(c)
+	if err != nil {
+		return nil, err
+	}
+
 	return user.ParseUpdateRequest(
-		mustGetCurrentUserIDFromContext(c),
+		currentUserID,
 		body.User.Email,
 		body.User.Password,
 		body.User.Bio,

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -64,13 +65,13 @@ func Test_ContentTypeValidation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app := fiber.New()
-			assertionHandler := func(c *fiber.Ctx) error {
-				err := c.Next()
-				assert.ErrorIs(t, err, tc.wantErr)
-				return nil
-			}
-			app.Use(tc.requestIDSetter, assertionHandler, ContentTypeValidation)
+			app := fiber.New(fiber.Config{
+				ErrorHandler: func(c *fiber.Ctx, err error) error {
+					assert.ErrorIs(t, err, tc.wantErr)
+					return nil
+				},
+			})
+			app.Use(tc.requestIDSetter, ContentTypeValidation)
 			app.Get("/", func(c *fiber.Ctx) error {
 				return nil
 			})
@@ -92,14 +93,13 @@ func Test_ErrorHandling(t *testing.T) {
 	t.Run("when error is nil, returns nil and logs nothing", func(t *testing.T) {
 		t.Parallel()
 
-		app := fiber.New()
-		assertionHandler := func(c *fiber.Ctx) error {
-			err := c.Next()
-			assert.NoError(t, err)
-			return nil
-		}
+		app := fiber.New(fiber.Config{
+			ErrorHandler: func(c *fiber.Ctx, err error) error {
+				panic(fmt.Errorf("received unexpected error: %v", err))
+			},
+		})
 		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
-		app.Use(middleware.RequestScopedLoggerInjection(logger), assertionHandler, ErrorHandling)
+		app.Use(middleware.RequestScopedLoggerInjection(logger), ErrorHandling)
 		app.Get("/", func(c *fiber.Ctx) error {
 			return nil
 		})
@@ -118,13 +118,12 @@ func Test_ErrorHandling(t *testing.T) {
 	t.Run("when error is *JSONError, renders and logs the error", func(t *testing.T) {
 		t.Parallel()
 
-		app := fiber.New()
+		app := fiber.New(fiber.Config{
+			ErrorHandler: func(c *fiber.Ctx, err error) error {
+				panic(fmt.Errorf("received unexpected error: %v", err))
+			},
+		})
 		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
-		assertionHandler := func(c *fiber.Ctx) error {
-			err := c.Next()
-			assert.NoError(t, err)
-			return nil
-		}
 		requestID := uuid.New().String()
 		requestIDSetter := func(c *fiber.Ctx) error {
 			c.Locals(middleware.RequestIDKey, requestID)
@@ -133,7 +132,6 @@ func Test_ErrorHandling(t *testing.T) {
 		app.Use(
 			requestIDSetter,
 			middleware.RequestScopedLoggerInjection(logger),
-			assertionHandler,
 			ErrorHandling,
 		)
 		inputErr := NewBadRequestError(requestID, assert.AnError)
@@ -165,17 +163,16 @@ func Test_ErrorHandling(t *testing.T) {
 	t.Run("when error is unhandled and requestID is missing, wraps and returns the error", func(t *testing.T) {
 		t.Parallel()
 
-		app := fiber.New()
+		app := fiber.New(fiber.Config{
+			ErrorHandler: func(c *fiber.Ctx, err error) error {
+				assert.ErrorIs(t, err, middleware.ErrMissingRequestID)
+				assert.ErrorIs(t, err, assert.AnError)
+				return nil
+			},
+		})
 		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
-		assertionHandler := func(c *fiber.Ctx) error {
-			err := c.Next()
-			assert.ErrorIs(t, err, middleware.ErrMissingRequestID)
-			assert.ErrorIs(t, err, assert.AnError)
-			return nil
-		}
 		app.Use(
 			middleware.RequestScopedLoggerInjection(logger),
-			assertionHandler,
 			ErrorHandling,
 		)
 		app.Get("/", func(c *fiber.Ctx) error {
@@ -198,13 +195,12 @@ func Test_ErrorHandling(t *testing.T) {
 		func(t *testing.T) {
 			t.Parallel()
 
-			app := fiber.New()
+			app := fiber.New(fiber.Config{
+				ErrorHandler: func(c *fiber.Ctx, err error) error {
+					panic(fmt.Errorf("received unexpected error: %v", err))
+				},
+			})
 			logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
-			assertionHandler := func(c *fiber.Ctx) error {
-				err := c.Next()
-				assert.NoError(t, err)
-				return nil
-			}
 			requestID := uuid.New().String()
 			requestIDSetter := func(c *fiber.Ctx) error {
 				c.Locals(middleware.RequestIDKey, requestID)
@@ -213,7 +209,6 @@ func Test_ErrorHandling(t *testing.T) {
 			app.Use(
 				requestIDSetter,
 				middleware.RequestScopedLoggerInjection(logger),
-				assertionHandler,
 				ErrorHandling,
 			)
 			app.Get("/", func(c *fiber.Ctx) error {

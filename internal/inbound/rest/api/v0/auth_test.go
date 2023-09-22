@@ -36,8 +36,8 @@ func Test_Authentication(t *testing.T) {
 		authMiddleware := Authentication(&privateKey.PublicKey)
 		app := fiber.New()
 		app.Get("/", authMiddleware, func(c *fiber.Ctx) error {
-			gotSubject, ok := currentUserIDFromContext(c)
-			require.True(t, ok, "current user was not set on the request context")
+			gotSubject, err := currentUserIDFrom(c)
+			require.NoError(t, err)
 			assert.Equal(t, subject, gotSubject)
 			return nil
 		})
@@ -90,6 +90,108 @@ func Test_Authentication(t *testing.T) {
 		_, err = app.Test(req)
 		require.NoError(t, err)
 	})
+}
+
+func Test_currentUserIDFrom(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		idSetter func(*fiber.Ctx) error
+		want     error
+	}{
+		{
+			name: "token is present",
+			idSetter: func(c *fiber.Ctx) error {
+				c.Locals(userIDKey, uuid.New())
+				return c.Next()
+			},
+			want: nil,
+		},
+		{
+			name: "token is uuid.Nil",
+			idSetter: func(c *fiber.Ctx) error {
+				c.Locals(userIDKey, uuid.Nil)
+				return c.Next()
+			},
+			want: errMissingCurrentUserID,
+		},
+		{
+			name: "token is missing",
+			idSetter: func(c *fiber.Ctx) error {
+				return c.Next()
+			},
+			want: errMissingCurrentUserID,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			app := fiber.New()
+			app.Get("/", tc.idSetter, func(c *fiber.Ctx) error {
+				_, err := currentUserIDFrom(c)
+				assert.Equal(t, tc.want, err)
+				return nil
+			})
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+			require.NoError(t, err)
+
+			_, err = app.Test(req)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func Test_currentJWTFrom(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name      string
+		jwtSetter func(*fiber.Ctx) error
+		want      error
+	}{
+		{
+			name: "token is present",
+			jwtSetter: func(c *fiber.Ctx) error {
+				c.Locals(requestJWTKey, &jwt.Token{})
+				return c.Next()
+			},
+			want: nil,
+		},
+		{
+			name: "token is missing",
+			jwtSetter: func(c *fiber.Ctx) error {
+				return c.Next()
+			},
+			want: errMissingCurrentJWT,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			app := fiber.New()
+			app.Get("/", tc.jwtSetter, func(c *fiber.Ctx) error {
+				_, err := currentJWTFrom(c)
+				assert.Equal(t, tc.want, err)
+				return nil
+			})
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+			require.NoError(t, err)
+
+			_, err = app.Test(req)
+			require.NoError(t, err)
+		})
+	}
 }
 
 func Test_NewJWTProvider(t *testing.T) {
