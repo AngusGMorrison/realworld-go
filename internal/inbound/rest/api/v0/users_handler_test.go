@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/internal/testutil"
 	"github.com/angusgmorrison/realworld-go/pkg/option"
@@ -915,6 +917,15 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 func Test_UsersErrorHandler(t *testing.T) {
 	t.Parallel()
 
+	requestID := uuid.New().String()
+	validationErrs := user.ValidationErrors{
+		{Field: user.EmailFieldType, Message: "invalid"},
+		{Field: user.PasswordFieldType, Message: "invalid"},
+		{Field: user.UsernameFieldType, Message: "invalid"},
+		{Field: user.URLFieldType, Message: "invalid"},
+		{Field: user.URLFieldType, Message: "another URL error"},
+	}
+
 	t.Run("error is handled", func(t *testing.T) {
 		testCases := []struct {
 			name  string
@@ -924,14 +935,19 @@ func Test_UsersErrorHandler(t *testing.T) {
 			{
 				name:  "*json.SyntaxError",
 				input: &json.SyntaxError{},
-				want:  NewBadRequestError(&json.SyntaxError{}),
+				want:  NewBadRequestError(requestID, &json.SyntaxError{}),
 			},
 			{
 				name: "*user.AuthError",
 				input: &user.AuthError{
 					Cause: assert.AnError,
 				},
-				want: NewUnauthorizedError("invalid credentials", assert.AnError),
+				want: NewUnauthorizedError(
+					requestID,
+					&user.AuthError{
+						Cause: assert.AnError,
+					},
+				),
 			},
 			{
 				name: "*user.NotFoundError",
@@ -940,27 +956,18 @@ func Test_UsersErrorHandler(t *testing.T) {
 					IDValue: uuid.Nil.String(),
 				},
 				want: NewNotFoundError(
-					"user",
-					fmt.Sprintf("user with %s %q not found", user.UUIDFieldType, uuid.Nil.String()),
+					requestID,
+					missingResource{
+						name:   "user",
+						idType: user.UUIDFieldType.String(),
+						id:     uuid.Nil.String(),
+					},
 				),
 			},
 			{
-				name: "user.ValidationErrors",
-				input: user.ValidationErrors{
-					{FieldType: user.EmailFieldType, Message: "invalid"},
-					{FieldType: user.PasswordFieldType, Message: "invalid"},
-					{FieldType: user.UsernameFieldType, Message: "invalid"},
-					{FieldType: user.URLFieldType, Message: "invalid"},
-					{FieldType: user.URLFieldType, Message: "another URL error"},
-				},
-				want: NewUnprocessableEntityError(
-					userFacingValidationErrorMessages{
-						"email":    []string{"invalid"},
-						"password": []string{"invalid"},
-						"username": []string{"invalid"},
-						"image":    []string{"invalid", "another URL error"},
-					},
-				),
+				name:  "user.ValidationErrors",
+				input: validationErrs,
+				want:  NewUnprocessableEntityError(requestID, validationErrs),
 			},
 		}
 
@@ -972,6 +979,7 @@ func Test_UsersErrorHandler(t *testing.T) {
 
 				app := fiber.New()
 				errorSource := func(c *fiber.Ctx) error {
+					c.Locals(middleware.RequestIDKey, requestID)
 					return tc.input
 				}
 				errorAsserter := func(c *fiber.Ctx) error {
@@ -979,7 +987,7 @@ func Test_UsersErrorHandler(t *testing.T) {
 					assert.Equal(t, tc.want, err)
 					return nil
 				}
-				app.Get("/", errorAsserter, UsersErrorHandler, errorSource)
+				app.Get("/", errorAsserter, UsersErrorHandling, errorSource)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 				require.NoError(t, err)
@@ -993,6 +1001,10 @@ func Test_UsersErrorHandler(t *testing.T) {
 	t.Run("error is unhandled", func(t *testing.T) {
 		t.Parallel()
 
+		unhandledValidationErrs := user.ValidationErrors{
+			{Field: math.MaxInt, Message: "invalid"},
+		}
+
 		testCases := []struct {
 			name  string
 			input error
@@ -1004,14 +1016,9 @@ func Test_UsersErrorHandler(t *testing.T) {
 				want:  assert.AnError,
 			},
 			{
-				name: "unhandled validation error field type",
-				input: user.ValidationErrors{
-					{FieldType: math.MaxInt, Message: "invalid"},
-				},
-				want: &user.ValidationError{
-					FieldType: math.MaxInt,
-					Message:   "invalid",
-				},
+				name:  "unhandled validation error field type",
+				input: unhandledValidationErrs,
+				want:  unhandledValidationErrs[0],
 			},
 		}
 
@@ -1026,11 +1033,13 @@ func Test_UsersErrorHandler(t *testing.T) {
 					return tc.input
 				}
 				errorAsserter := func(c *fiber.Ctx) error {
+					c.Locals(middleware.RequestIDKey, uuid.New().String())
+
 					err := c.Next()
 					assert.ErrorIs(t, err, tc.want)
 					return nil
 				}
-				app.Get("/", errorAsserter, UsersErrorHandler, errorSource)
+				app.Get("/", errorAsserter, UsersErrorHandling, errorSource)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 				require.NoError(t, err)

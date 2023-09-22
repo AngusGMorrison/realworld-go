@@ -19,9 +19,12 @@ const (
 	URLFieldType
 )
 
-var fieldNames = [5]string{"id", "username", "email", "passwordToCompare", "imageURL"}
+var fieldNames = [5]string{"id", "username", "email", "password", "imageURL"}
 
 func (f FieldType) String() string {
+	if int(f) > len(fieldNames) {
+		return "unknown"
+	}
 	return fieldNames[f-1]
 }
 
@@ -117,8 +120,8 @@ func (e ValidationErrors) Error() string {
 // ValidationError represents a single error encountered when validation a field
 // of the given [FieldType].
 type ValidationError struct {
-	FieldType FieldType
-	Message   string
+	Field   FieldType
+	Message string
 }
 
 func (e *ValidationError) Is(target error) bool {
@@ -127,72 +130,72 @@ func (e *ValidationError) Is(target error) bool {
 		return false
 	}
 
-	return e.FieldType == otherValidationErr.FieldType && e.Message == otherValidationErr.Message
+	return e.Field == otherValidationErr.Field && e.Message == otherValidationErr.Message
 }
 
 func (e *ValidationError) Error() string {
-	return fmt.Sprintf("%s: %s", e.FieldType, e.Message)
+	return fmt.Sprintf("{Field: %q, Message: %q}", e.Field, e.Message)
 }
 
 func NewUsernameTooShortError() error {
 	return &ValidationError{
-		FieldType: UsernameFieldType,
-		Message:   fmt.Sprintf("must be at least %d characters long", UsernameMinLen),
+		Field:   UsernameFieldType,
+		Message: fmt.Sprintf("must be at least %d characters long", UsernameMinLen),
 	}
 }
 
 func NewUsernameTooLongError() error {
 	return &ValidationError{
-		FieldType: UsernameFieldType,
-		Message:   fmt.Sprintf("must be at most %d characters long", UsernameMaxLen),
+		Field:   UsernameFieldType,
+		Message: fmt.Sprintf("must be at most %d characters long", UsernameMaxLen),
 	}
 }
 
 func NewUsernameFormatError() error {
 	return &ValidationError{
-		FieldType: UsernameFieldType,
-		Message:   fmt.Sprintf("must match %q", usernamePattern),
+		Field:   UsernameFieldType,
+		Message: fmt.Sprintf("must match %q", usernamePattern),
 	}
 }
 
 func NewDuplicateUsernameError(username Username) error {
 	return &ValidationError{
-		FieldType: UsernameFieldType,
-		Message:   fmt.Sprintf("%q is already registered", username),
+		Field:   UsernameFieldType,
+		Message: fmt.Sprintf("%q is already registered", username),
 	}
 }
 
 func NewEmailAddressFormatError(candidate string) error {
 	return &ValidationError{
-		FieldType: EmailFieldType,
-		Message:   fmt.Sprintf("%q is not a valid email address", candidate),
+		Field:   EmailFieldType,
+		Message: fmt.Sprintf("%q is not a valid email address", candidate),
 	}
 }
 
 func NewDuplicateEmailError(email EmailAddress) error {
 	return &ValidationError{
-		FieldType: EmailFieldType,
-		Message:   fmt.Sprintf("%q is already registered", email),
+		Field:   EmailFieldType,
+		Message: fmt.Sprintf("%q is already registered", email),
 	}
 }
 
 func NewPasswordTooShortError() error {
 	return &ValidationError{
-		FieldType: PasswordFieldType,
-		Message:   fmt.Sprintf("must be at least %d bytes long", PasswordMinLen),
+		Field:   PasswordFieldType,
+		Message: fmt.Sprintf("must be at least %d bytes long", PasswordMinLen),
 	}
 }
 
 func NewPasswordTooLongError() error {
 	return &ValidationError{
-		FieldType: PasswordFieldType,
-		Message:   fmt.Sprintf("must be at most %d bytes long", PasswordMaxLen),
+		Field:   PasswordFieldType,
+		Message: fmt.Sprintf("must be at most %d bytes long", PasswordMaxLen),
 	}
 }
 
 func NewInvalidURLError() error {
 	return &ValidationError{
-		FieldType: URLFieldType,
-		Message:   "must be a valid URL",
+		Field:   URLFieldType,
+		Message: "must be a valid URL",
 	}
 }

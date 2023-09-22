@@ -72,8 +72,11 @@ func (l noOpLogger) Printf(_ string, _ ...interface{}) {}
 // between the application server and test servers).
 func RequestStatsLogging(out io.Writer) fiber.Handler {
 	return logger.New(logger.Config{
-		Output:     out,
-		Format:     "${time} | ${locals:requestid} | ${method} | ${path} | ${status} | ${latency}\n",
+		Output: out,
+		Format: fmt.Sprintf(
+			"${time} | ${locals:%s} | ${method} | ${path} | ${status} | ${latency}\n",
+			RequestIDKey,
+		),
 		TimeFormat: "2006/01/02 15:04:05",
 		TimeZone:   "UTC",
 	})

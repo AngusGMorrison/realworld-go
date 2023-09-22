@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
+
 	"github.com/angusgmorrison/realworld-go/internal/testutil"
 
 	jwtware "github.com/gofiber/contrib/jwt"
@@ -38,12 +40,14 @@ const requestJWTKey = "requestJWT"
 
 type userIDKeyT int
 
-// userIDKey is the context key under which the current user ID, is any, is stored.
+// userIDKey is the context key under which the current user ID, if any, is stored.
 const userIDKey userIDKeyT = 0
 
-// NewRS256JWTAuthMiddleware wraps Fiber's JWT middleware, parsing the current
+// Authentication wraps Fiber's JWT middleware, parsing the current
 // user ID from the JWT claims and setting it on the request context.
-func NewRS256JWTAuthMiddleware(publicKey *rsa.PublicKey) fiber.Handler {
+//
+// A request ID is expected to be present on the request context.
+func Authentication(publicKey *rsa.PublicKey) fiber.Handler {
 	return jwtware.New(jwtware.Config{
 		AuthScheme:     "Token", // required by the RealWorld spec
 		ContextKey:     requestJWTKey,
@@ -53,8 +57,13 @@ func NewRS256JWTAuthMiddleware(publicKey *rsa.PublicKey) fiber.Handler {
 	})
 }
 
-func handleError(_ *fiber.Ctx, err error) error {
-	return NewUnauthorizedError("Invalid or missing authentication token", err)
+func handleError(c *fiber.Ctx, err error) error {
+	requestID, ok := c.Locals(middleware.RequestIDKey).(string)
+	if !ok {
+		return fmt.Errorf("unhandled auth middleware error: request ID not set on context: %w", err)
+	}
+
+	return NewUnauthorizedError(requestID, err)
 }
 
 func setSubjectOnContext(c *fiber.Ctx) error {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
+
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
@@ -188,11 +190,16 @@ func newUserResponseBody(u *user.User, token JWT) *successResponseBody {
 	}
 }
 
-// UsersErrorHandler is middleware that handles all users endpoint-related response.
-func UsersErrorHandler(c *fiber.Ctx) error {
+// UsersErrorHandling is middleware that handles all users endpoint-related response.
+func UsersErrorHandling(c *fiber.Ctx) error {
 	err := c.Next()
 	if err == nil {
 		return nil
+	}
+
+	requestID, ok := c.Locals(middleware.RequestIDKey).(string)
+	if !ok {
+		return fmt.Errorf("unhandled users error: request ID not set on context: %w", err)
 	}
 
 	var (
@@ -204,37 +211,21 @@ func UsersErrorHandler(c *fiber.Ctx) error {
 
 	switch {
 	case errors.As(err, &syntaxErr):
-		return NewBadRequestError(syntaxErr)
+		return NewBadRequestError(requestID, syntaxErr)
 	case errors.As(err, &authErr):
-		return NewUnauthorizedError("invalid credentials", authErr.Cause)
+		return NewUnauthorizedError(requestID, authErr)
 	case errors.As(err, &notFoundErr):
 		return NewNotFoundError(
-			"user",
-			fmt.Sprintf("user with %s %q not found", notFoundErr.IDType, notFoundErr.IDValue),
+			requestID,
+			missingResource{
+				name:   "user",
+				idType: notFoundErr.IDType.String(),
+				id:     notFoundErr.IDValue,
+			},
 		)
 	case errors.As(err, &validationErrs):
-		return handleValidationErrors(validationErrs...)
+		return NewUnprocessableEntityError(requestID, validationErrs)
 	default:
 		return err // pass to next error handler
 	}
-}
-
-func handleValidationErrors(errs ...*user.ValidationError) error {
-	userFacingMessages := make(userFacingValidationErrorMessages)
-	for _, err := range errs {
-		switch err.FieldType {
-		case user.EmailFieldType:
-			userFacingMessages["email"] = append(userFacingMessages["email"], err.Message)
-		case user.PasswordFieldType:
-			userFacingMessages["password"] = append(userFacingMessages["password"], err.Message)
-		case user.UsernameFieldType:
-			userFacingMessages["username"] = append(userFacingMessages["username"], err.Message)
-		case user.URLFieldType:
-			userFacingMessages["image"] = append(userFacingMessages["image"], err.Message)
-		default:
-			return fmt.Errorf("unhandled validation error field type %d: %w", err.FieldType, err)
-		}
-	}
-
-	return NewUnprocessableEntityError(userFacingMessages)
 }
