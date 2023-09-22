@@ -473,80 +473,45 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 
 	userID := uuid.New()
 
-	t.Run("panics", func(t *testing.T) {
+	t.Run("errors", func(t *testing.T) {
 		t.Parallel()
+
+		requestJWT := &jwt.Token{}
 
 		testCases := []struct {
 			name         string
 			setupContext func(c *fiber.Ctx) error
-			setupMocks   func(service *testutil.MockUserService)
+			setupMocks   func(t *testing.T, service *testutil.MockUserService)
+			assertError  func(t *testing.T, err error)
+			assertMocks  func(t *testing.T, service *testutil.MockUserService)
 		}{
 			{
 				name: "current user ID missing from context",
 				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(requestJWTKey, requestJWT)
 					return c.Next()
 				},
-				setupMocks: func(service *testutil.MockUserService) {},
-			},
-			{
-				name: "current JWT missing from context",
-				setupContext: func(c *fiber.Ctx) error {
-					c.Locals(userIDKey, userID)
-					return c.Next()
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
 				},
-				setupMocks: func(service *testutil.MockUserService) {
-					service.On(
-						"GetUser",
-						mock.AnythingOfType("*fasthttp.RequestCtx"),
-						userID,
-					).Return(user.RandomUser(t), nil)
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					assert.ErrorIs(t, err, errMissingCurrentUserID)
+				},
+				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.AssertNotCalled(t, "GetUser")
 				},
 			},
-		}
-
-		for _, tc := range testCases {
-			tc := tc
-
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-
-				service := &testutil.MockUserService{}
-				handler := &UsersHandler{
-					service: service,
-				}
-				app := fiber.New()
-				assertPanics := func(c *fiber.Ctx) error {
-					assert.Panics(t, func() {
-						_ = c.Next()
-					})
-					return nil
-				}
-				app.Get("/", tc.setupContext, assertPanics, handler.GetCurrent)
-
-				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
-				require.NoError(t, err)
-
-				tc.setupMocks(service)
-
-				_, _ = app.Test(req, testutil.FiberTestTimeoutMillis)
-
-				service.AssertExpectations(t)
-			})
-		}
-	})
-
-	t.Run("errors", func(t *testing.T) {
-		t.Parallel()
-
-		testCases := []struct {
-			name        string
-			setupMocks  func(service *testutil.MockUserService)
-			assertError func(t *testing.T, err error)
-			assertMocks func(t *testing.T, service *testutil.MockUserService)
-		}{
 			{
 				name: "service error",
-				setupMocks: func(service *testutil.MockUserService) {
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
 					service.On(
 						"GetUser",
 						mock.AnythingOfType("*fasthttp.RequestCtx"),
@@ -556,6 +521,29 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 				assertError: func(t *testing.T, err error) {
 					t.Helper()
 					assert.ErrorIs(t, err, assert.AnError)
+				},
+				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.AssertExpectations(t)
+				},
+			},
+			{
+				name: "current JWT missing from context",
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.On(
+						"GetUser",
+						mock.AnythingOfType("*fasthttp.RequestCtx"),
+						userID,
+					).Return(user.RandomUser(t), nil)
+				},
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					assert.ErrorIs(t, err, errMissingCurrentJWT)
 				},
 				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
 					t.Helper()
@@ -581,16 +569,12 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 						return nil
 					},
 				})
-				setUserIDOnContext := func(c *fiber.Ctx) error {
-					c.Locals(userIDKey, userID)
-					return c.Next()
-				}
-				app.Get("/", setUserIDOnContext, handler.GetCurrent)
+				app.Get("/", tc.setupContext, handler.GetCurrent)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 				require.NoError(t, err)
 
-				tc.setupMocks(service)
+				tc.setupMocks(t, service)
 
 				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
@@ -647,117 +631,57 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
+	requestJWT := &jwt.Token{}
 	emailOption := user.RandomOptionFromInstance(user.RandomEmailAddressCandidate())
 	passwordOption := user.RandomOptionFromInstance(user.RandomPasswordCandidate())
 	bioOption := user.RandomOptionFromInstance(string(user.RandomBio()))
 	urlOption := user.RandomOptionFromInstance(user.RandomURLCandidate())
 
-	t.Run("panics", func(t *testing.T) {
+	t.Run("errors", func(t *testing.T) {
 		t.Parallel()
 
 		testCases := []struct {
 			name         string
+			requestBody  string
 			setupContext func(c *fiber.Ctx) error
-			setupMocks   func(service *testutil.MockUserService)
+			setupMocks   func(t *testing.T, service *testutil.MockUserService)
+			assertError  func(t *testing.T, err error)
 			assertMocks  func(t *testing.T, service *testutil.MockUserService)
 		}{
 			{
-				name: "current user ID missing from context",
+				name:        "JSON syntax error",
+				requestBody: `{`,
 				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
 					return c.Next()
 				},
-				setupMocks: func(service *testutil.MockUserService) {},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+				},
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					var syntaxErr *json.SyntaxError
+					assert.ErrorAs(t, err, &syntaxErr)
+				},
 				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
 					t.Helper()
 					service.AssertNotCalled(t, "UpdateUser")
 				},
 			},
 			{
-				name: "current JWT missing from context",
+				name:        "current user ID missing from context",
+				requestBody: updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption),
 				setupContext: func(c *fiber.Ctx) error {
-					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
 					return c.Next()
 				},
-				setupMocks: func(service *testutil.MockUserService) {
-					wantUpdateReq, err := user.ParseUpdateRequest(
-						userID,
-						emailOption,
-						passwordOption,
-						bioOption,
-						urlOption,
-					)
-					require.NoError(t, err)
-
-					service.On(
-						"UpdateUser",
-						mock.AnythingOfType("*fasthttp.RequestCtx"),
-						mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateReq, passwordOption)),
-					).Return(user.RandomUser(t), nil)
-				},
-				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
 					t.Helper()
-					service.AssertExpectations(t)
 				},
-			},
-		}
-
-		for _, tc := range testCases {
-			tc := tc
-
-			t.Run(tc.name, func(t *testing.T) {
-				t.Parallel()
-
-				service := &testutil.MockUserService{}
-				handler := &UsersHandler{
-					service: service,
-				}
-				app := fiber.New()
-				assertPanics := func(c *fiber.Ctx) error {
-					assert.Panics(t, func() {
-						_ = c.Next()
-					})
-					return nil
-				}
-				app.Put("/", tc.setupContext, assertPanics, handler.UpdateCurrent)
-
-				requestBody := updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption)
-				req, err := http.NewRequestWithContext(
-					context.Background(),
-					http.MethodPut,
-					"/",
-					bytes.NewBufferString(requestBody),
-				)
-				require.NoError(t, err)
-				req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
-
-				tc.setupMocks(service)
-
-				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
-				require.NoError(t, err)
-
-				tc.assertMocks(t, service)
-			})
-		}
-	})
-
-	t.Run("errors", func(t *testing.T) {
-		t.Parallel()
-
-		testCases := []struct {
-			name        string
-			requestBody string
-			setupMocks  func(service *testutil.MockUserService)
-			assertError func(t *testing.T, err error)
-			assertMocks func(t *testing.T, service *testutil.MockUserService)
-		}{
-			{
-				name:        "JSON syntax error",
-				requestBody: `{`,
-				setupMocks:  func(service *testutil.MockUserService) {},
 				assertError: func(t *testing.T, err error) {
 					t.Helper()
-					var syntaxErr *json.SyntaxError
-					assert.ErrorAs(t, err, &syntaxErr)
+					assert.ErrorIs(t, err, errMissingCurrentUserID)
 				},
 				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
 					t.Helper()
@@ -772,7 +696,14 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 					urlOption,
 					passwordOption,
 				),
-				setupMocks: func(service *testutil.MockUserService) {},
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+				},
 				assertError: func(t *testing.T, err error) {
 					t.Helper()
 					var validationErrs user.ValidationErrors
@@ -786,7 +717,13 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			{
 				name:        "service error",
 				requestBody: updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption),
-				setupMocks: func(service *testutil.MockUserService) {
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
 					wantUpdateRequest, err := user.ParseUpdateRequest(
 						userID,
 						emailOption,
@@ -805,6 +742,39 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 				assertError: func(t *testing.T, err error) {
 					t.Helper()
 					assert.ErrorIs(t, err, assert.AnError)
+				},
+				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.AssertExpectations(t)
+				},
+			},
+			{
+				name:        "current JWT missing from context",
+				requestBody: updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption),
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					wantUpdateRequest, err := user.ParseUpdateRequest(
+						userID,
+						emailOption,
+						passwordOption,
+						bioOption,
+						urlOption,
+					)
+					require.NoError(t, err)
+
+					service.On(
+						"UpdateUser",
+						mock.AnythingOfType("*fasthttp.RequestCtx"),
+						mock.MatchedBy(testutil.NewUserUpdateRequestMatcher(t, wantUpdateRequest, passwordOption)),
+					).Return(user.RandomUser(t), nil)
+				},
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					assert.ErrorIs(t, err, errMissingCurrentJWT)
 				},
 				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
 					t.Helper()
@@ -830,12 +800,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 						return nil
 					},
 				})
-				setUserIDAndJWTOnContext := func(c *fiber.Ctx) error {
-					c.Locals(userIDKey, userID)
-					c.Locals(requestJWTKey, &jwt.Token{Raw: "abc"})
-					return c.Next()
-				}
-				app.Put("/", setUserIDAndJWTOnContext, handler.UpdateCurrent)
+				app.Put("/", tc.setupContext, handler.UpdateCurrent)
 
 				req, err := http.NewRequestWithContext(
 					context.Background(),
@@ -846,7 +811,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 				require.NoError(t, err)
 				req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
-				tc.setupMocks(service)
+				tc.setupMocks(t, service)
 
 				_, err = app.Test(req, testutil.FiberTestTimeoutMillis)
 				require.NoError(t, err)
@@ -977,17 +942,18 @@ func Test_UsersErrorHandler(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				app := fiber.New()
+				app := fiber.New(fiber.Config{
+					ErrorHandler: func(c *fiber.Ctx, err error) error {
+						assert.Equal(t, tc.want, err)
+						return nil
+					},
+				})
 				errorSource := func(c *fiber.Ctx) error {
 					c.Locals(middleware.RequestIDKey, requestID)
+					c.Locals(requestJWTKey, &jwt.Token{})
 					return tc.input
 				}
-				errorAsserter := func(c *fiber.Ctx) error {
-					err := c.Next()
-					assert.Equal(t, tc.want, err)
-					return nil
-				}
-				app.Get("/", errorAsserter, UsersErrorHandling, errorSource)
+				app.Get("/", UsersErrorHandling, errorSource)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 				require.NoError(t, err)
@@ -1028,18 +994,21 @@ func Test_UsersErrorHandler(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				app := fiber.New()
+				app := fiber.New(fiber.Config{
+					ErrorHandler: func(c *fiber.Ctx, err error) error {
+						assert.ErrorIs(t, tc.want, err)
+						return nil
+					},
+				})
 				errorSource := func(c *fiber.Ctx) error {
 					return tc.input
 				}
-				errorAsserter := func(c *fiber.Ctx) error {
-					c.Locals(middleware.RequestIDKey, uuid.New().String())
-
-					err := c.Next()
-					assert.ErrorIs(t, err, tc.want)
-					return nil
+				setupContext := func(c *fiber.Ctx) error {
+					c.Locals(middleware.RequestIDKey, requestID)
+					c.Locals(requestJWTKey, &jwt.Token{})
+					return c.Next()
 				}
-				app.Get("/", errorAsserter, UsersErrorHandling, errorSource)
+				app.Get("/", setupContext, UsersErrorHandling, errorSource)
 
 				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
 				require.NoError(t, err)
