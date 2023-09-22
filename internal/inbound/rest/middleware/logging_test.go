@@ -27,7 +27,7 @@ func Test_requestScopedLogger_Printf(t *testing.T) {
 		innerLogger: innerLogger,
 	}
 	logger.Printf("%d %s", 1, "two")
-	want := "| reqID |  GET      | path | 1 two"
+	want := "| reqID | GET | path | 1 two"
 
 	gotLogBytes, gotErr := io.ReadAll(innerLogger.Buf)
 	assert.NoError(t, gotErr)
