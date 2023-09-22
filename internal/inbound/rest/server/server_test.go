@@ -87,3 +87,24 @@ func Test_globalErrorHandler(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(logEntry), expectedLogEntry)
 }
+
+func Test_notFoundHandler(t *testing.T) {
+	t.Parallel()
+
+	app := fiber.New()
+	app.Use(notFoundHandler)
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	require.NoError(t, err)
+
+	res, err := app.Test(req)
+	require.NoError(t, err)
+	defer func() { _ = res.Body.Close() }()
+
+	// Assert error is mapped to the correct response.
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+
+	bodyBytes, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"status":404,"message":"Endpoint \"/\" not found."}`, string(bodyBytes))
+}
