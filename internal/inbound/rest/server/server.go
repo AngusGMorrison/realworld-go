@@ -58,7 +58,7 @@ func New(
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.AppName,
 		ErrorHandler: globalErrorHandler,
-		JSONDecoder:  strictDecoder,
+		JSONDecoder:  decodeStrict,
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 	})
@@ -126,7 +126,7 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 	})
 }
 
-func strictDecoder(b []byte, v any) error {
+func decodeStrict(b []byte, v any) error {
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(v) // nolint:wrapcheck

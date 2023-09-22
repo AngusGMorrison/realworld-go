@@ -48,7 +48,7 @@ func ErrorHandling(c *fiber.Ctx) error {
 	}
 
 	requestID, requestIDErr := middleware.RequestIDFrom(c)
-	if err != nil {
+	if requestIDErr != nil {
 		return fmt.Errorf("unhandlable v0 API error: %w: %w", requestIDErr, err)
 	}
 
