@@ -29,6 +29,30 @@ func Test_JWTConfig_PublicKey(t *testing.T) {
 	assert.Equal(t, &privateKey.PublicKey, got)
 }
 
+func Test_strictDecoder(t *testing.T) {
+	t.Parallel()
+
+	type target struct {
+		Field string `json:"field"`
+	}
+
+	t.Run("json contains only expected fields", func(t *testing.T) {
+		t.Parallel()
+
+		var targ target
+		err := decodeStrict([]byte(`{"field":"value"}`), &targ)
+		assert.NoError(t, err)
+	})
+
+	t.Run("json contains unexpected fields", func(t *testing.T) {
+		t.Parallel()
+
+		var targ target
+		err := decodeStrict([]byte(`{"field":"value","unexpected":"value"}`), &targ)
+		assert.Error(t, err)
+	})
+}
+
 func Test_globalErrorHandler(t *testing.T) {
 	t.Parallel()
 
