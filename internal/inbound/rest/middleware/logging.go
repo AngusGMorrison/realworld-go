@@ -25,7 +25,7 @@ type requestScopedLogger struct {
 // Printf prepends the request ID to the log message. The formatting is designed
 // to align with the request log format used by Fiber's logger middleware.
 func (l *requestScopedLogger) Printf(format string, v ...interface{}) {
-	formatWithReqFields := fmt.Sprintf("| %s |  %s  | %s | %s", l.reqID, l.method, l.path, format)
+	formatWithReqFields := fmt.Sprintf("| %s | %s | %s | %s", l.reqID, l.method, l.path, format)
 	l.innerLogger.Printf(formatWithReqFields, v...)
 }
 

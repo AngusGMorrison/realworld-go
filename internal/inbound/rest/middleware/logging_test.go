@@ -41,7 +41,7 @@ func Test_RequestScopedLoggerInjection(t *testing.T) {
 	method := http.MethodGet
 	path := "/"
 	message := "test"
-	wantLogs := fmt.Sprintf("| %s |  %s  | %s | %s", uuid.Nil.String(), method, path, message)
+	wantLogs := fmt.Sprintf("| %s | %s | %s | %s", uuid.Nil.String(), method, path, message)
 
 	app := fiber.New()
 	app.Get(path, RequestScopedLoggerInjection(logger), func(c *fiber.Ctx) error {

@@ -1,7 +1,10 @@
 package v0
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -81,4 +84,161 @@ func Test_ContentTypeValidation(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func Test_ErrorHandling(t *testing.T) {
+	t.Parallel()
+
+	t.Run("when error is nil, returns nil and logs nothing", func(t *testing.T) {
+		t.Parallel()
+
+		app := fiber.New()
+		assertionHandler := func(c *fiber.Ctx) error {
+			err := c.Next()
+			assert.NoError(t, err)
+			return nil
+		}
+		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
+		app.Use(middleware.RequestScopedLoggerInjection(logger), assertionHandler, ErrorHandling)
+		app.Get("/", func(c *fiber.Ctx) error {
+			return nil
+		})
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+		require.NoError(t, err)
+
+		_, err = app.Test(req)
+		require.NoError(t, err)
+
+		loggedBytes, err := io.ReadAll(logger.Buf)
+		require.NoError(t, err)
+		assert.Empty(t, loggedBytes)
+	})
+
+	t.Run("when error is *JSONError, renders and logs the error", func(t *testing.T) {
+		t.Parallel()
+
+		app := fiber.New()
+		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
+		assertionHandler := func(c *fiber.Ctx) error {
+			err := c.Next()
+			assert.NoError(t, err)
+			return nil
+		}
+		requestID := uuid.New().String()
+		requestIDSetter := func(c *fiber.Ctx) error {
+			c.Locals(middleware.RequestIDKey, requestID)
+			return c.Next()
+		}
+		app.Use(
+			requestIDSetter,
+			middleware.RequestScopedLoggerInjection(logger),
+			assertionHandler,
+			ErrorHandling,
+		)
+		inputErr := NewBadRequestError(requestID, assert.AnError)
+		app.Get("/", func(c *fiber.Ctx) error {
+			return inputErr
+		})
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+		require.NoError(t, err)
+
+		wantResBody, err := json.Marshal(inputErr)
+		require.NoError(t, err)
+
+		res, err := app.Test(req)
+		require.NoError(t, err)
+		defer func() { _ = res.Body.Close() }()
+
+		assert.Equal(t, fiber.StatusBadRequest, res.StatusCode)
+
+		gotResBody, err := io.ReadAll(res.Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, string(wantResBody), string(gotResBody))
+
+		loggedBytes, err := io.ReadAll(logger.Buf)
+		require.NoError(t, err)
+		assert.Contains(t, string(loggedBytes), inputErr.Error())
+	})
+
+	t.Run("when error is unhandled and requestID is missing, wraps and returns the error", func(t *testing.T) {
+		t.Parallel()
+
+		app := fiber.New()
+		logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
+		assertionHandler := func(c *fiber.Ctx) error {
+			err := c.Next()
+			assert.ErrorIs(t, err, middleware.ErrMissingRequestID)
+			assert.ErrorIs(t, err, assert.AnError)
+			return nil
+		}
+		app.Use(
+			middleware.RequestScopedLoggerInjection(logger),
+			assertionHandler,
+			ErrorHandling,
+		)
+		app.Get("/", func(c *fiber.Ctx) error {
+			return assert.AnError
+		})
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+		require.NoError(t, err)
+
+		_, err = app.Test(req)
+		require.NoError(t, err)
+
+		loggedBytes, err := io.ReadAll(logger.Buf)
+		require.NoError(t, err)
+		assert.Empty(t, loggedBytes)
+	})
+
+	t.Run(
+		"when error is unhandled and request ID is present, logs the error and renders Internal Server Error",
+		func(t *testing.T) {
+			t.Parallel()
+
+			app := fiber.New()
+			logger := &middleware.MockLogger{Buf: &bytes.Buffer{}}
+			assertionHandler := func(c *fiber.Ctx) error {
+				err := c.Next()
+				assert.NoError(t, err)
+				return nil
+			}
+			requestID := uuid.New().String()
+			requestIDSetter := func(c *fiber.Ctx) error {
+				c.Locals(middleware.RequestIDKey, requestID)
+				return c.Next()
+			}
+			app.Use(
+				requestIDSetter,
+				middleware.RequestScopedLoggerInjection(logger),
+				assertionHandler,
+				ErrorHandling,
+			)
+			app.Get("/", func(c *fiber.Ctx) error {
+				return assert.AnError
+			})
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+			require.NoError(t, err)
+
+			wantResBody, err := json.Marshal(NewInternalServerError(requestID, assert.AnError))
+			require.NoError(t, err)
+
+			res, err := app.Test(req)
+			require.NoError(t, err)
+			defer func() { _ = res.Body.Close() }()
+
+			assert.Equal(t, fiber.StatusInternalServerError, res.StatusCode)
+
+			gotResBody, err := io.ReadAll(res.Body)
+			require.NoError(t, err)
+			assert.JSONEq(t, string(wantResBody), string(gotResBody))
+
+			loggedBytes, err := io.ReadAll(logger.Buf)
+			require.NoError(t, err)
+			assert.Contains(t, string(loggedBytes), assert.AnError.Error())
+		},
+	)
 }
