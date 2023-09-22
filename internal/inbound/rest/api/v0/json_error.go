@@ -44,7 +44,7 @@ func NewBadRequestError(requestID string, cause error) error {
 	return &JSONError{
 		RequestID: requestID,
 		Status:    fiber.StatusBadRequest,
-		Message:   http.StatusText(fiber.StatusBadRequest),
+		Message:   "Request body was not valid JSON",
 		cause:     cause,
 	}
 }
@@ -58,10 +58,11 @@ type missingResource struct {
 // NewNotFoundError should be used in responses to requests for resources that
 // don't exist.
 func NewNotFoundError(requestID string, resource missingResource) error {
+	resourceName := strings.ToUpper(resource.name[:1]) + resource.name[1:]
 	return &JSONError{
 		RequestID: requestID,
 		Status:    fiber.StatusNotFound,
-		Message:   fmt.Sprintf("%s with %s %q not found.", resource.name, resource.idType, resource.id),
+		Message:   fmt.Sprintf("%s with %s %q not found", resourceName, resource.idType, resource.id),
 	}
 }
 
@@ -85,7 +86,7 @@ func NewUnprocessableEntityError(requestID string, validationErrs user.Validatio
 	return &JSONError{
 		RequestID: requestID,
 		Status:    fiber.StatusUnprocessableEntity,
-		Message:   "Request contained invalid fields.",
+		Message:   "Request contained invalid fields",
 		Errors:    errorMessages,
 		cause:     validationErrs,
 	}

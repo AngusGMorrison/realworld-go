@@ -124,6 +124,8 @@ func initRouter(router fiber.Router, cfg Config, userService user.Service) {
 			})
 		})
 	})
+
+	router.Use(notFoundHandler)
 }
 
 func decodeStrict(b []byte, v any) error {
@@ -140,5 +142,12 @@ func globalErrorHandler(c *fiber.Ctx, err error) error {
 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 		"status":  fiber.StatusInternalServerError,
 		"message": http.StatusText(fiber.StatusInternalServerError),
+	})
+}
+
+func notFoundHandler(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		"status":  fiber.StatusNotFound,
+		"message": fmt.Sprintf("Endpoint %q not found.", c.Path()),
 	})
 }
