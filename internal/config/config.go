@@ -17,10 +17,10 @@ const envVarPrefix = "REALWORLD"
 // Config represents the complete configuration settings for the application.
 type Config struct {
 	// The name of the application.
-	AppName string `split_words:"true" default:"realworld"`
+	AppName string `split_words:"true" required:"true"`
 
 	// A comma-separated list of allow origins for CORS requests.
-	CORSAllowedOrigins string `envconfig:"REALWORLD_CORS_ALLOWED_ORIGINS" split_words:"true"`
+	CORSAllowedOrigins string `envconfig:"REALWORLD_CORS_ALLOWED_ORIGINS" split_words:"true" required:"true"`
 
 	// The path to the directory containing runtime data, such as the DB file
 	// and encryption keys.
@@ -45,13 +45,13 @@ type Config struct {
 	DBUser string `split_words:"true" required:"true"`
 
 	// Enables stack tracing by panic recovery middleware.
-	EnableStackTrace bool `split_words:"true" default:"false"`
+	EnableStackTrace bool `split_words:"true" required:"true"`
 
 	// The server host.
-	Host string `split_words:"true" default:"0.0.0.0"`
+	Host string `split_words:"true" required:"true"`
 
 	// The port to listen on.
-	Port string `split_words:"true" default:"8080"`
+	Port string `split_words:"true" required:"true"`
 
 	// The URL to be used as the issuer of JWTs signed by the server.
 	JwtIssuer string `split_words:"true" required:"true"`
@@ -60,13 +60,13 @@ type Config struct {
 	JwtRSAPrivateKeyPEMBasename string `envconfig:"REALWORLD_JWT_RSA_PRIVATE_KEY_PEM_BASENAME" split_words:"true" required:"true"`
 
 	// The lifetime of JWTs issued by the server.
-	JwtTTL time.Duration `envconfig:"REALWORLD_JWT_TTL" default:"24h"`
+	JwtTTL time.Duration `envconfig:"REALWORLD_JWT_TTL" required:"true"`
 
 	// The read timeout for incoming requests to the server.
-	ReadTimeout time.Duration `split_words:"true" default:"5s"`
+	ReadTimeout time.Duration `split_words:"true" required:"true"`
 
 	// The write timeout for outgoing responses from the server.
-	WriteTimeout time.Duration `split_words:"true" default:"5s"`
+	WriteTimeout time.Duration `split_words:"true" required:"true"`
 
 	jwtRSAPrivateKey *rsa.PrivateKey
 }
@@ -79,7 +79,7 @@ func New() (Config, error) {
 	}
 
 	privateKeyPath := filepath.Join(cfg.DataDir, cfg.JwtRSAPrivateKeyPEMBasename)
-	privateKey, err := parseRSAPrivateKeyPEM(privateKeyPath)
+	privateKey, err := parseRSAKey(privateKeyPath)
 	if err != nil {
 		return Config{}, err
 	}
@@ -95,7 +95,7 @@ func (c *Config) JWTPrivateKey() *rsa.PrivateKey {
 	return c.jwtRSAPrivateKey
 }
 
-func parseRSAPrivateKeyPEM(path string) (*rsa.PrivateKey, error) {
+func parseRSAKey(path string) (*rsa.PrivateKey, error) {
 	pemBytes, err := os.ReadFile(path) // nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("read RSA private key PEM from %q: %w", path, err)
