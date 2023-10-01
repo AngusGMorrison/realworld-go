@@ -27,6 +27,7 @@ UPDATE users SET
     bio = COALESCE(sqlc.narg(bio), bio),
     image_url = COALESCE(sqlc.narg(image_url), image_url)
 WHERE id = $1
+    AND updated_at = $2
 RETURNING *;
 
 -- name: DeleteUser :exec
