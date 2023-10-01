@@ -6,3 +6,7 @@ db/migrate: docker/up/postgres
 	@echo "Migrating database..."
 	migrate -source $(MIGRATION_DIR) -database ${REALWORLD_DATABASE_URL} up && echo "Database migrated."
 	@sqlc generate && echo "Generated sqlc models updated."
+
+db/drop: docker/up/postgres
+	@echo "Dropping database schema..."
+	migrate -source $(MIGRATION_DIR) -database ${REALWORLD_DATABASE_URL} drop && echo "Database schema dropped."

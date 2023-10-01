@@ -28,6 +28,10 @@ psql: docker/exec/psql
 ## Run the app interactively. Alias for docker/up.
 up: docker/up
 
+.PHONY: down
+## Stop the app. Alias for docker/down.
+down: docker/down
+
 .PHONY: test
 ## Run the test suite. Alias for docker/test.
 test: docker/test
