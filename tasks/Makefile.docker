@@ -32,6 +32,10 @@ docker/up: docker/prune
 docker/up/postgres: docker/prune
 	docker compose up --build --wait postgres
 
+## Stop all services.
+docker/down:
+	docker compose down
+
 ## Run psql against the database.
 docker/exec/psql: docker/up/postgres
 	docker compose exec postgres psql --username=${REALWORLD_DB_USER} --dbname=${REALWORLD_DB_NAME}
