@@ -6,14 +6,15 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/pkg/option"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/angusgmorrison/realworld-go/internal/config"
 
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 	"github.com/angusgmorrison/realworld-go/internal/outbound/postgres/sqlc"
-	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -448,7 +449,7 @@ func newCreateUserParamsFromUser(usr *user.User) sqlc.CreateUserParams {
 		ID:           usr.ID().String(),
 		Username:     usr.Username().String(),
 		Email:        usr.Email().String(),
-		PasswordHash: usr.PasswordHash().String(),
+		PasswordHash: string(usr.PasswordHash().Bytes()),
 		Bio: sql.NullString{
 			String: string(usr.Bio().UnwrapOrZero()),
 			Valid:  usr.Bio().IsSome(),

@@ -6,6 +6,7 @@ package sqlc
 
 import (
 	"database/sql"
+	"time"
 )
 
 type User struct {
@@ -15,4 +16,6 @@ type User struct {
 	PasswordHash string
 	Bio          sql.NullString
 	ImageUrl     sql.NullString
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
