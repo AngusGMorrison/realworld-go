@@ -177,6 +177,9 @@ type URL struct {
 	inner *neturl.URL
 }
 
+// ETag indicates a specific version of an entity.
+type ETag string
+
 // ParseURL returns a valid [URL] if successful, and an error otherwise.
 func ParseURL(candidate string) (URL, error) {
 	u, err := neturl.Parse(candidate)
@@ -207,6 +210,7 @@ func (u URL) Equal(other URL) bool {
 // User is the central domain type for this package.
 type User struct {
 	id           uuid.UUID
+	eTag         ETag
 	username     Username
 	email        EmailAddress
 	passwordHash PasswordHash
@@ -216,6 +220,7 @@ type User struct {
 
 func NewUser(
 	id uuid.UUID,
+	eTag ETag,
 	username Username,
 	email EmailAddress,
 	passwordHash PasswordHash,
@@ -224,6 +229,7 @@ func NewUser(
 ) *User {
 	return &User{
 		id:           id,
+		eTag:         eTag,
 		username:     username,
 		email:        email,
 		passwordHash: passwordHash,
@@ -234,6 +240,10 @@ func NewUser(
 
 func (u *User) ID() uuid.UUID {
 	return u.id
+}
+
+func (u *User) ETag() ETag {
+	return u.eTag
 }
 
 func (u *User) Username() Username {
@@ -260,16 +270,18 @@ func (u *User) ImageURL() option.Option[URL] {
 // User is printed with the %#v verb. Unexported fields are otherwise printed
 // reflectively, which would expose the hash.
 func (u User) GoString() string {
-	return fmt.Sprintf("User{id:%#v, username:%#v, email:%#v, passwordHash:%#v, bio:%#v, imageURL:%#v}",
-		u.id, u.username, u.email, u.passwordHash, u.bio, u.imageURL)
+	return fmt.Sprintf(
+		"User{id:%#v, eTag:%#v, username:%#v, email:%#v, passwordHash:%#v, bio:%#v, imageURL:%#v}",
+		u.id, u.eTag, u.username, u.email, u.passwordHash, u.bio, u.imageURL,
+	)
 }
 
 // GoString ensures that the [PasswordHash]'s GoString method is invoked when the
 // User is printed with the %s or %v verbs. Unexported fields are otherwise printed
 // reflectively, which would expose the hash.
 func (u User) String() string {
-	return fmt.Sprintf("{%s %s %s %s %s %s}",
-		u.id, u.username, u.email, u.passwordHash, u.bio, u.imageURL)
+	return fmt.Sprintf("{%s %s %s %s %s %s %s}",
+		u.id, u.eTag, u.username, u.email, u.passwordHash, u.bio, u.imageURL)
 }
 
 // RegistrationRequest carries validated data required to register a new user.
@@ -424,6 +436,7 @@ func (ar AuthRequest) String() string {
 // value of the FieldType's type.
 type UpdateRequest struct {
 	userID       uuid.UUID
+	eTag         ETag
 	email        option.Option[EmailAddress]
 	bio          option.Option[Bio]
 	imageURL     option.Option[URL]
@@ -432,6 +445,7 @@ type UpdateRequest struct {
 
 func NewUpdateRequest(
 	userID uuid.UUID,
+	eTag ETag,
 	email option.Option[EmailAddress],
 	passwordHash option.Option[PasswordHash],
 	bio option.Option[Bio],
@@ -439,6 +453,7 @@ func NewUpdateRequest(
 ) *UpdateRequest {
 	return &UpdateRequest{
 		userID:       userID,
+		eTag:         eTag,
 		email:        email,
 		passwordHash: passwordHash,
 		bio:          bio,
@@ -453,6 +468,7 @@ func NewUpdateRequest(
 //   - Unexpected internal response.
 func ParseUpdateRequest(
 	userID uuid.UUID,
+	eTag ETag,
 	emailCandidate option.Option[string],
 	passwordCandidate option.Option[string],
 	rawBio option.Option[string],
@@ -480,11 +496,15 @@ func ParseUpdateRequest(
 		return nil, validationErrs
 	}
 
-	return NewUpdateRequest(userID, email, passwordHash, bio, imageURL), nil
+	return NewUpdateRequest(userID, eTag, email, passwordHash, bio, imageURL), nil
 }
 
 func (ur *UpdateRequest) UserID() uuid.UUID {
 	return ur.userID
+}
+
+func (ur *UpdateRequest) ETag() ETag {
+	return ur.eTag
 }
 
 func (ur *UpdateRequest) Email() option.Option[EmailAddress] {
@@ -508,8 +528,8 @@ func (ur *UpdateRequest) ImageURL() option.Option[URL] {
 // GoString on the PasswordHash, if present. Unexported fields are otherwise
 // printed reflectively, which would expose the hash.
 func (ur UpdateRequest) GoString() string {
-	return fmt.Sprintf("UpdateRequest{userID:%#v, email:%#v, passwordHash:%#v, bio:%#v, imageURL:%#v}",
-		ur.userID, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
+	return fmt.Sprintf("UpdateRequest{userID:%#v, eTag:%#v, email:%#v, passwordHash:%#v, bio:%#v, imageURL:%#v}",
+		ur.userID, ur.eTag, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
 }
 
 // GoString ensures that the [PasswordHash] [option.Option]'s GoString method is
@@ -517,7 +537,7 @@ func (ur UpdateRequest) GoString() string {
 // GoString on the PasswordHash, if present. Unexported fields are otherwise
 // printed reflectively, which would expose the hash.
 func (ur UpdateRequest) String() string {
-	return fmt.Sprintf("{%s %s %s %s %s}", ur.userID, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
+	return fmt.Sprintf("{%s %s %s %s %s %s}", ur.userID, ur.eTag, ur.email, ur.passwordHash, ur.bio, ur.imageURL)
 }
 
 // Equal returns true if `ur.passwordHash` can be obtained from `password`,
