@@ -15,7 +15,7 @@ generate/data_mount_fixtures:
 
 ## Generate a new migration named using the MIGRATION_NAME env var.
 generate/migration:
-	migrate create -ext sql -dir internal/outbound/sqlite/migrations ${MIGRATION_NAME}
+	migrate create -ext sql -dir internal/outbound/postgres/migrations ${MIGRATION_NAME}
 
 ## Remove generated artifacts.
 generate/clean:
