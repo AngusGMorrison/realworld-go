@@ -20,7 +20,7 @@ INSERT INTO users (
     image_url
 )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, username, email, password_hash, bio, image_url, created_at, updated_at
+RETURNING id, username, email, password_hash, bio, image_url, created_at, updated_at, etag
 `
 
 type CreateUserParams struct {
@@ -51,6 +51,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Etag,
 	)
 	return i, err
 }
@@ -130,7 +131,7 @@ UPDATE users SET
     bio = COALESCE($4, bio),
     image_url = COALESCE($5, image_url)
 WHERE id = $1
-RETURNING id, username, email, password_hash, bio, image_url, created_at, updated_at
+RETURNING id, username, email, password_hash, bio, image_url, created_at, updated_at, etag
 `
 
 type UpdateUserParams struct {
@@ -159,6 +160,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.ImageUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Etag,
 	)
 	return i, err
 }
