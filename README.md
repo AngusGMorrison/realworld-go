@@ -1,6 +1,7 @@
 # _The_ Type-Driven, Hexgonally Architected, Production-Ready, Golang Modular Monolith Example App
 
 ![CI](https://github.com/AngusGMorrison/realworld-go/actions/workflows/ci.yml/badge.svg)
+[![Go Report](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/angusgmorrison/realworld-go)
 [![codecov](https://codecov.io/gh/AngusGMorrison/realworld-go/graph/badge.svg?token=IWN06DNNZC)](https://codecov.io/gh/AngusGMorrison/realworld-go)
 
 ![A gopher in priest's robes radiating light](assets/holy-gopher.webp "Let there be light!")
