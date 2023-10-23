@@ -1034,6 +1034,8 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 func Test_UsersErrorHandler(t *testing.T) {
 	t.Parallel()
 
+	resourceID := uuid.New()
+	eTag := etag.Random()
 	requestID := uuid.New().String()
 	validationErrs := user.ValidationErrors{
 		{Field: user.EmailFieldType, Message: "invalid"},
@@ -1041,6 +1043,10 @@ func Test_UsersErrorHandler(t *testing.T) {
 		{Field: user.UsernameFieldType, Message: "invalid"},
 		{Field: user.URLFieldType, Message: "invalid"},
 		{Field: user.URLFieldType, Message: "another URL error"},
+	}
+	concurrentModificationErr := &user.ConcurrentModificationError{
+		ID:   resourceID,
+		ETag: eTag,
 	}
 
 	t.Run("error is handled", func(t *testing.T) {
@@ -1070,14 +1076,14 @@ func Test_UsersErrorHandler(t *testing.T) {
 				name: "*user.NotFoundError",
 				input: &user.NotFoundError{
 					IDType:  user.UUIDFieldType,
-					IDValue: uuid.Nil.String(),
+					IDValue: resourceID.String(),
 				},
 				want: NewNotFoundError(
 					requestID,
 					missingResource{
 						name:   "user",
 						idType: user.UUIDFieldType.String(),
-						id:     uuid.Nil.String(),
+						id:     resourceID.String(),
 					},
 				),
 			},
@@ -1085,6 +1091,16 @@ func Test_UsersErrorHandler(t *testing.T) {
 				name:  "user.ValidationErrors",
 				input: validationErrs,
 				want:  NewUnprocessableEntityError(requestID, validationErrs),
+			},
+			{
+				name:  "user.ConcurrentModificationError",
+				input: concurrentModificationErr,
+				want: NewPreconditionFailedError(
+					requestID,
+					"user",
+					eTag,
+					concurrentModificationErr,
+				),
 			},
 		}
 

@@ -236,10 +236,11 @@ func UsersErrorHandling(c *fiber.Ctx) error {
 	}
 
 	var (
-		syntaxErr      *json.SyntaxError
-		authErr        *user.AuthError
-		notFoundErr    *user.NotFoundError
-		validationErrs user.ValidationErrors
+		syntaxErr                 *json.SyntaxError
+		authErr                   *user.AuthError
+		notFoundErr               *user.NotFoundError
+		concurrentModificationErr *user.ConcurrentModificationError
+		validationErrs            user.ValidationErrors
 	)
 
 	switch {
@@ -255,6 +256,13 @@ func UsersErrorHandling(c *fiber.Ctx) error {
 				idType: notFoundErr.IDType.String(),
 				id:     notFoundErr.IDValue,
 			},
+		)
+	case errors.As(err, &concurrentModificationErr):
+		return NewPreconditionFailedError(
+			requestID,
+			"user",
+			concurrentModificationErr.ETag,
+			concurrentModificationErr,
 		)
 	case errors.As(err, &validationErrs):
 		return NewUnprocessableEntityError(requestID, validationErrs)
