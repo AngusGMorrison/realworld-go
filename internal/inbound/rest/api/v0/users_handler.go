@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -161,6 +163,12 @@ type updateRequestBodyUser struct {
 }
 
 func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
+	ifMatch := c.Get(fiber.HeaderIfMatch)
+	eTag, err := etag.Parse(ifMatch)
+	if err != nil {
+		return nil, fmt.Errorf("parse If-Match header: %w", err)
+	}
+
 	var body updateRequestBody
 	if err := c.BodyParser(&body); err != nil {
 		return nil, fmt.Errorf("parse request body: %w", err)
@@ -173,6 +181,7 @@ func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
 
 	return user.ParseUpdateRequest(
 		currentUserID,
+		eTag,
 		body.User.Email,
 		body.User.Password,
 		body.User.Bio,

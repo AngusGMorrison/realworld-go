@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
 
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
@@ -226,6 +228,7 @@ func Test_UsersHandler_Register(t *testing.T) {
 		require.NoError(t, err)
 		wantUser := user.NewUser(
 			uuid.New(),
+			etag.Random(),
 			username,
 			email,
 			hash,
@@ -437,6 +440,7 @@ func Test_UsersHandlerLogin(t *testing.T) {
 		imageURL := user.RandomOption[user.URL](t)
 		wantUser := user.NewUser(
 			uuid.New(),
+			etag.Random(),
 			username,
 			email,
 			hash,
@@ -631,6 +635,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
+	eTag := etag.Random()
 	requestJWT := &jwt.Token{}
 	emailOption := user.RandomOptionFromInstance(user.RandomEmailAddressCandidate())
 	passwordOption := user.RandomOptionFromInstance(user.RandomPasswordCandidate())
@@ -643,6 +648,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 		testCases := []struct {
 			name         string
 			requestBody  string
+			setHeaders   func(req *http.Request)
 			setupContext func(c *fiber.Ctx) error
 			setupMocks   func(t *testing.T, service *testutil.MockUserService)
 			assertError  func(t *testing.T, err error)
@@ -651,6 +657,10 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			{
 				name:        "JSON syntax error",
 				requestBody: `{`,
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+					req.Header.Set(fiber.HeaderIfMatch, eTag.String())
+				},
 				setupContext: func(c *fiber.Ctx) error {
 					c.Locals(userIDKey, userID)
 					c.Locals(requestJWTKey, requestJWT)
@@ -672,6 +682,10 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			{
 				name:        "current user ID missing from context",
 				requestBody: updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption),
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+					req.Header.Set(fiber.HeaderIfMatch, eTag.String())
+				},
 				setupContext: func(c *fiber.Ctx) error {
 					c.Locals(requestJWTKey, requestJWT)
 					return c.Next()
@@ -689,13 +703,76 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 				},
 			},
 			{
-				name: "parse domain model error",
+				name: "missing If-Match header",
+				requestBody: updateRequestBodyFromOptions(
+					emailOption,
+					bioOption,
+					urlOption,
+					passwordOption,
+				),
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+				},
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+				},
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					var parseETagErr *etag.ParseETagError
+					assert.ErrorAs(t, err, &parseETagErr)
+				},
+				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.AssertNotCalled(t, "UpdateUser")
+				},
+			},
+			{
+				name: "malformed If-Match header",
+				requestBody: updateRequestBodyFromOptions(
+					emailOption,
+					bioOption,
+					urlOption,
+					passwordOption,
+				),
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+					req.Header.Set(fiber.HeaderIfMatch, "malformed")
+				},
+				setupContext: func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
+					return c.Next()
+				},
+				setupMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+				},
+				assertError: func(t *testing.T, err error) {
+					t.Helper()
+					var parseETagErr *etag.ParseETagError
+					assert.ErrorAs(t, err, &parseETagErr)
+				},
+				assertMocks: func(t *testing.T, service *testutil.MockUserService) {
+					t.Helper()
+					service.AssertNotCalled(t, "UpdateUser")
+				},
+			},
+			{
+				name: "error parsing request body to domain model",
 				requestBody: updateRequestBodyFromOptions(
 					option.Some("invalid email"),
 					bioOption,
 					urlOption,
 					passwordOption,
 				),
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+					req.Header.Set(fiber.HeaderIfMatch, eTag.String())
+				},
 				setupContext: func(c *fiber.Ctx) error {
 					c.Locals(userIDKey, userID)
 					c.Locals(requestJWTKey, requestJWT)
@@ -717,6 +794,10 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			{
 				name:        "service error",
 				requestBody: updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption),
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+					req.Header.Set(fiber.HeaderIfMatch, eTag.String())
+				},
 				setupContext: func(c *fiber.Ctx) error {
 					c.Locals(userIDKey, userID)
 					c.Locals(requestJWTKey, requestJWT)
@@ -726,6 +807,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 					t.Helper()
 					wantUpdateRequest, err := user.ParseUpdateRequest(
 						userID,
+						eTag,
 						emailOption,
 						passwordOption,
 						bioOption,
@@ -751,6 +833,10 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 			{
 				name:        "current JWT missing from context",
 				requestBody: updateRequestBodyFromOptions(emailOption, bioOption, urlOption, passwordOption),
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+					req.Header.Set(fiber.HeaderIfMatch, eTag.String())
+				},
 				setupContext: func(c *fiber.Ctx) error {
 					c.Locals(userIDKey, userID)
 					return c.Next()
@@ -759,6 +845,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 					t.Helper()
 					wantUpdateRequest, err := user.ParseUpdateRequest(
 						userID,
+						eTag,
 						emailOption,
 						passwordOption,
 						bioOption,
@@ -809,7 +896,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 					bytes.NewBufferString(tc.requestBody),
 				)
 				require.NoError(t, err)
-				req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+				tc.setHeaders(req)
 
 				tc.setupMocks(t, service)
 
@@ -847,10 +934,12 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 		)
 		require.NoError(t, err)
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		req.Header.Set(fiber.HeaderIfMatch, eTag.String())
 
 		wantUser := user.RandomUser(t)
 		wantUpdateRequest, err := user.ParseUpdateRequest(
 			userID,
+			eTag,
 			emailOption,
 			passwordOption,
 			bioOption,
