@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
 
 	"github.com/lib/pq"
 
@@ -29,10 +32,10 @@ func getUserById(ctx context.Context, q queries, id uuid.UUID) (*user.User, erro
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.NewNotFoundByIDError(id)
 		}
-		return nil, fmt.Errorf("Client error: %w", err)
+		return nil, fmt.Errorf("database error: %w", err)
 	}
 
-	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl, row.UpdatedAt)
 }
 
 // GetUserByEmail returns the [user.User] with the given email, or
@@ -47,10 +50,10 @@ func getUserByEmail(ctx context.Context, q queries, email user.EmailAddress) (*u
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, user.NewNotFoundByEmailError(email)
 		}
-		return nil, fmt.Errorf("Client error: %w", err)
+		return nil, fmt.Errorf("database error: %w", err)
 	}
 
-	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl, row.UpdatedAt)
 }
 
 // CreateUser creates a new user record from the given
@@ -71,7 +74,7 @@ func createUser(ctx context.Context, q queries, req *user.RegistrationRequest) (
 		return nil, fmt.Errorf("create user record from request %#v: %w", req, err)
 	}
 
-	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl, row.UpdatedAt)
 }
 
 func newCreateUserParamsFromRegistrationRequest(req *user.RegistrationRequest) sqlc.CreateUserParams {
@@ -102,19 +105,59 @@ func createUserErrToDomain(err *pq.Error, req *user.RegistrationRequest) error {
 //
 // Returns [user.ValidationError] if database constraints are violated.
 func (c *Client) UpdateUser(ctx context.Context, req *user.UpdateRequest) (*user.User, error) {
-	return updateUser(ctx, c.queries, req)
+	tx, err := c.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin UpdateUser transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	queries := sqlc.New(tx)
+	usr, err := updateUser(ctx, queries, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		// TODO: Handle serialization failures.
+		return nil, fmt.Errorf("commit UpdateUser transaction: %w", err)
+	}
+
+	return usr, nil
 }
 
 func updateUser(ctx context.Context, q queries, req *user.UpdateRequest) (*user.User, error) {
-	row, err := q.UpdateUser(ctx, newUpdateUserParamsFromDomain(req))
+	ok, err := q.UserExists(ctx, req.UserID().String())
 	if err != nil {
-		return nil, updateUserErrorToDomain(err, req)
+		return nil, fmt.Errorf("query existence of user with ID %q: %w", req.UserID(), err)
+	}
+	if !ok {
+		return nil, user.NewNotFoundByIDError(req.UserID())
 	}
 
-	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
+	params := parseUpdateUserParams(req)
+	row, err := q.UpdateUser(ctx, params)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, &user.ConcurrentModificationError{
+				ID:   req.UserID(),
+				ETag: req.ETag(),
+			}
+		}
+
+		var postgresErr *pq.Error
+		if errors.As(err, &postgresErr) && postgresErr.Code.Name() == "unique_violation" {
+			if strings.Contains(postgresErr.Constraint, "email") {
+				return nil, user.NewDuplicateEmailError(req.Email().UnwrapOrZero())
+			}
+		}
+
+		return nil, fmt.Errorf("database error: %w", err)
+	}
+
+	return parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl, row.UpdatedAt)
 }
 
-func newUpdateUserParamsFromDomain(req *user.UpdateRequest) sqlc.UpdateUserParams {
+func parseUpdateUserParams(req *user.UpdateRequest) sqlc.UpdateUserParams {
 	email := sql.NullString{
 		String: req.Email().UnwrapOrZero().String(),
 		Valid:  req.Email().IsSome(),
@@ -134,26 +177,12 @@ func newUpdateUserParamsFromDomain(req *user.UpdateRequest) sqlc.UpdateUserParam
 
 	return sqlc.UpdateUserParams{
 		ID:           req.UserID().String(),
+		UpdatedAt:    req.ETag().UpdatedAt(),
 		Email:        email,
 		Bio:          bio,
 		ImageUrl:     imageURL,
 		PasswordHash: passwordHash,
 	}
-}
-
-func updateUserErrorToDomain(err error, req *user.UpdateRequest) error {
-	if errors.Is(err, sql.ErrNoRows) {
-		return user.NewNotFoundByIDError(req.UserID())
-	}
-
-	var postgresErr *pq.Error
-	if errors.As(err, &postgresErr) && postgresErr.Code.Name() == "unique_violation" {
-		if strings.Contains(postgresErr.Constraint, "email") {
-			return user.NewDuplicateEmailError(req.Email().UnwrapOrZero())
-		}
-	}
-
-	return fmt.Errorf("database error: %w", err)
 }
 
 func parseUser(
@@ -163,8 +192,14 @@ func parseUser(
 	passwordHash string,
 	bio sql.NullString,
 	imageURL sql.NullString,
+	updatedAt time.Time,
 ) (*user.User, error) {
-	parsedID := uuid.MustParse(id)
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("retrieved unparsable user ID %q from database: %w", id, err)
+	}
+
+	eTag := etag.New(parsedID, updatedAt)
 
 	parsedEmail, err := user.ParseEmailAddress(email)
 	if err != nil {
@@ -194,5 +229,5 @@ func parseUser(
 		parsedBio = option.Some[user.Bio](user.Bio(bio.String))
 	}
 
-	return user.NewUser(parsedID, parsedUsername, parsedEmail, parsedPasswordHash, parsedBio, parsedImageURL), nil
+	return user.NewUser(parsedID, eTag, parsedUsername, parsedEmail, parsedPasswordHash, parsedBio, parsedImageURL), nil
 }

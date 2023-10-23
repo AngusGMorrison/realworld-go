@@ -1,10 +1,17 @@
 -- name: GetUserById :one
-SELECT id, email, username, bio, password_hash, image_url
+SELECT id, email, username, bio, password_hash, image_url, updated_at
 FROM users
 WHERE id = $1;
 
+-- name: UserExists :one
+SELECT EXISTS(
+    SELECT 1
+    FROM users
+    WHERE id = $1
+);
+
 -- name: GetUserByEmail :one
-SELECT id, email, username, bio, password_hash, image_url
+SELECT id, email, username, bio, password_hash, image_url, updated_at
 FROM users
 WHERE email = $1;
 

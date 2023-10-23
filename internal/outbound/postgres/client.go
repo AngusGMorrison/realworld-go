@@ -30,6 +30,7 @@ type queries interface {
 	GetUserByEmail(ctx context.Context, email string) (sqlc.GetUserByEmailRow, error)
 	GetUserById(ctx context.Context, id string) (sqlc.GetUserByIdRow, error)
 	UpdateUser(ctx context.Context, params sqlc.UpdateUserParams) (sqlc.User, error)
+	UserExists(ctx context.Context, id string) (bool, error)
 }
 
 // Client is a Postgres client.

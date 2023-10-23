@@ -5,8 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
+
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
 
 	"github.com/angusgmorrison/realworld-go/pkg/option"
+
 	"github.com/stretchr/testify/mock"
 
 	"github.com/angusgmorrison/realworld-go/internal/config"
@@ -31,16 +35,13 @@ func Test_Client_GetUserByID(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
-		existingUser := user.RandomUser(t)
-		queries := sqlc.New(db.db)
-
-		_, err = queries.CreateUser(context.Background(), newCreateUserParamsFromUser(existingUser))
-		require.NoError(t, err)
+		existingUser := saveRandomUser(t, db)
 
 		gotUser, gotErr := db.GetUserByID(context.Background(), existingUser.ID())
 		assert.NoError(t, gotErr)
 		// Password hashes cannot be compared, so compare other fields piecewise.
 		assert.Equal(t, existingUser.ID(), gotUser.ID())
+		assert.Equal(t, existingUser.ETag(), gotUser.ETag())
 		assert.Equal(t, existingUser.Username(), gotUser.Username())
 		assert.Equal(t, existingUser.Email(), gotUser.Email())
 		assert.Equal(t, existingUser.Bio(), gotUser.Bio())
@@ -100,16 +101,13 @@ func Test_Client_GetUserByEmail(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { _ = db.Close() }()
 
-		existingUser := user.RandomUser(t)
-		queries := sqlc.New(db.db)
-
-		_, err = queries.CreateUser(context.Background(), newCreateUserParamsFromUser(existingUser))
-		require.NoError(t, err)
+		existingUser := saveRandomUser(t, db)
 
 		gotUser, gotErr := db.GetUserByEmail(context.Background(), existingUser.Email())
 		assert.NoError(t, gotErr)
 		// Password hashes cannot be compared, so compare the other fields piecewise.
 		assert.Equal(t, existingUser.ID(), gotUser.ID())
+		assert.Equal(t, existingUser.ETag(), gotUser.ETag())
 		assert.Equal(t, existingUser.Username(), gotUser.Username())
 		assert.Equal(t, existingUser.Email(), gotUser.Email())
 		assert.Equal(t, existingUser.Bio(), gotUser.Bio())
@@ -178,6 +176,7 @@ func Test_Client_CreateUser(t *testing.T) {
 		assert.Equal(t, req.Email(), gotUser.Email())
 		assert.Equal(t, option.None[user.Bio](), gotUser.Bio())
 		assert.Equal(t, option.None[user.URL](), gotUser.ImageURL())
+		assertETagPresent(t, gotUser)
 	})
 
 	t.Run("user with same username already exists", func(t *testing.T) {
@@ -283,6 +282,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 					assert.Equal(t, req.PasswordHash().UnwrapOrZero(), updatedUser.PasswordHash())
 					assert.Equal(t, req.Bio(), updatedUser.Bio())
 					assert.Equal(t, req.ImageURL(), updatedUser.ImageURL())
+					assertETagChanged(t, originalUser.ETag(), updatedUser.ETag())
 				},
 			},
 			{
@@ -297,6 +297,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 					assert.Equal(t, originalUser.PasswordHash(), updatedUser.PasswordHash())
 					assert.Equal(t, originalUser.Bio(), updatedUser.Bio())
 					assert.Equal(t, originalUser.ImageURL(), updatedUser.ImageURL())
+					assertETagChanged(t, originalUser.ETag(), updatedUser.ETag())
 				},
 			},
 			{
@@ -311,6 +312,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 					assert.Equal(t, req.PasswordHash().UnwrapOrZero(), updatedUser.PasswordHash())
 					assert.Equal(t, originalUser.Bio(), updatedUser.Bio())
 					assert.Equal(t, originalUser.ImageURL(), updatedUser.ImageURL())
+					assertETagChanged(t, originalUser.ETag(), updatedUser.ETag())
 				},
 			},
 			{
@@ -325,6 +327,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 					assert.Equal(t, originalUser.PasswordHash(), updatedUser.PasswordHash())
 					assert.Equal(t, req.Bio(), updatedUser.Bio())
 					assert.Equal(t, originalUser.ImageURL(), updatedUser.ImageURL())
+					assertETagChanged(t, originalUser.ETag(), updatedUser.ETag())
 				},
 			},
 			{
@@ -339,6 +342,7 @@ func Test_Client_UpdateUser(t *testing.T) {
 					assert.Equal(t, originalUser.PasswordHash(), updatedUser.PasswordHash())
 					assert.Equal(t, originalUser.Bio(), updatedUser.Bio())
 					assert.Equal(t, req.ImageURL(), updatedUser.ImageURL())
+					assertETagChanged(t, originalUser.ETag(), updatedUser.ETag())
 				},
 			},
 		}
@@ -355,16 +359,15 @@ func Test_Client_UpdateUser(t *testing.T) {
 				db, err := New(NewURL(cfg))
 				require.NoError(t, err)
 
-				row, err := db.queries.CreateUser(
-					context.Background(),
-					newCreateUserParamsFromUser(user.RandomUser(t)),
+				originalUser := saveRandomUser(t, db)
+				req := user.NewUpdateRequest(
+					originalUser.ID(),
+					originalUser.ETag(),
+					tc.email,
+					tc.passwordHash,
+					tc.bio,
+					tc.imageURL,
 				)
-				require.NoError(t, err)
-
-				originalUser, err := parseUser(row.ID, row.Username, row.Email, row.PasswordHash, row.Bio, row.ImageUrl)
-				require.NoError(t, err)
-
-				req := user.NewUpdateRequest(originalUser.ID(), tc.email, tc.passwordHash, tc.bio, tc.imageURL)
 
 				updatedUser, err := db.UpdateUser(context.Background(), req)
 				assert.NoError(t, err)
@@ -398,29 +401,34 @@ func Test_Client_UpdateUser(t *testing.T) {
 		db, err := New(NewURL(cfg))
 		require.NoError(t, err)
 
-		existingUserWithTargetEmail := user.RandomUser(t)
-		_, err = db.queries.CreateUser(
-			context.Background(),
-			newCreateUserParamsFromUser(existingUserWithTargetEmail),
+		randomUser := user.RandomUser(t)
+		registrationReq := user.NewRegistrationRequest(
+			randomUser.Username(),
+			randomUser.Email(),
+			randomUser.PasswordHash(),
 		)
+		existingUserWithTargetEmail, err := db.CreateUser(context.Background(), registrationReq)
 		require.NoError(t, err)
 
-		userToUpdate := user.RandomUser(t)
-		_, err = db.queries.CreateUser(
-			context.Background(),
-			newCreateUserParamsFromUser(userToUpdate),
+		randomUser = user.RandomUser(t)
+		registrationReq = user.NewRegistrationRequest(
+			randomUser.Username(),
+			randomUser.Email(),
+			randomUser.PasswordHash(),
 		)
+		userToUpdate, err := db.CreateUser(context.Background(), registrationReq)
 		require.NoError(t, err)
 
-		req := user.NewUpdateRequest(
+		updateReq := user.NewUpdateRequest(
 			userToUpdate.ID(),
+			userToUpdate.ETag(),
 			option.Some(existingUserWithTargetEmail.Email()),
 			option.None[user.PasswordHash](),
 			option.None[user.Bio](),
 			option.None[user.URL](),
 		)
 
-		gotUser, gotErr := db.UpdateUser(context.Background(), req)
+		gotUser, gotErr := db.UpdateUser(context.Background(), updateReq)
 		assert.ErrorIs(t, gotErr, user.NewDuplicateEmailError(existingUserWithTargetEmail.Email()))
 		assert.Nil(t, gotUser)
 	})
@@ -429,17 +437,58 @@ func Test_Client_UpdateUser(t *testing.T) {
 		t.Parallel()
 
 		queries := &mockQueries{}
-		db := &Client{
-			queries: queries,
-		}
 		req := user.RandomUpdateRequest(t)
-		params := newUpdateUserParamsFromDomain(req)
+		params := parseUpdateUserParams(req)
 		wantErr := errors.New("some error")
 
+		queries.On(
+			"UserExists",
+			context.Background(),
+			req.UserID().String(),
+		).Return(true, nil)
 		queries.On("UpdateUser", context.Background(), params).Return(sqlc.User{}, wantErr)
 
-		gotUser, gotErr := db.UpdateUser(context.Background(), req)
+		gotUser, gotErr := updateUser(context.Background(), queries, req)
 		assert.ErrorIs(t, gotErr, wantErr)
+		assert.Nil(t, gotUser)
+	})
+
+	t.Run("concurrent modification error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg, err := config.New()
+		require.NoError(t, err)
+
+		db, err := New(NewURL(cfg))
+		require.NoError(t, err)
+
+		randomUser := user.RandomUser(t)
+		registrationReq := user.NewRegistrationRequest(
+			randomUser.Username(),
+			randomUser.Email(),
+			randomUser.PasswordHash(),
+		)
+		userToUpdate, err := db.CreateUser(context.Background(), registrationReq)
+		require.NoError(t, err)
+
+		staleETag := etag.New(
+			userToUpdate.ID(),
+			userToUpdate.ETag().UpdatedAt().Add(-1*time.Second),
+		)
+
+		updateReq := user.NewUpdateRequest(
+			userToUpdate.ID(),
+			staleETag,
+			option.None[user.EmailAddress](),
+			option.None[user.PasswordHash](),
+			option.None[user.Bio](),
+			option.None[user.URL](),
+		)
+
+		gotUser, gotErr := db.UpdateUser(context.Background(), updateReq)
+
+		var concurrentModificationErr *user.ConcurrentModificationError
+		assert.ErrorAs(t, gotErr, &concurrentModificationErr)
 		assert.Nil(t, gotUser)
 	})
 }
@@ -459,4 +508,35 @@ func newCreateUserParamsFromUser(usr *user.User) sqlc.CreateUserParams {
 			Valid:  usr.ImageURL().IsSome(),
 		},
 	}
+}
+
+func assertETagPresent(t *testing.T, usr *user.User) {
+	t.Helper()
+
+	eTag := usr.ETag()
+	assert.Equal(t, usr.ID(), eTag.ID())
+	assert.NotZerof(t, eTag.UpdatedAt(), "expected ETag to have non-zero timestamp")
+}
+
+func assertETagChanged(t *testing.T, original, updated etag.ETag) {
+	t.Helper()
+
+	assert.Equal(t, original.ID(), updated.ID())
+	assert.Truef(
+		t,
+		updated.UpdatedAt().After(original.UpdatedAt()),
+		"expected updated ETag %q to have timestamp after original ETag %q",
+		updated,
+		original,
+	)
+}
+
+func saveRandomUser(t *testing.T, db *Client) *user.User {
+	t.Helper()
+
+	req := user.RandomRegistrationRequest(t)
+	createdUser, err := db.CreateUser(context.Background(), req)
+	require.NoError(t, err)
+
+	return createdUser
 }

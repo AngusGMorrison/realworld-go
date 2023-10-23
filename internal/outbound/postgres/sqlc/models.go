@@ -18,5 +18,4 @@ type User struct {
 	ImageUrl     sql.NullString
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	Etag         string
 }
