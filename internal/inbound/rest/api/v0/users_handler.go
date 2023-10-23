@@ -90,6 +90,14 @@ func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 		return err
 	}
 
+	c.Set(fiber.HeaderETag, currentUser.ETag().String())
+
+	// If any If-None-Match header matches the ETag of the retrieved resource,
+	// the client's cached resource is up-to-date.
+	if c.Get(fiber.HeaderIfNoneMatch) == currentUser.ETag().String() {
+		return c.Status(fiber.StatusNotModified).Send(nil)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(newUserResponseBody(currentUser, token))
 }
 
@@ -110,6 +118,8 @@ func (h *UsersHandler) UpdateCurrent(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
+	c.Set(fiber.HeaderETag, updatedUser.ETag().String())
 
 	return c.Status(fiber.StatusOK).JSON(newUserResponseBody(updatedUser, currentJWT))
 }

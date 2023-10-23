@@ -591,43 +591,105 @@ func Test_UsersHandler_GetCurrent(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		service := &testutil.MockUserService{}
-		handler := &UsersHandler{
-			service: service,
-		}
+		wantUser := user.RandomUser(t)
 		requestJWT := &jwt.Token{Raw: "abc"}
 
-		app := fiber.New()
-		setUserIDAndJWTOnContext := func(c *fiber.Ctx) error {
-			c.Locals(userIDKey, userID)
-			c.Locals(requestJWTKey, requestJWT)
-			return c.Next()
+		testCases := []struct {
+			name       string
+			setHeaders func(req *http.Request)
+			wantStatus int
+			assertBody func(t *testing.T, gotBody []byte)
+		}{
+			{
+				name:       "no If-None-Match header",
+				setHeaders: func(req *http.Request) {},
+				wantStatus: fiber.StatusOK,
+				assertBody: func(t *testing.T, gotBody []byte) {
+					t.Helper()
+					wantBody := fmt.Sprintf(
+						`{"user": {"token": %q, "email": %q, "username": %q, "bio": %q, "image": %q}}`,
+						requestJWT.Raw,
+						wantUser.Email(),
+						wantUser.Username(),
+						wantUser.Bio().UnwrapOrZero(),
+						wantUser.ImageURL().UnwrapOrZero(),
+					)
+					assert.JSONEq(t, wantBody, string(gotBody))
+				},
+			},
+			{
+				name: "If-None-Match header does not match ETag",
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderIfNoneMatch, etag.Random().String())
+				},
+				wantStatus: fiber.StatusOK,
+				assertBody: func(t *testing.T, gotBody []byte) {
+					t.Helper()
+					wantBody := fmt.Sprintf(
+						`{"user": {"token": %q, "email": %q, "username": %q, "bio": %q, "image": %q}}`,
+						requestJWT.Raw,
+						wantUser.Email(),
+						wantUser.Username(),
+						wantUser.Bio().UnwrapOrZero(),
+						wantUser.ImageURL().UnwrapOrZero(),
+					)
+					assert.JSONEq(t, wantBody, string(gotBody))
+				},
+			},
+			{
+				name: "If-None-Match header matches ETag",
+				setHeaders: func(req *http.Request) {
+					req.Header.Set(fiber.HeaderIfNoneMatch, wantUser.ETag().String())
+				},
+				wantStatus: fiber.StatusNotModified,
+				assertBody: func(t *testing.T, gotBody []byte) {
+					t.Helper()
+					assert.Empty(t, gotBody)
+				},
+			},
 		}
-		app.Get("/", setUserIDAndJWTOnContext, handler.GetCurrent)
 
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
-		require.NoError(t, err)
+		for _, tc := range testCases {
+			tc := tc
 
-		wantUser := user.RandomUser(t)
-		wantStatusCode := fiber.StatusOK
-		wantResponseBody := fmt.Sprintf(`{"user": {"token": %q, "email": %q, "username": %q, "bio": %q, "image": %q}}`,
-			requestJWT.Raw, wantUser.Email(), wantUser.Username(), wantUser.Bio().UnwrapOrZero(), wantUser.ImageURL().UnwrapOrZero())
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
 
-		service.On(
-			"GetUser",
-			mock.AnythingOfType("*fasthttp.RequestCtx"),
-			userID,
-		).Return(wantUser, nil)
+				service := &testutil.MockUserService{}
+				handler := &UsersHandler{
+					service: service,
+				}
 
-		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
-		require.NoError(t, err)
-		assert.Equal(t, res.StatusCode, wantStatusCode)
+				app := fiber.New()
+				setUserIDAndJWTOnContext := func(c *fiber.Ctx) error {
+					c.Locals(userIDKey, userID)
+					c.Locals(requestJWTKey, requestJWT)
+					return c.Next()
+				}
+				app.Get("/", setUserIDAndJWTOnContext, handler.GetCurrent)
 
-		gotResponseBodyBytes, err := io.ReadAll(res.Body)
-		require.NoError(t, err)
-		assert.JSONEq(t, wantResponseBody, string(gotResponseBodyBytes))
+				req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+				require.NoError(t, err)
+				tc.setHeaders(req)
 
-		service.AssertExpectations(t)
+				service.On(
+					"GetUser",
+					mock.AnythingOfType("*fasthttp.RequestCtx"),
+					userID,
+				).Return(wantUser, nil)
+
+				res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantStatus, res.StatusCode)
+				assert.Equal(t, res.Header.Get(fiber.HeaderETag), wantUser.ETag().String())
+
+				gotBody, err := io.ReadAll(res.Body)
+				require.NoError(t, err)
+				tc.assertBody(t, gotBody)
+
+				service.AssertExpectations(t)
+			})
+		}
 	})
 }
 
@@ -959,6 +1021,7 @@ func Test_UsersHandler_UpdateCurrent(t *testing.T) {
 		res, err := app.Test(req, testutil.FiberTestTimeoutMillis)
 		require.NoError(t, err)
 		assert.Equal(t, res.StatusCode, wantStatusCode)
+		assert.Equal(t, res.Header.Get(fiber.HeaderETag), wantUser.ETag().String())
 
 		gotResponseBodyBytes, err := io.ReadAll(res.Body)
 		require.NoError(t, err)
