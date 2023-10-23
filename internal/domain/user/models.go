@@ -6,6 +6,8 @@ import (
 	neturl "net/url"
 	"regexp"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -177,9 +179,6 @@ type URL struct {
 	inner *neturl.URL
 }
 
-// ETag indicates a specific version of an entity.
-type ETag string
-
 // ParseURL returns a valid [URL] if successful, and an error otherwise.
 func ParseURL(candidate string) (URL, error) {
 	u, err := neturl.Parse(candidate)
@@ -210,7 +209,7 @@ func (u URL) Equal(other URL) bool {
 // User is the central domain type for this package.
 type User struct {
 	id           uuid.UUID
-	eTag         ETag
+	eTag         etag.ETag
 	username     Username
 	email        EmailAddress
 	passwordHash PasswordHash
@@ -220,7 +219,7 @@ type User struct {
 
 func NewUser(
 	id uuid.UUID,
-	eTag ETag,
+	eTag etag.ETag,
 	username Username,
 	email EmailAddress,
 	passwordHash PasswordHash,
@@ -242,7 +241,7 @@ func (u *User) ID() uuid.UUID {
 	return u.id
 }
 
-func (u *User) ETag() ETag {
+func (u *User) ETag() etag.ETag {
 	return u.eTag
 }
 
@@ -436,7 +435,7 @@ func (ar AuthRequest) String() string {
 // value of the FieldType's type.
 type UpdateRequest struct {
 	userID       uuid.UUID
-	eTag         ETag
+	eTag         etag.ETag
 	email        option.Option[EmailAddress]
 	bio          option.Option[Bio]
 	imageURL     option.Option[URL]
@@ -445,7 +444,7 @@ type UpdateRequest struct {
 
 func NewUpdateRequest(
 	userID uuid.UUID,
-	eTag ETag,
+	eTag etag.ETag,
 	email option.Option[EmailAddress],
 	passwordHash option.Option[PasswordHash],
 	bio option.Option[Bio],
@@ -468,7 +467,7 @@ func NewUpdateRequest(
 //   - Unexpected internal response.
 func ParseUpdateRequest(
 	userID uuid.UUID,
-	eTag ETag,
+	eTag etag.ETag,
 	emailCandidate option.Option[string],
 	passwordCandidate option.Option[string],
 	rawBio option.Option[string],
@@ -503,7 +502,7 @@ func (ur *UpdateRequest) UserID() uuid.UUID {
 	return ur.userID
 }
 
-func (ur *UpdateRequest) ETag() ETag {
+func (ur *UpdateRequest) ETag() etag.ETag {
 	return ur.eTag
 }
 

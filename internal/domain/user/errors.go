@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/google/uuid"
 )
 
@@ -198,4 +200,15 @@ func NewInvalidURLError() error {
 		Field:   URLFieldType,
 		Message: "must be a valid URL",
 	}
+}
+
+// ConcurrentModificationError indicates that a resource was modified prior to
+// processing the current request, making the current request stale.
+type ConcurrentModificationError struct {
+	ID   uuid.UUID
+	ETag etag.ETag
+}
+
+func (e *ConcurrentModificationError) Error() string {
+	return fmt.Sprintf("user %q with ETag %q was modified since last read", e.ID, e.ETag)
 }

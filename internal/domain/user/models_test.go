@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -305,7 +307,7 @@ func Test_NewUser(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
@@ -330,7 +332,7 @@ func Test_User_GoString(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
@@ -348,7 +350,7 @@ func Test_User_String(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
@@ -661,7 +663,7 @@ func Test_NewUpdateRequest(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	passwordHash := RandomOption[PasswordHash](t)
 	bioOpt := RandomOption[Bio](t)
@@ -684,7 +686,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	validEmailCandidate := RandomEmailAddressCandidate()
 	validPasswordCandidate := RandomPasswordCandidate()
 	bio := RandomBio()
@@ -821,7 +823,7 @@ func Test_UpdateRequest_GoString(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	passwordHash := option.Some(RandomPasswordHash(t)) // None[PasswordHash] is always safe to print
 	bio := RandomOption[Bio](t)
@@ -838,7 +840,7 @@ func Test_UpdateRequest_String(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
-	eTag := RandomETag()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	passwordHash := option.Some(RandomPasswordHash(t)) // None[PasswordHash] is always safe to print
 	bio := RandomOption[Bio](t)

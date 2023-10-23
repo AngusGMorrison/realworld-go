@@ -19,7 +19,7 @@ func Test_ParseETag(t *testing.T) {
 		timestamp := time.Now()
 		raw := fmt.Sprintf(`"%s%s%s"`, id, eTagSeparator, timestamp.Format(time.RFC3339Nano))
 
-		got, err := ParseETag(raw)
+		got, err := Parse(raw)
 		assert.NoError(t, err)
 		assert.Equal(t, id, got.id)
 		assert.Truef(
@@ -82,7 +82,7 @@ func Test_ParseETag(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
 
-				tag, err := ParseETag(tc.raw)
+				tag, err := Parse(tc.raw)
 
 				var parseErr *ParseETagError
 				assert.ErrorAs(t, err, &parseErr)
