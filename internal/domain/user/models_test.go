@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/angusgmorrison/realworld-go/pkg/option"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -305,6 +307,7 @@ func Test_NewUser(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
@@ -312,6 +315,7 @@ func Test_NewUser(t *testing.T) {
 	imageURL := RandomOption[URL](t)
 	wantUser := &User{
 		id:           id,
+		eTag:         eTag,
 		username:     username,
 		email:        email,
 		passwordHash: passwordHash,
@@ -319,7 +323,7 @@ func Test_NewUser(t *testing.T) {
 		imageURL:     imageURL,
 	}
 
-	gotUser := NewUser(id, username, email, passwordHash, bio, imageURL)
+	gotUser := NewUser(id, eTag, username, email, passwordHash, bio, imageURL)
 
 	assert.Equal(t, wantUser, gotUser)
 }
@@ -328,15 +332,16 @@ func Test_User_GoString(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
 	bio := RandomOption[Bio](t)
 	imageURL := RandomOption[URL](t)
-	user := NewUser(id, username, email, passwordHash, bio, imageURL)
+	user := NewUser(id, eTag, username, email, passwordHash, bio, imageURL)
 	want := fmt.Sprintf(
-		"User{id:%#v, username:%#v, email:%#v, passwordHash:PasswordHash{bytes:REDACTED}, bio:%#v, imageURL:%#v}",
-		id, username, email, bio, imageURL)
+		"User{id:%#v, eTag:%#v, username:%#v, email:%#v, passwordHash:PasswordHash{bytes:REDACTED}, bio:%#v, imageURL:%#v}",
+		id, eTag, username, email, bio, imageURL)
 
 	assert.Equal(t, want, user.GoString())
 }
@@ -345,13 +350,14 @@ func Test_User_String(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	passwordHash := RandomPasswordHash(t)
 	bio := RandomOption[Bio](t)
 	imageURL := RandomOption[URL](t)
-	user := NewUser(id, username, email, passwordHash, bio, imageURL)
-	want := fmt.Sprintf("{%s %s %s {REDACTED} %s %s}", id, username, email, bio, imageURL)
+	user := NewUser(id, eTag, username, email, passwordHash, bio, imageURL)
+	want := fmt.Sprintf("{%s %s %s %s {REDACTED} %s %s}", id, eTag, username, email, bio, imageURL)
 
 	assert.Equal(t, want, user.String())
 }
@@ -657,19 +663,21 @@ func Test_NewUpdateRequest(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	passwordHash := RandomOption[PasswordHash](t)
 	bioOpt := RandomOption[Bio](t)
 	urlOpt := RandomOption[URL](t)
 	want := &UpdateRequest{
 		userID:       userID,
+		eTag:         eTag,
 		email:        email,
 		passwordHash: passwordHash,
 		bio:          bioOpt,
 		imageURL:     urlOpt,
 	}
 
-	got := NewUpdateRequest(userID, email, passwordHash, bioOpt, urlOpt)
+	got := NewUpdateRequest(userID, eTag, email, passwordHash, bioOpt, urlOpt)
 
 	assert.Equal(t, want, got)
 }
@@ -678,6 +686,7 @@ func Test_ParseUpdateRequest(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
+	eTag := etag.Random()
 	validEmailCandidate := RandomEmailAddressCandidate()
 	validPasswordCandidate := RandomPasswordCandidate()
 	bio := RandomBio()
@@ -715,7 +724,6 @@ func Test_ParseUpdateRequest(t *testing.T) {
 
 	testCases := []struct {
 		name              string
-		userID            uuid.UUID
 		emailCandidate    option.Option[string]
 		passwordCandidate option.Option[string]
 		bio               option.Option[string]
@@ -725,13 +733,13 @@ func Test_ParseUpdateRequest(t *testing.T) {
 	}{
 		{
 			name:              "valid inputs, optional inputs present",
-			userID:            userID,
 			emailCandidate:    option.Some(validEmailCandidate),
 			passwordCandidate: option.Some(validPasswordCandidate),
 			bio:               option.Some(string(bio)),
 			urlCandidate:      option.Some(validURLCandidate),
 			wantUpdateRequest: &UpdateRequest{
 				userID:       userID,
+				eTag:         eTag,
 				email:        option.Some(email),
 				passwordHash: option.Some(passwordHash),
 				bio:          option.Some(bio),
@@ -741,13 +749,13 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		},
 		{
 			name:              "valid inputs, optional inputs absent",
-			userID:            userID,
 			emailCandidate:    option.None[string](),
 			passwordCandidate: option.None[string](),
 			bio:               option.None[string](),
 			urlCandidate:      option.None[string](),
 			wantUpdateRequest: &UpdateRequest{
 				userID:       userID,
+				eTag:         eTag,
 				email:        option.None[EmailAddress](),
 				passwordHash: option.None[PasswordHash](),
 				bio:          option.None[Bio](),
@@ -757,7 +765,6 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		},
 		{
 			name:              "invalid email",
-			userID:            uuid.New(),
 			emailCandidate:    option.Some(""),
 			passwordCandidate: option.Some(validPasswordCandidate),
 			bio:               option.Some(string(bio)),
@@ -769,7 +776,6 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		},
 		{
 			name:              "invalid password",
-			userID:            uuid.New(),
 			emailCandidate:    option.Some(validEmailCandidate),
 			passwordCandidate: option.Some(""),
 			bio:               option.Some(string(bio)),
@@ -781,7 +787,6 @@ func Test_ParseUpdateRequest(t *testing.T) {
 		},
 		{
 			name:              "invalid imageURL",
-			userID:            uuid.New(),
 			emailCandidate:    option.Some(validEmailCandidate),
 			passwordCandidate: option.Some(validPasswordCandidate),
 			bio:               option.Some(string(bio)),
@@ -800,7 +805,8 @@ func Test_ParseUpdateRequest(t *testing.T) {
 			t.Parallel()
 
 			gotUpdateRequest, gotErr := ParseUpdateRequest(
-				tc.userID,
+				userID,
+				eTag,
 				tc.emailCandidate,
 				tc.passwordCandidate,
 				tc.bio,
@@ -817,14 +823,15 @@ func Test_UpdateRequest_GoString(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	passwordHash := option.Some(RandomPasswordHash(t)) // None[PasswordHash] is always safe to print
 	bio := RandomOption[Bio](t)
 	imageUrl := RandomOption[URL](t)
-	updateRequest := NewUpdateRequest(userID, email, passwordHash, bio, imageUrl)
+	updateRequest := NewUpdateRequest(userID, eTag, email, passwordHash, bio, imageUrl)
 	want := fmt.Sprintf(
-		"UpdateRequest{userID:%#v, email:%#v, passwordHash:option.Option[user.PasswordHash]{some:true, value:PasswordHash{bytes:REDACTED}}, bio:%#v, imageURL:%#v}",
-		userID, email, bio, imageUrl)
+		"UpdateRequest{userID:%#v, eTag:%#v, email:%#v, passwordHash:option.Option[user.PasswordHash]{some:true, value:PasswordHash{bytes:REDACTED}}, bio:%#v, imageURL:%#v}",
+		userID, eTag, email, bio, imageUrl)
 
 	assert.Equal(t, want, updateRequest.GoString())
 }
@@ -833,12 +840,13 @@ func Test_UpdateRequest_String(t *testing.T) {
 	t.Parallel()
 
 	userID := uuid.New()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	passwordHash := option.Some(RandomPasswordHash(t)) // None[PasswordHash] is always safe to print
 	bio := RandomOption[Bio](t)
 	imageUrl := RandomOption[URL](t)
-	updateRequest := NewUpdateRequest(userID, email, passwordHash, bio, imageUrl)
-	want := fmt.Sprintf("{%s %s Some[user.PasswordHash]{{REDACTED}} %s %s}", userID, email, bio, imageUrl)
+	updateRequest := NewUpdateRequest(userID, eTag, email, passwordHash, bio, imageUrl)
+	want := fmt.Sprintf("{%s %s %s Some[user.PasswordHash]{{REDACTED}} %s %s}", userID, eTag, email, bio, imageUrl)
 
 	assert.Equal(t, want, updateRequest.String())
 }

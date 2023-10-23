@@ -8,6 +8,7 @@ package sqlc
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -66,7 +67,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, username, bio, password_hash, image_url
+SELECT id, email, username, bio, password_hash, image_url, updated_at
 FROM users
 WHERE email = $1
 `
@@ -78,6 +79,7 @@ type GetUserByEmailRow struct {
 	Bio          sql.NullString
 	PasswordHash string
 	ImageUrl     sql.NullString
+	UpdatedAt    time.Time
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -90,12 +92,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.Bio,
 		&i.PasswordHash,
 		&i.ImageUrl,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, email, username, bio, password_hash, image_url
+SELECT id, email, username, bio, password_hash, image_url, updated_at
 FROM users
 WHERE id = $1
 `
@@ -107,6 +110,7 @@ type GetUserByIdRow struct {
 	Bio          sql.NullString
 	PasswordHash string
 	ImageUrl     sql.NullString
+	UpdatedAt    time.Time
 }
 
 func (q *Queries) GetUserById(ctx context.Context, id string) (GetUserByIdRow, error) {
@@ -119,22 +123,25 @@ func (q *Queries) GetUserById(ctx context.Context, id string) (GetUserByIdRow, e
 		&i.Bio,
 		&i.PasswordHash,
 		&i.ImageUrl,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users SET
-    email = COALESCE($2, email),
-    password_hash = COALESCE($3, password_hash),
-    bio = COALESCE($4, bio),
-    image_url = COALESCE($5, image_url)
+    email = COALESCE($3, email),
+    password_hash = COALESCE($4, password_hash),
+    bio = COALESCE($5, bio),
+    image_url = COALESCE($6, image_url)
 WHERE id = $1
+    AND updated_at = $2
 RETURNING id, username, email, password_hash, bio, image_url, created_at, updated_at
 `
 
 type UpdateUserParams struct {
 	ID           string
+	UpdatedAt    time.Time
 	Email        sql.NullString
 	PasswordHash sql.NullString
 	Bio          sql.NullString
@@ -144,6 +151,7 @@ type UpdateUserParams struct {
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUser,
 		arg.ID,
+		arg.UpdatedAt,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Bio,
@@ -161,4 +169,19 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const userExists = `-- name: UserExists :one
+SELECT EXISTS(
+    SELECT 1
+    FROM users
+    WHERE id = $1
+)
+`
+
+func (q *Queries) UserExists(ctx context.Context, id string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, userExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

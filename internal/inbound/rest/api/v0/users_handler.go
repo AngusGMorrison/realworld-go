@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/angusgmorrison/realworld-go/internal/inbound/rest/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -88,6 +90,14 @@ func (h *UsersHandler) GetCurrent(c *fiber.Ctx) error {
 		return err
 	}
 
+	c.Set(fiber.HeaderETag, currentUser.ETag().String())
+
+	// If any If-None-Match header matches the ETag of the retrieved resource,
+	// the client's cached resource is up-to-date.
+	if c.Get(fiber.HeaderIfNoneMatch) == currentUser.ETag().String() {
+		return c.Status(fiber.StatusNotModified).Send(nil)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(newUserResponseBody(currentUser, token))
 }
 
@@ -108,6 +118,8 @@ func (h *UsersHandler) UpdateCurrent(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
+	c.Set(fiber.HeaderETag, updatedUser.ETag().String())
 
 	return c.Status(fiber.StatusOK).JSON(newUserResponseBody(updatedUser, currentJWT))
 }
@@ -161,6 +173,12 @@ type updateRequestBodyUser struct {
 }
 
 func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
+	ifMatch := c.Get(fiber.HeaderIfMatch)
+	eTag, err := etag.Parse(ifMatch)
+	if err != nil {
+		return nil, fmt.Errorf("parse If-Match header: %w", err)
+	}
+
 	var body updateRequestBody
 	if err := c.BodyParser(&body); err != nil {
 		return nil, fmt.Errorf("parse request body: %w", err)
@@ -173,6 +191,7 @@ func parseUpdateRequest(c *fiber.Ctx) (*user.UpdateRequest, error) {
 
 	return user.ParseUpdateRequest(
 		currentUserID,
+		eTag,
 		body.User.Email,
 		body.User.Password,
 		body.User.Bio,
@@ -217,10 +236,11 @@ func UsersErrorHandling(c *fiber.Ctx) error {
 	}
 
 	var (
-		syntaxErr      *json.SyntaxError
-		authErr        *user.AuthError
-		notFoundErr    *user.NotFoundError
-		validationErrs user.ValidationErrors
+		syntaxErr                 *json.SyntaxError
+		authErr                   *user.AuthError
+		notFoundErr               *user.NotFoundError
+		concurrentModificationErr *user.ConcurrentModificationError
+		validationErrs            user.ValidationErrors
 	)
 
 	switch {
@@ -236,6 +256,13 @@ func UsersErrorHandling(c *fiber.Ctx) error {
 				idType: notFoundErr.IDType.String(),
 				id:     notFoundErr.IDValue,
 			},
+		)
+	case errors.As(err, &concurrentModificationErr):
+		return NewPreconditionFailedError(
+			requestID,
+			"user",
+			concurrentModificationErr.ETag,
+			concurrentModificationErr,
 		)
 	case errors.As(err, &validationErrs):
 		return NewUnprocessableEntityError(requestID, validationErrs)

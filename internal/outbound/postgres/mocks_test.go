@@ -35,3 +35,8 @@ func (m *mockQueries) UpdateUser(ctx context.Context, params sqlc.UpdateUserPara
 	args := m.Called(ctx, params)
 	return args.Get(0).(sqlc.User), args.Error(1)
 }
+
+func (m *mockQueries) UserExists(ctx context.Context, id string) (bool, error) {
+	args := m.Called(ctx, id)
+	return args.Bool(0), args.Error(1)
+}

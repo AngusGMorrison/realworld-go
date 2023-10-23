@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
 	"github.com/google/uuid"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -138,21 +139,23 @@ func RandomUpdateRequest(t *testing.T) *UpdateRequest {
 	t.Helper()
 
 	id := uuid.New()
+	eTag := etag.Random()
 	email := RandomOption[EmailAddress](t)
 	password := RandomOption[PasswordHash](t)
 	bio := RandomOption[Bio](t)
 	image := RandomOption[URL](t)
-	return NewUpdateRequest(id, email, password, bio, image)
+	return NewUpdateRequest(id, eTag, email, password, bio, image)
 }
 
 func RandomUser(t *testing.T) *User {
 	t.Helper()
 
 	id := uuid.New()
+	eTag := etag.Random()
 	username := RandomUsername(t)
 	email := RandomEmailAddress(t)
 	password := RandomPasswordHash(t)
 	bio := RandomOption[Bio](t)
 	image := RandomOption[URL](t)
-	return NewUser(id, username, email, password, bio, image)
+	return NewUser(id, eTag, username, email, password, bio, image)
 }

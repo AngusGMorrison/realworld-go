@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/angusgmorrison/realworld-go/pkg/etag"
+
 	"github.com/angusgmorrison/realworld-go/internal/domain/user"
 
 	"github.com/gofiber/fiber/v2"
@@ -71,6 +73,20 @@ func NewUnauthorizedError(requestID string, cause error) error {
 		RequestID: requestID,
 		Status:    fiber.StatusUnauthorized,
 		Message:   http.StatusText(fiber.StatusUnauthorized),
+		cause:     cause,
+	}
+}
+
+func NewPreconditionFailedError(
+	requestID string,
+	resource string,
+	eTag etag.ETag,
+	cause error,
+) error {
+	return &JSONError{
+		RequestID: requestID,
+		Status:    fiber.StatusPreconditionFailed,
+		Message:   fmt.Sprintf("%s with ETag %s was modified since last read", resource, eTag),
 		cause:     cause,
 	}
 }
