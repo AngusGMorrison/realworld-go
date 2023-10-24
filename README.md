@@ -214,6 +214,7 @@ Here's what's been implemented so far.
 - [x] Extensive, concurrent unit test suite
 - [x] Health checks
 - [x] Streamlined local development experience
+- [x] Optimistic concurrency control
 - [ ] Concurrent integration tests
 - [ ] Structured logging
 - [ ] Metrics
